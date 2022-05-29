@@ -8,9 +8,11 @@ System requirements:
 - Python for building the Python bindings (Python version 2.x or 3.x)
 
 Input files:
-- Rootfiles in E906/E1039 format
+- Rootfiles in E-906/E-1039 format
 - Switch data format type to process in "LoadInput.cxx" file
-.sh
 
-To run main source code, simply execute file titles "run.sh" which calls the MakeFile first and then defines the data/MC file needed to be processed.
+
+To run main executable, simply run file titled "run.sh" which calls the MakeFile first, runs executable and defines the data/MC file needed to be processed
+
+
 
