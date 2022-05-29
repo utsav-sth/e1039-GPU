@@ -1,7 +1,8 @@
 System requirements:
 - At least one of the CUDA-enabled GPUs (list of CUDA-enabled GPUs: https://developer.nvidia.com/cuda-gpus).
-- CUDA 11.0
+- CUDA Toolkit 11.0
 - ROOT 6.14
+- CMake 3.11 or later
 - GPUfit library (https://github.com/gpufit/Gpufit)
 - cuBLASLt API (https://docs.nvidia.com/cuda/cublas/index.html)
 - Boost 1.58 or later (To build the tests)
