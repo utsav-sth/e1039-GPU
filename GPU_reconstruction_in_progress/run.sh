@@ -1,1 +1,0 @@
-make && ./online_reconstruction digit_028705_009.root out
