@@ -1,7 +1,7 @@
 To clone this repository:
 - git clone git@github.com:efuchey/e1039-GPU
 
-The latest/most advanced version of the GPU analysis code is "online_reconstruction_3d_linear_test.cu" in "GPU_reconstruction_in_progress".
+The latest/most advanced version of the GPU analysis code is "online_reconstruction.cu" in "GPU_reconstruction_in_progress".
 
 System requirements:
 - At least one of the CUDA-enabled GPUs (list of CUDA-enabled GPUs: https://developer.nvidia.com/cuda-gpus).

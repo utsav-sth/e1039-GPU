@@ -15,7 +15,7 @@ Input files:
 - Rootfiles in E-906/E-1039 format
 - Switch data format type to process in "LoadInput.cxx" file
 
-Latest/most advanced version of the GPU analysis code is "online_reconstruction_3d_linear_test.cu".
+Latest/most advanced version of the GPU analysis code is "online_reconstruction.cu"
 
 To run main executable, simply run file titled "run.sh" which calls the MakeFile first, runs executable and defines the data/MC file needed to be processed
 
