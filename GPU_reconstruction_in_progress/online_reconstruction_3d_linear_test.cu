@@ -83,7 +83,7 @@ void printDeviceStatus() {
 
 
 
-//clone of LoadEvent::Hit: elementary raw signal (NOT cluster)
+//clone of LoadEvent::Hit: 
 class gHit {
 	public:
 	int index; // global hit index in the hit array
@@ -115,14 +115,14 @@ class gEvent {
 	gHit TriggerHits[EstnTHMax]; // array of trigger hits
 };
 
-// SW = ?
+// SW = SearchWindows?
 class gSW {
 public:
 	int EventID; // Event number from gEvent
 	int nAH; // number of AllHits 
 };
 
-// Hit comparison: d
+// Hit comparison
 struct lessthan {
 	__host__ __device__ bool operator()(const gHit& lhs, const gHit& rhs)
 	{
@@ -387,7 +387,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 	// int nHitsPerDetector[nDetectors+1];
 	
 
-	// initialization of array size prior to clustering
+	// initialization of array size
 	cluster_iAH_arr_size[index] = 0;
 	nAH_reduced[index] = 0;
 	
@@ -430,7 +430,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 			if(cluster_iAH_arr_size[index] == ClusterSizeMax) {
 //				printf("Oversized cluster...\n");
 			}
-			// if cluster size is zero, start a new cluster
+			// if array size is zero, start storing the hit in the array
 			if(cluster_iAH_arr_size[index] == 0) {
 				cluster_iAH_arr[index][0] = iAH[index];
 				++cluster_iAH_arr_size[index];
@@ -455,7 +455,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 							}
 						}
-						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC?), we remove both
+						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p), we remove both
 						else if((((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) >= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) < 8.0) || ((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) <= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) > -8.0)) && (ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID >= 19 && ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID <= 24)) {
 //							printf("Skip cluster...\n");
 							ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
@@ -464,7 +464,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 					}
 					// if 3 hits or more in cluster: we essentially discard them all;
 					if(cluster_iAH_arr_size[index] >= 3) {
-						//evaluate the mean time difference;
+						// evaluate the mean time difference;
 						dt_mean[index] = 0.0;
 						for(cluster_iAH_arr_cur[index] = 1; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 							dt_mean[index] += ((ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime) > 0.0 ? (ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime) : (ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime));
@@ -557,7 +557,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 		}
 	    
 //		Process the accepted events (tracking) here.
-	// missing tracking??? or is it elsewhere???
+		// where is the tracking though?
 	}
 }
 
@@ -638,7 +638,8 @@ int main(int argc, char* argv[]) {
 //		thrust::stable_sort(host_gEvent[i].AllHits, host_gEvent[i].AllHits+host_gEvent[i].nAH, lessthan());
 //	}
 
-	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
+	// evaluate the total size of the gEvent array (and the SW array) for memory allocation
+	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
 	size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
 
@@ -682,8 +683,10 @@ int main(int argc, char* argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
+	// this input_tkl should be the information that the device uses to reconstruct the tracklets
 	gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
 
+	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
 
 	// check status of device and synchronize again;
@@ -744,10 +747,8 @@ int main(int argc, char* argv[]) {
 	thrust::device_vector< REAL > d_parameters(2);
 	
 	// data is array of xz-positions of v,v',x,x',u,u' planes of each tracklet
-	// refer to? are we just fitting 
 	vector< REAL > _data_tkl_x {-2.48f,-2.50f, -0.824f, -0.826f, -0.473f,-0.474f};
 	thrust::device_vector<REAL> d_tkl_x(_data_tkl_x.size());
-	// 
 	thrust::copy(_data_tkl_x.begin(), _data_tkl_x.end(), d_tkl_x.begin());
 
 
@@ -758,12 +759,12 @@ int main(int argc, char* argv[]) {
 
 	// linear_regression_example(d_hit_pos.size(), d_hit_pos.data().get());
 	// calling linear regression with 6 points... 
-	// are we fitting a tracklet?
-	// I definitely don't think we are fitting a full track.
+	// it looks like we're fitting a single tracklet. 
+	// Where is the part where we're getting all tracklet candidates and fit them? 
+	// what about the part where we are fitting a full track?
 	linear_regression_example(d_tkl_x.size(), d_tkl_x.data().get(), d_parameters);
 
 	// data is array of yz-positions of v,v',x,x',y,y' planes of each tracklet
-	// refer to?
 	vector< REAL > _data_tkl_y {-0.761f, -0.764f, -0.067f, -0.069f, -0.742f, -0.75f};
 	thrust::device_vector<REAL> d_tkl_y(_data_tkl_y.size());
 	thrust::copy(_data_tkl_y.begin(), _data_tkl_y.end(), d_tkl_y.begin());
@@ -797,7 +798,7 @@ int main(int argc, char* argv[]) {
 		//cout<<"output: "<<(sizeof(int))<<endl;
 		//cout<<"size: "<<i<<endl;
 	//}
-
+	// printing the time required for all operations
 	clock_t cp4 = clock();
 	auto end = std::chrono::system_clock::now();
 

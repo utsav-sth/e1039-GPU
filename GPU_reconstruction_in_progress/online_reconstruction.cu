@@ -56,6 +56,7 @@ const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 
+// function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -66,6 +67,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+// looping on all GPUs to check their status
 void printDeviceStatus() {
 	int nDevices;
 
@@ -89,45 +91,50 @@ void printDeviceStatus() {
 
 
 
+//clone of LoadEvent::Hit:
 class gHit {
 	public:
-	int index;
-	short detectorID;
-	short elementID;
-	float tdcTime;
-	float driftDistance;
-	float pos;
-	short flag;
+	int index; // global hit index in the hit array
+	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
+	short elementID; // ID of the element in the detector: wire/slat/tube number
+	float tdcTime; // raw TDC time from the DAQ 
+	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
+	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
+	short flag; // 1: in time; 2: hodo mask; 3: trigger mask
 };
 
 class gEvent {
 	public:
-	int RunID;
-	int EventID;
-	int SpillID;
-	int TriggerBits;
-	short TargetPos;
-	int TurnID;
-	int RFID;
-	int Intensity[33];
-	short TriggerEmu;
-	short NRoads[4];
-	int NHits[nDetectors+1];
-	int nAH;
-	int nTH;
-	gHit AllHits[EstnAHMax];
-	gHit TriggerHits[EstnTHMax];
+	int RunID; // Run Number
+	int EventID; // Event number
+	int SpillID; // Spill number
+	int TriggerBits; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
+	short TargetPos; // target position: proxy for target ID?
+	int TurnID; // => related to beam intensity
+	int RFID; // => related to beam intensity
+	int Intensity[33]; //  16 before, one onset, and 16 after
+	short TriggerEmu; // 1 if MC event
+	short NRoads[4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
+	int NHits[nDetectors+1]; // number of hits in each detector plane
+	int nAH; // size of AllHits
+	int nTH; // size of TriggerHits
+	gHit AllHits[EstnAHMax]; // array of all hits
+	gHit TriggerHits[EstnTHMax]; // array of trigger hits
 };
 
+// SW = SearchWindows?
 class gSW {
 public:
 	int EventID;
 	int nAH;
 };
 
+// Hit comparison
 struct lessthan {
 	__host__ __device__ bool operator()(const gHit& lhs, const gHit& rhs)
 	{
+	//returns true if :
+	// hit1.detID<hit2.detID;  
 		if(lhs.detectorID < rhs.detectorID)
 		{
 			return true;
@@ -136,7 +143,7 @@ struct lessthan {
 		{
 			return false;
 		}
-
+	//hit1.detID=hit2.detID & hit1.elID<hit2.elID;
 		if(lhs.elementID < rhs.elementID)
 		{
 			return true;
@@ -145,7 +152,7 @@ struct lessthan {
 		{
 			return false;
 		}
-
+	//hit1.detID=hit2.detID & hit1.elID=hit2.elID & hit1.time>hit2.time;
 		if(lhs.tdcTime > rhs.tdcTime)
 		{
 			return true;
@@ -158,7 +165,7 @@ struct lessthan {
 };
 
 
-
+// position of first hit 
 struct get_first_event_hit_pos
 {
   __host__ __device__
@@ -168,6 +175,7 @@ struct get_first_event_hit_pos
   }
 };
 
+// Linear regression: fit of tracks
 void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust::device_vector<REAL> &d_parameters)
 {
 	// number of fits, fit points and parameters
@@ -230,23 +238,26 @@ void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust:
 	thrust::device_vector< REAL > d_chi_square(n_fits);
 	thrust::device_vector< int > d_number_iterations(n_fits);
 
-	// size_t n_fits,
-    // size_t n_points,
-    // float * gpu_data,
-    // float * gpu_weights,
-    // int model_id,
-    // float tolerance,
-    // int max_n_iterations,
-    // int * parameters_to_fit,
-    // int estimator_id,
-    // size_t user_info_size,
-    // char * gpu_user_info,
-    // float * gpu_fit_parameters,
-    // int * gpu_output_states,
-    // float * gpu_output_chi_squares,
-    // int * gpu_output_n_iterations
-
 	//call to gpufit (C interface)
+	// can be found in https://github.com/gpufit/Gpufit/blob/master/Gpufit/gpufit.cpp
+	// parameters:
+	// size_t n_fits,
+    	// size_t n_points,
+	// float * gpu_data,
+	// float * gpu_weights,
+    	// int model_id,
+    	// float tolerance,
+    	// int max_n_iterations,
+    	// int * parameters_to_fit,
+    	// int estimator_id,
+	// size_t user_info_size,
+    	// char * gpu_user_info,
+    	// float * gpu_fit_parameters,
+    	// int * gpu_output_states,
+    	// float * gpu_output_chi_squares,
+    	// int * gpu_output_n_iterations
+	// size_t n_fits,
+
 	int const status = gpufit_cuda_interface
        (
         	n_fits,
@@ -352,49 +363,61 @@ void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust:
 }
 
 
-
+// kernel functions: 
+// CUDA C++ extends C++ by allowing the programmer to define C++ functions, called kernels, that, when called, 
+// are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
+// I guess TKL is for tracklet selection? 
 __global__ void gkernel_TKL(gEvent* ic, gSW* sw) {
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	sw[index].nAH = ic[index].nAH;
 	sw[index].EventID = ic[index].EventID;
 }
 
+// event reducer: 
 __global__ void gkernel_eR(gEvent* ic) {
 	//printf("Running the kernel function...\n");
+	// retrieve global thread index
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-	double w_max[EstnEvtMax];
+	double w_max[EstnEvtMax]; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
 	
-	double w_min[EstnEvtMax];
-	double dt_mean[EstnEvtMax];
-	int cluster_iAH_arr_cur[EstnEvtMax];
-	int cluster_iAH_arr_size[EstnEvtMax];
-	static int cluster_iAH_arr[EstnEvtMax][ClusterSizeMax];
-	int uniqueID[EstnEvtMax];
-	int uniqueID_curr[EstnEvtMax];
-	double tdcTime_curr[EstnEvtMax];
-	int iAH[EstnEvtMax];
-	int nAH_reduced[EstnEvtMax];
+	double w_min[EstnEvtMax]; // max drift distance of the hit closest to the cluster avg position // current average position of cluster * 0.4
+	double dt_mean[EstnEvtMax]; // tbd
+	int cluster_iAH_arr_cur[EstnEvtMax]; // current cluster array
+	int cluster_iAH_arr_size[EstnEvtMax]; // cluster size i.e number of hits in cluster
+	static int cluster_iAH_arr[EstnEvtMax][ClusterSizeMax]; // global cluster array 
+	int uniqueID[EstnEvtMax]; // hit unique element ID
+	int uniqueID_curr[EstnEvtMax]; // current hit unique element ID
+	double tdcTime_curr[EstnEvtMax]; // current hit TDC time
+	int iAH[EstnEvtMax]; // hit index 
+	int nAH_reduced[EstnEvtMax]; // number of hits after hit quality filtering
 	// int nHitsPerDetector[nDetectors+1];
 	
 
-	
+	// initialization of array size
 	cluster_iAH_arr_size[index] = 0;
 	nAH_reduced[index] = 0;
-	
-	
+		
+	// event reducing/hit filtering
 	for(iAH[index] = 0; iAH[index]<ic[index].nAH; ++iAH[index]) {
+		// if hit not good, set its detID to 0 and continue;
 		if((ic[index].AllHits[iAH[index]].flag & hitFlagBit(1)) == 0) {
 //			printf("Skip out-of-time...\n");
 			ic[index].AllHits[iAH[index]].detectorID = 0;
 			continue;
 		}
+		// hits in DCs or Prop tubes
 		if(ic[index].AllHits[iAH[index]].detectorID < 31 || ic[index].AllHits[iAH[index]].detectorID > 46) {
+			// evaluate "unique ID"
 			uniqueID[index] = ic[index].AllHits[iAH[index]].detectorID*1000 + ic[index].AllHits[iAH[index]].elementID;
+			// compare with current unique element ID; if different, update the unique element ID and time info 
 			if(uniqueID[index] != uniqueID_curr[index]) {
 				uniqueID_curr[index] = uniqueID[index];
 				tdcTime_curr[index] = ic[index].AllHits[iAH[index]].tdcTime;
 			}
+			// if next hit and current hit belong to the same element: if detID>36 => prop tubes (reminder that hodoscpes are out of the picture in this scope), 
+			// we're suppose to have one signal (a second signal would be after-pulsing)
+			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
 			else {
 				if(ic[index].AllHits[iAH[index]].detectorID > 36 || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] >= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] < 80.0)) || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] <= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] > -80.0))) {
 //					printf("Skip after-pulse...\n");
@@ -406,22 +429,30 @@ __global__ void gkernel_eR(gEvent* ic) {
 				}
 			}
 		}
+		// declustering of hits in DCs (from CPU code, I understand this one better)
+		// if there are hits in the same plane and hitting two neighboring wires, they both give redundant information: 
 		if(ic[index].AllHits[iAH[index]].detectorID <= nChamberPlanes) {
 //			printf("%d\n", cluster_iAH_arr_size[index]);
 //			printf("Decluster...\n");
 			if(cluster_iAH_arr_size[index] == ClusterSizeMax) {
 //				printf("Oversized cluster...\n");
 			}
+			// if array size is zero, start storing the hit in the array
 			if(cluster_iAH_arr_size[index] == 0) {
 				cluster_iAH_arr[index][0] = iAH[index];
 				++cluster_iAH_arr_size[index];
 			}
+			// otherwise
 			else {
+				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
+				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
 				if((ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID) || (ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID > 1)) {
+					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size[index] == 2) {
 						w_max[index] = 0.9*0.5*(ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].pos - ic[index].AllHits[cluster_iAH_arr[index][0]].pos);
 						w_min[index] = 4.0/9.0*w_max[index];
 						if((ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_max[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_min[index]) || (ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_min[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_max[index])) {
+							//eliminating the existing hit with the lagest drift distance
 							if(ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance) {
 //								printf("Skip cluster...\n");
 								ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
@@ -431,24 +462,29 @@ __global__ void gkernel_eR(gEvent* ic) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 							}
 						}
+						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
 						else if((((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) >= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) < 8.0) || ((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) <= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) > -8.0)) && (ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID >= 19 && ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID <= 24)) {
 //							printf("Skip cluster...\n");
 							ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
 							ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 						}
 					}
+					// if 3 hits or more in cluster: we essentially discard them all;
 					if(cluster_iAH_arr_size[index] >= 3) {
+						// evaluate the mean time difference;
 						dt_mean[index] = 0.0;
 						for(cluster_iAH_arr_cur[index] = 1; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 							dt_mean[index] += ((ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime) > 0.0 ? (ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime) : (ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]-1]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].tdcTime));
 						}
 						dt_mean[index] = dt_mean[index]/(cluster_iAH_arr_size[index] - 1);
+						// if mean time difference is less than 10, that's electronic noise, so we remove them all.
 						if(dt_mean[index] < 10.0) {
 //							printf("Skip cluster...\n");
 							for(cluster_iAH_arr_cur[index] = 0; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].detectorID = 0;
 							}
 						}
+						// otherwise, we remove them all except first and last
 						else {
 //							printf("Skip cluster...\n");
 							for(cluster_iAH_arr_cur[index] = 1; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
@@ -458,12 +494,17 @@ __global__ void gkernel_eR(gEvent* ic) {
 					}
 					cluster_iAH_arr_size[index] = 0;
 				}
+				// current hit and previous hit are in same detector plane and in neighbor wires: 
+				// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
 				cluster_iAH_arr[index][cluster_iAH_arr_size[index]] = iAH[index];
 				++cluster_iAH_arr_size[index];
 			}
 		}
 	}
+	//end of the hit loop
 
+	// Hit reduction: 
+	// store in "AllHits" containers only hits with non-zero detectorID and couting those with nAH_reduced
 	for(iAH[index] = 0; iAH[index]<ic[index].nAH; ++iAH[index]) {
 		if(ic[index].AllHits[iAH[index]].detectorID != 0) {
 			ic[index].AllHits[nAH_reduced[index]] = ic[index].AllHits[iAH[index]];
@@ -475,9 +516,11 @@ __global__ void gkernel_eR(gEvent* ic) {
 
 	// compute hits per detector
 	int nEventHits = nAH_reduced[index];
+	// reinitialize number of hits per detector
 	for(auto iDetector = 1; iDetector <= nDetectors; ++iDetector) {
 		ic[index].NHits[iDetector] = 0;
 	}
+	// loop on reduced hits and counting number of hits per detector
 	for(auto iHit = 0; iHit < nEventHits; ++iHit) {
 		auto detectorId = ic[index].AllHits[iHit].detectorID;
 		if(detectorId != 0) {
@@ -494,7 +537,9 @@ __global__ void gkernel_eR(gEvent* ic) {
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])>0) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>0) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>0) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>0) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>0)){	
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<270) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>350) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>170) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>140) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>140))
 
-	        if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1)
+	//we do not accept the event unless there is at least one hit in the first DC
+
+if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1)
 
 
 	{
@@ -502,27 +547,28 @@ __global__ void gkernel_eR(gEvent* ic) {
 		//printf("Event rejected...\n");
 	}
 	else {
+		//counting total hit number, for all events < 6668? why?
+		if( (ic[index].EventID)<6668){ 	
+			int totalDetectorHits = 0;
+			for(int i = 1; i <= nDetectors; ++i) {
+				totalDetectorHits += ic[index].NHits[i];
+			}
 
-	if( (ic[index].EventID)<6668){ 	
-		int totalDetectorHits = 0;
-		for(int i = 1; i <= nDetectors; ++i) {
-			totalDetectorHits += ic[index].NHits[i];
-		}
-
-		int nFirstRegionHits = 0;
-		for(int i = 1; i < 6; ++i) {
-			nFirstRegionHits += ic[index].NHits[i];
-			printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
-		}
+			int nFirstRegionHits = 0;
+			for(int i = 1; i < 6; ++i) {
+				nFirstRegionHits += ic[index].NHits[i];
+				printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
+			}
 		
-	// printf("AllHits value : %d\n", (ic[index].NHits[0]));
-	printf("reduced AllHits value : %d\n", (nAH_reduced[index]));
-	printf("sum of detectors : %d (%d)\n", totalDetectorHits, nFirstRegionHits);
-	//}
+		// printf("AllHits value : %d\n", (ic[index].NHits[0]));
+		printf("reduced AllHits value : %d\n", (nAH_reduced[index]));
+		printf("sum of detectors : %d (%d)\n", totalDetectorHits, nFirstRegionHits);
+		//}
 }
 	    
 //		Process the accepted events (tracking) here.
-			}
+		// where is the tracking though?
+	}
 }
 
 
@@ -614,6 +660,9 @@ void print_matrix(const thrust::device_vector<float> &A, int nr_rows_A, int nr_c
 
 
 int main(int argn, char * argv[]) {
+	
+	// initialization: declaration of SRaw event, opening file/tree, affecting rawEvent object to input tree
+	// declaring array of gEvent;
 	auto start = std::chrono::system_clock::now();
 	clock_t cp1 = clock();
 
@@ -634,7 +683,7 @@ int main(int argn, char * argv[]) {
 	static gEvent host_gEvent[EstnEvtMax];
 
 
-
+	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
 		dataTree->GetEntry(i);
 //		cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
@@ -686,53 +735,68 @@ int main(int argn, char * argv[]) {
 //	}
 
 
+	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
+	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
 	size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
 
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gSW * host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
 
+	// declaring gEvent objects for the device (GPU) to use.
 	gEvent *device_gEvent;
 	// gEvent *device_output_eR;
 	gEvent *device_input_TKL;
 	gSW *device_output_TKL;
 	
 	
-
+	// copy of data from host to device: evaluate operation time 
 	clock_t cp2 = clock();
 	auto start_kernel = std::chrono::system_clock::now();
 
 	// printDeviceStatus();
-
+	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_input_TKL, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllSearchWindow));
 
+	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
+	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	// cudaMalloc((void**)&device_output_eR, sizeofoutput_eR);
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
 	// cudaMemcpy(device_output_eR, host_output, sizeofoutput_eR, cudaMemcpyHostToDevice);
 	auto end_kernel = std::chrono::system_clock::now();
 	
+	// now data is transfered in the device: kernel function for event reconstruction called;
+	// note that the function call is made requesting a number of blocks and a number of threads per block
+	// in practice we have as many threads total as number of events; 
 	//auto start_kernel = std::chrono::system_clock::now();
 	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
 	//auto end_kernel = std::chrono::system_clock::now();
 	
+	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
+	// copy result of event reconstruction from device_gEvent to device_input_TKL
+	// this input_tkl should be the information that the device uses to reconstruct the tracklets
 	gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
 
+	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
 
-
+	// check status of device and synchronize again;
+	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
+	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
 	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
 
 
+	// thrust objects: C++ template library based on STL
 	// convert raw pointer device_gEvent to device_vector
 	// TODO: just don't use raw pointers to begin with
     thrust::device_ptr<gEvent> d_p_events(device_gEvent);
@@ -791,6 +855,10 @@ int main(int argn, char * argv[]) {
 	thrust::copy(true_parameters_x.begin(), true_parameters_x.end(), d_parameters.begin());
 
 	// linear_regression_example(d_hit_pos.size(), d_hit_pos.data().get());
+	// calling linear regression with 6 points... 
+	// it looks like we're fitting a single tracklet. 
+	// Where is the part where we're getting all tracklet candidates and fit them? 
+	// what about the part where we are fitting a full track?
 	linear_regression_example(d_tkl_x.size(), d_tkl_x.data().get(), d_parameters);
 
 	//data is array of yz-positions of v,v',x,x',y,y' planes of each tracklet
@@ -829,7 +897,7 @@ int main(int argn, char * argv[]) {
 		//cout<<"output: "<<(sizeof(int))<<endl;
 		//cout<<"size: "<<i<<endl;
 	//}
-
+	// printing the time required for all operations
 	clock_t cp4 = clock();
 	auto end = std::chrono::system_clock::now();
 
