@@ -8,6 +8,9 @@ System requirements:
 - numba: https://numba.readthedocs.io/en/stable/index.html
 - uproot: https://uproot.readthedocs.io/en/latest/
 
-This code is just started and not functional yet...
+use:
+python3 online_reco_gpu_numba.py inputrootfile.root
+
+This code is as of right now just started and not functional yet...
 
 

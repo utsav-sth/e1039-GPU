@@ -539,40 +539,50 @@ __global__ void gkernel_eR(gEvent* ic) {
 
 	//we do not accept the event unless there is at least one hit in the first DC
 
-if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1)
-
-
-	{
-	
+	if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1){
 		//printf("Event rejected...\n");
-	}
-	else {
-		//counting total hit number, for all events < 6668? why?
-		if( (ic[index].EventID)<6668){ 	
-			int totalDetectorHits = 0;
-			for(int i = 1; i <= nDetectors; ++i) {
-				totalDetectorHits += ic[index].NHits[i];
+		}
+		else {
+			//counting total hit number, for all events < 6668? why? because she wanted just a subset!
+			if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
+				int totalDetectorHits = 0;
+				for(int i = 1; i <= nDetectors; ++i) {
+					totalDetectorHits += ic[index].NHits[i];
+				}
+	
+				int nFirstRegionHits = 0;
+				for(int i = 1; i < 6; ++i) {
+					nFirstRegionHits += ic[index].NHits[i];
+					printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
 			}
-
-			int nFirstRegionHits = 0;
-			for(int i = 1; i < 6; ++i) {
-				nFirstRegionHits += ic[index].NHits[i];
-				printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
+			
+				// printf("AllHits value : %d\n", (ic[index].NHits[0]));
+				//printf("event : %d\n", (ic[index].EventID));
+				//printf("reduced AllHits value : %d\n", (nAH_reduced[index]));
+				//printf("sum of detectors : %d (%d)\n", totalDetectorHits, nFirstRegionHits);
+				//}
 			}
-		
-		// printf("AllHits value : %d\n", (ic[index].NHits[0]));
-		printf("reduced AllHits value : %d\n", (nAH_reduced[index]));
-		printf("sum of detectors : %d (%d)\n", totalDetectorHits, nFirstRegionHits);
-		//}
-}
-	    
-//		Process the accepted events (tracking) here.
-		// where is the tracking though?
-	}
+		    
+	//		Process the accepted events (tracking) here.
+			// where is the tracking though?
+		}
+
 }
 
 
-
+// tracklet in station builder: 
+__global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
+	// I think we assume that by default we want to know where we are
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	// loop on hits
+	int Nhits = ic[index].nAH;
+	//if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
+	//	printf("core idx %d, evt %d: reduced AllHits value : %d\n", (index), ic[index].EventID, (Nhits));
+	//}
+	// answer is yes, we still have the info from the previous function i.e. running this function after running eR still offers 
+	
+}
 
 
 
@@ -785,6 +795,10 @@ int main(int argn, char * argv[]) {
 
 	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
+
+	// I first want to see if indeed we can reuse the "gEvent" pointer
+	int stID = 3;// to make explicit that we are requiring station 3
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, stID);
 
 	// check status of device and synchronize again;
 	
