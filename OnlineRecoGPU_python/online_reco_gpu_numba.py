@@ -37,10 +37,19 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
 #    for those who do, add a tracklet with the combination of hits, and fit it;
 #   * if tracklet is "valid" (see below) it is kept, otherwise it isn't
 # - Once the combinations have been made, tracklets are added intot the tracklet list
-    ucostheta = 10./180.*3.141592654
-    uwin = [0.1, 0.1]#placeholder
-    vcostheta = 10./180.*3.141592654
-    vwin = [0.1, 0.1]#placeholder
+    #it would look like all that stuff has to be defined here and cannot be defined globally???
+    z_plane_x = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]#placeholder: TODO: replace with actual values
+    z_plane_u = [1.1, 2.1, 3.1, 4.1, 5.1, 6.1]#placeholder: TODO: replace with actual values
+    z_plane_v = [1.2, 2.2, 3.2, 4.2, 5.2, 6.2]#placeholder: TODO: replace with actual values
+    ucostheta = np.cos(10./180.*3.141592654)
+    usintheta = np.sin(10./180.*3.141592654)
+    uwin = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]#placeholder: TODO: replace with actual values
+    vcostheta = np.cos(-10./180.*3.141592654)
+    vsintheta = np.sin(-10./180.*3.141592654)
+    vwin = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]#placeholder: TODO: replace with actual values
+    spacingplane = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    TXMAX = 1.
+    TYMAX = 1.
     
     print('reco_tracklet_in_station', stID)
     hitpairs_in_x = ((1, 4), (2, -1))#placeholder
@@ -49,17 +58,40 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
     nhitsx = len(hitpairs_in_x)
     nhitsu = len(hitpairs_in_u)
     nhitsv = len(hitpairs_in_v)
+    detID = 10#placeholder
     if nhitsx==0 or nhitsu==0 or nhitsv==0:
         return 0
 #TODO: implement the whole function
-    for i in range (0, nhitsx-1):
+    for i in range (0, nhitsx):
         xpos = (hitpairs_in_x[i][0]+hitpairs_in_x[i][1])*0.5
         if hitpairs_in_x[i][1]<0:
             xpos = hitpairs_in_x[i][0]
-            umin = xpos*ucostheta-uwin[stID]
-            umax = umin+2*uwin[stID]
-        
-        
+        umin = xpos*ucostheta-uwin[stID]
+        umax = umin+2*uwin[stID]
+        for j in range (0, nhitsu):
+            upos = (hitpairs_in_u[j][0]+hitpairs_in_u[j][1])*0.5
+            if hitpairs_in_u[j][1]<0:
+                upos = hitpairs_in_u[j][0]
+            if upos<umin or upos>umax:
+                continue
+            z_x = z_plane_x[stID]
+            z_u = z_plane_u[stID]
+            z_v = z_plane_v[stID]
+            vwin1 = spacingplane[detID]*2*ucostheta
+            vwin2 = abs((z_u+z_v-2*z_x)*ucostheta*TXMAX)
+            vwin3 = abs((z_v-z_u)*usintheta*TYMAX)
+            vwin = vwin1+vwin2+vwin3+2*spacingplane[detID]
+            vmin = 2*xpos*ucostheta-upos-vwin
+            vmax = vmin+2*vwin
+            for k in range (0, nhitsv):
+                upos = (hitpairs_in_v[k][0]+hitpairs_in_v[k][1])*0.5
+                if hitpairs_in_v[k][1]<0:
+                    vpos = hitpairs_in_v[k][0]
+                if vpos<vmin or vpos>vmax:
+                    continue
+                #build tracklet here... but I need to define it first... (also the hits)
+           
+
 @jit(nopython=True)
 def reco_backtracks():
 # - combination of tracklets from station 2 and 3 to form backtracks
