@@ -16,6 +16,12 @@ import numpy as np
 import time
 import uproot
 
+# this code needs:
+# hit containers;
+hits = (1)#placeholder #TODO: define those
+# track containers;
+tracklets = (1)#placeholder #TODO: define those
+
 
 # functions
 #I need the actual list of hit(s) though... and the event and hit class, and the geometry.
@@ -31,9 +37,29 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
 #    for those who do, add a tracklet with the combination of hits, and fit it;
 #   * if tracklet is "valid" (see below) it is kept, otherwise it isn't
 # - Once the combinations have been made, tracklets are added intot the tracklet list
+    ucostheta = 10./180.*3.141592654
+    uwin = [0.1, 0.1]#placeholder
+    vcostheta = 10./180.*3.141592654
+    vwin = [0.1, 0.1]#placeholder
+    
     print('reco_tracklet_in_station', stID)
+    hitpairs_in_x = ((1, 4), (2, -1))#placeholder
+    hitpairs_in_u = ((2, 5), (4, -1))#placeholder
+    hitpairs_in_v = ((3, 6), (6, -1))#placeholder
+    nhitsx = len(hitpairs_in_x)
+    nhitsu = len(hitpairs_in_u)
+    nhitsv = len(hitpairs_in_v)
+    if nhitsx==0 or nhitsu==0 or nhitsv==0:
+        return 0
 #TODO: implement the whole function
-
+    for i in range (0, nhitsx-1):
+        xpos = (hitpairs_in_x[i][0]+hitpairs_in_x[i][1])*0.5
+        if hitpairs_in_x[i][1]<0:
+            xpos = hitpairs_in_x[i][0]
+            umin = xpos*ucostheta-uwin[stID]
+            umax = umin+2*uwin[stID]
+        
+        
 @jit(nopython=True)
 def reco_backtracks():
 # - combination of tracklets from station 2 and 3 to form backtracks
