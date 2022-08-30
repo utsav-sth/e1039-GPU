@@ -10,11 +10,14 @@
 import sys
 import os
 import datetime
-
-from numba import jit
-import numpy as np
 import time
+
+import math
+import numpy as np
 import uproot
+import numba
+from numba import jit
+from numba import cuda
 
 # this code needs:
 # hit containers;
@@ -132,7 +135,15 @@ if len(sys.argv) < 2:
 
 #opening the input file 
 filename = sys.argv[1]
-file = uproot.open(filename)
+inputtree = uproot.open(filename+':save')
+inputdata = inputtree.arrays(library="np")
+nevents=len(inputdata['fRunID'])
+print('number of events to process',nevents)
+
+# we will have to parallelize the thing so let's do the loop just to understand, but don't invest too much time in it.
+for ev in range(0, 100):
+    print(inputdata['fAllHits.detectorID'][ev])#for tests
+    
 
 # following the same order as in KalmanFastTracking.cxx
 reco_tracklet_in_stations(3, 1)
