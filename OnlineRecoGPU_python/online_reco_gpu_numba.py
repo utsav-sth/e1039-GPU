@@ -16,21 +16,75 @@ import math
 import numpy as np
 import uproot
 import numba
-from numba import jit
+#from numba import jit
 from numba import cuda
 
 # this code needs:
 # hit containers;
-hits = (1)#placeholder #TODO: define those
+# hits = (1)#placeholder #TODO: define those
 # track containers;
-tracklets = (1)#placeholder #TODO: define those
+# tracklets = (1)#placeholder #TODO: define those
 
 
 # functions
-#I need the actual list of hit(s) though... and the event and hit class, and the geometry.
-@jit(nopython=True)
-def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take another array 
-# - makes pairs of hits in xx', uu', vv', in selected station;
+@numba.jit(nopython=True)
+def make_hitpairs_in_station(stID, projID, detectorid, pos):
+# makes pairs of hits: check all hits in both detector IDs corresponding to station ID 
+    spacingplane = [0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0]
+    detsuperid = [[2, 1, 3], [5, 6, 4], [8, 9, 7], [11, 12, 10], [14, 15, 13], [25, 26], [24, 27]] 
+    detid1 = detsuperid[stID][projID]*2
+    detid2 = detsuperid[stID][projID]*2-1
+
+    hitlist1_pos = np.zeros(len(detectorid), dtype='float32')
+    hitlist2_pos = np.zeros(len(detectorid), dtype='float32')
+    hitctr1 = 0
+    hitctr2 = 0
+    for i in range(0, len(detectorid)):
+        if(detectorid[i]==detid1):
+            hitlist1_pos[hitctr1] = pos[i]
+            hitctr1+=1
+        if(detectorid[i]==detid2):
+            hitlist1_pos[hitctr2] = pos[i]
+            hitctr2+=1
+    maxsize = (hitctr1+1)*(hitctr2+1)
+    hitpairs = np.zeros( (maxsize, 2), dtype='float32' )
+    index1 = -1
+    index2 = -1
+    hitflag1 = np.zeros(hitctr1, dtype='int8')
+    hitflag2 = np.zeros(hitctr2, dtype='int8')
+    indexpair = 0
+    for i in range(0, hitctr1):
+        index1+=1
+        index2 = -1
+        for j in range(0, hitctr2):
+            index2+=1
+            if(hitlist1_pos[i]-hitlist2_pos[j]>spacingplane[detsuperid[stID][projID]]):
+                continue
+            hitpairs[indexpair][0] = hitlist1_pos[i]
+            hitpairs[indexpair][1] = hitlist2_pos[j]
+            indexpair+=1
+            hitflag1[index1] = 1
+            hitflag2[index2] = 1
+    index1 = 0;
+    for i in range(0, hitctr1):
+        if(hitflag1[index1]<1):
+            hitpairs[indexpair][0] = hitlist1_pos[i]
+            hitpairs[indexpair][1] = -1
+            indexpair+=1
+        index1+=1
+    index2 = 0;
+    for j in range(0, hitctr2):
+       if(hitflag2[index2]<1):
+            hitpairs[indexpair][0] = -1
+            hitpairs[indexpair][1] = hitlist2_pos[j]
+            indexpair+=1
+            index2+=1
+    return hitpairs
+    
+
+@numba.jit(nopython=True)
+def reco_tracklet_in_station(stID, detectorid, pos, *pos_exp): #doesn't seem to take another array 
+# - takes pairs of hits in xx', uu', vv', in selected station;
 # - if a view doesn't have hits, stop here.
 # - combination of hits to form tracklets: 
 #   * loop on x hits: combine x with u: to each x can only corresponds a range in u_min<u_pos<u_max
@@ -41,6 +95,7 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
 #   * if tracklet is "valid" (see below) it is kept, otherwise it isn't
 # - Once the combinations have been made, tracklets are added intot the tracklet list
     #it would look like all that stuff has to be defined here and cannot be defined globally???
+    stID-=1
     z_plane_x = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]#placeholder: TODO: replace with actual values
     z_plane_u = [1.1, 2.1, 3.1, 4.1, 5.1, 6.1]#placeholder: TODO: replace with actual values
     z_plane_v = [1.2, 2.2, 3.2, 4.2, 5.2, 6.2]#placeholder: TODO: replace with actual values
@@ -50,14 +105,14 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
     vcostheta = np.cos(-10./180.*3.141592654)
     vsintheta = np.sin(-10./180.*3.141592654)
     vwin = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]#placeholder: TODO: replace with actual values
-    spacingplane = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    spacingplane = [0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0]
     TXMAX = 1.
     TYMAX = 1.
     
-    print('reco_tracklet_in_station', stID)
-    hitpairs_in_x = ((1, 4), (2, -1))#placeholder
-    hitpairs_in_u = ((2, 5), (4, -1))#placeholder
-    hitpairs_in_v = ((3, 6), (6, -1))#placeholder
+    #print('reco_tracklet_in_station', stID)
+    hitpairs_in_x = make_hitpairs_in_station(stID, 0, detectorid, pos)
+    hitpairs_in_u = make_hitpairs_in_station(stID, 1, detectorid, pos)
+    hitpairs_in_v = make_hitpairs_in_station(stID, 2, detectorid, pos)
     nhitsx = len(hitpairs_in_x)
     nhitsu = len(hitpairs_in_u)
     nhitsv = len(hitpairs_in_v)
@@ -95,7 +150,7 @@ def reco_tracklet_in_stations(stID, listID, *pos_exp): #doesn't seem to take ano
                 #build tracklet here... but I need to define it first... (also the hits)
            
 
-@jit(nopython=True)
+@numba.jit(nopython=True)
 def reco_backtracks():
 # - combination of tracklets from station 2 and 3 to form backtracks
 #   * loop on station 3 tracklets; if not coarse mode, loop on the tracklet 3 hits to extract only the X hits
@@ -106,9 +161,10 @@ def reco_backtracks():
 #     Then keep only the best backtrack (i.e. with best chi^2 or best proba)
     print("reco_backtracks")
 #TODO: implement the whole function
+    #return 0
 
 
-@jit(nopython=True)
+@numba.jit(nopython=True)
 def reco_globaltracks():
 # - Combinations of backtracks and hits in station 1 to form global tracks:
 #   * Loop on backtracks: evaluation of windows with Sagitta method if KMag ON, with extrapolation otherwise;
@@ -123,31 +179,48 @@ def reco_globaltracks():
 #     if the merged track is is better than the separate ones, keep it, otherwise, keep the best one of the two (better = with best chi^2 or best proba)
     print("reco_globaltracks")
 #TODO: implement the whole function
-
+    #return 0
 
 
 
 
 #main 
+from timeit import default_timer as timer
+start_all=timer()
 if len(sys.argv) < 2:
     print("Supply input file name")
     sys.exit()
 
+
+start_evload=timer()
 #opening the input file 
 filename = sys.argv[1]
 inputtree = uproot.open(filename+':save')
-inputdata = inputtree.arrays(library="np")
-nevents=len(inputdata['fRunID'])
+#inputdata = inputtree.arrays(library="np")
+detectorid=inputtree["fAllHits.detectorID"].arrays(library="np")["fAllHits.detectorID"]
+elementid=inputtree["fAllHits.elementID"].arrays(library="np")["fAllHits.elementID"]
+pos=inputtree["fAllHits.pos"].arrays(library="np")["fAllHits.pos"]
+nevents=len(detectorid)
 print('number of events to process',nevents)
+#detector_data=np.zeros((len(detectorid),30,200),dtype='int8')
+end_evload=timer()
 
+start_proc=timer()
 # we will have to parallelize the thing so let's do the loop just to understand, but don't invest too much time in it.
-for ev in range(0, 100):
-    print(inputdata['fAllHits.detectorID'][ev])#for tests
-    
-
+for ev in range(0, 10):
+    #print(inputdata['fAllHits.detectorID'][ev])#for tests
+    #make_hitpairs_in_station(3, 1, detectorid[ev],elementid[ev])
+#    hitpairs = make_hitpairs_in_station(3, 0, detectorid, pos)
 # following the same order as in KalmanFastTracking.cxx
-reco_tracklet_in_stations(3, 1)
-reco_tracklet_in_stations(4, 1)
-reco_tracklet_in_stations(5, 1)
-reco_backtracks()
-reco_globaltracks()
+    reco_tracklet_in_station(3, detectorid[ev],pos[ev])
+    reco_tracklet_in_station(4, detectorid[ev],pos[ev])
+    reco_tracklet_in_station(5, detectorid[ev],pos[ev])
+    reco_backtracks()
+    reco_globaltracks()
+
+end_proc=timer()
+
+end_all=timer()
+print("data loading time: ", end_evload-start_evload)
+print("data processing time: ", end_proc-start_proc)
+print("total time of execution: ", end_all-start_all)
