@@ -29,6 +29,7 @@ from numba import cuda
 # functions
 @numba.jit(nopython=True)
 def make_hitpairs_in_station(stID, projID, detectorid, pos):
+    stID-=1
 # makes pairs of hits: check all hits in both detector IDs corresponding to station ID 
     spacingplane = [0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0]
     detsuperid = [[2, 1, 3], [5, 6, 4], [8, 9, 7], [11, 12, 10], [14, 15, 13], [25, 26], [24, 27]] 
@@ -83,7 +84,7 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
     
 
 @numba.jit(nopython=True)
-def reco_tracklet_in_station(stID, detectorid, pos, *pos_exp): #doesn't seem to take another array 
+def reco_tracklet_in_station(stID, detectorid, hitpairs_in_x, hitpairs_in_u, hitpairs_in_v, *pos_exp): #doesn't seem to take another array 
 # - takes pairs of hits in xx', uu', vv', in selected station;
 # - if a view doesn't have hits, stop here.
 # - combination of hits to form tracklets: 
@@ -110,9 +111,9 @@ def reco_tracklet_in_station(stID, detectorid, pos, *pos_exp): #doesn't seem to 
     TYMAX = 1.
     
     #print('reco_tracklet_in_station', stID)
-    hitpairs_in_x = make_hitpairs_in_station(stID, 0, detectorid, pos)
-    hitpairs_in_u = make_hitpairs_in_station(stID, 1, detectorid, pos)
-    hitpairs_in_v = make_hitpairs_in_station(stID, 2, detectorid, pos)
+    #hitpairs_in_x = make_hitpairs_in_station(stID, 0, detectorid, pos)
+    #hitpairs_in_u = make_hitpairs_in_station(stID, 1, detectorid, pos)
+    #hitpairs_in_v = make_hitpairs_in_station(stID, 2, detectorid, pos)
     nhitsx = len(hitpairs_in_x)
     nhitsu = len(hitpairs_in_u)
     nhitsv = len(hitpairs_in_v)
@@ -159,9 +160,9 @@ def reco_backtracks():
 #     otherwise, add the two tracklets together to obtain tracklet 23 (aka backtrack), and fit it.
 #     If the fit chi^2 is too high, reject tracklet; if not coarse mode, resolve left right for backtrack.
 #     Then keep only the best backtrack (i.e. with best chi^2 or best proba)
-    print("reco_backtracks")
+    #print("reco_backtracks")
 #TODO: implement the whole function
-    #return 0
+    return 0
 
 
 @numba.jit(nopython=True)
@@ -177,9 +178,9 @@ def reco_globaltracks():
 #     otherwise select the one with best vertex chisq; then fall back to the default only choice
 #   * After the loop on backtracks, if best track from each station have momentum less than a defined value, merge tracks;
 #     if the merged track is is better than the separate ones, keep it, otherwise, keep the best one of the two (better = with best chi^2 or best proba)
-    print("reco_globaltracks")
+    #print("reco_globaltracks")
 #TODO: implement the whole function
-    #return 0
+    return 0
 
 
 
@@ -201,20 +202,25 @@ detectorid=inputtree["fAllHits.detectorID"].arrays(library="np")["fAllHits.detec
 elementid=inputtree["fAllHits.elementID"].arrays(library="np")["fAllHits.elementID"]
 pos=inputtree["fAllHits.pos"].arrays(library="np")["fAllHits.pos"]
 nevents=len(detectorid)
+if(len(sys.argv)>2):
+    if(int(sys.argv[2])<nevents):
+        nevents = int(sys.argv[2])
 print('number of events to process',nevents)
 #detector_data=np.zeros((len(detectorid),30,200),dtype='int8')
 end_evload=timer()
 
 start_proc=timer()
 # we will have to parallelize the thing so let's do the loop just to understand, but don't invest too much time in it.
-for ev in range(0, 10):
+for ev in range(0, nevents):
     #print(inputdata['fAllHits.detectorID'][ev])#for tests
-    #make_hitpairs_in_station(3, 1, detectorid[ev],elementid[ev])
-#    hitpairs = make_hitpairs_in_station(3, 0, detectorid, pos)
+    hitpairs_in_x = make_hitpairs_in_station(3, 0, detectorid[ev],pos[ev])
+    hitpairs_in_u = make_hitpairs_in_station(3, 1, detectorid[ev],pos[ev])
+    hitpairs_in_v = make_hitpairs_in_station(3, 2, detectorid[ev],pos[ev])
+    #reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
 # following the same order as in KalmanFastTracking.cxx
-    reco_tracklet_in_station(3, detectorid[ev],pos[ev])
-    reco_tracklet_in_station(4, detectorid[ev],pos[ev])
-    reco_tracklet_in_station(5, detectorid[ev],pos[ev])
+#    reco_tracklet_in_station(3, detectorid[ev],pos[ev])
+#    reco_tracklet_in_station(4, detectorid[ev],pos[ev])
+#    reco_tracklet_in_station(5, detectorid[ev],pos[ev])
     reco_backtracks()
     reco_globaltracks()
 
