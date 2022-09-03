@@ -32,23 +32,45 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
     stID-=1
 # makes pairs of hits: check all hits in both detector IDs corresponding to station ID 
     spacingplane = [0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0]
-    detsuperid = [[2, 1, 3], [5, 6, 4], [8, 9, 7], [11, 12, 10], [14, 15, 13], [25, 26], [24, 27]] 
+    detsuperid = [[2, 1, 3], [5, 6, 4], [8, 9, 7], [11, 12, 10], [14, 15, 13], [25, 26], [24, 27]]
+    #print(stID, ", ",projID , ", ",detsuperid[stID][projID])
     detid1 = detsuperid[stID][projID]*2
     detid2 = detsuperid[stID][projID]*2-1
 
-    hitlist1_pos = np.zeros(len(detectorid), dtype='float32')
-    hitlist2_pos = np.zeros(len(detectorid), dtype='float32')
+    #hitlist1_pos = np.zeros(len(detectorid), dtype='float32')
+    #hitlist2_pos = np.zeros(len(detectorid), dtype='float32')
+    hitlist1_pos = np.zeros(0, dtype='float32')
+    hitlist2_pos = np.zeros(0, dtype='float32')
+    #print(len(hitlist1_pos))
+    #print(len(hitlist2_pos))
     hitctr1 = 0
     hitctr2 = 0
     for i in range(0, len(detectorid)):
+        if(pos[i]>1.e-10):
+            print(pos[i])
         if(detectorid[i]==detid1):
-            hitlist1_pos[hitctr1] = pos[i]
+            #hitlist1_pos[hitctr1] = pos[i]
             hitctr1+=1
+            hitlist1_pos = np.append(hitlist1_pos, pos[i])
+            #print(len(hitlist1_pos))
         if(detectorid[i]==detid2):
-            hitlist1_pos[hitctr2] = pos[i]
+            #print(detectorid[i], ", ", detid2)
+            #hitlist1_pos[hitctr2] = pos[i]
             hitctr2+=1
-    maxsize = (hitctr1+1)*(hitctr2+1)
-    hitpairs = np.zeros( (maxsize, 2), dtype='float32' )
+            hitlist2_pos = np.append(hitlist2_pos, pos[i])
+            #print(len(hitlist2_pos))
+    #maxsize = (hitctr1+1)*(hitctr2+1)
+    #hitctr1 = len(hitlist1_pos)
+    #hitctr2 = len(hitlist2_pos)
+    #np.resize(hitlist1_pos, (1, hitctr1))
+    #np.resize(hitlist2_pos, (1, hitctr2))
+    #if hitctr1>0 or hitctr2>0:
+    #    print(hitctr1, ", ", hitctr2)
+    #print(len(hitlist1_pos))
+    #print(len(hitlist2_pos))
+    
+    #hitpairs = np.zeros( (maxsize, 2), dtype='float32' )
+    hitpairs = np.zeros( 0, dtype='float32' )
     index1 = -1
     index2 = -1
     hitflag1 = np.zeros(hitctr1, dtype='int8')
@@ -61,25 +83,30 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
             index2+=1
             if(hitlist1_pos[i]-hitlist2_pos[j]>spacingplane[detsuperid[stID][projID]]):
                 continue
-            hitpairs[indexpair][0] = hitlist1_pos[i]
-            hitpairs[indexpair][1] = hitlist2_pos[j]
+            #hitpairs[indexpair][0] = hitlist1_pos[i]
+            #hitpairs[indexpair][1] = hitlist2_pos[j]
+            hitpairs = np.append(hitpairs, [[ hitlist1_pos[i], hitlist2_pos[j] ]])
             indexpair+=1
             hitflag1[index1] = 1
             hitflag2[index2] = 1
     index1 = 0;
     for i in range(0, hitctr1):
         if(hitflag1[index1]<1):
-            hitpairs[indexpair][0] = hitlist1_pos[i]
-            hitpairs[indexpair][1] = -1
+            #hitpairs[indexpair][0] = hitlist1_pos[i]
+            #hitpairs[indexpair][1] = -1
+            np.append(hitpairs, [hitlist1_pos[i], -1])
             indexpair+=1
         index1+=1
     index2 = 0;
     for j in range(0, hitctr2):
        if(hitflag2[index2]<1):
-            hitpairs[indexpair][0] = -1
-            hitpairs[indexpair][1] = hitlist2_pos[j]
+            #hitpairs[indexpair][0] = -1
+            #hitpairs[indexpair][1] = hitlist2_pos[j]
+            np.append(hitpairs, [-1, hitlist2_pos[i]])
             indexpair+=1
             index2+=1
+    print(len(hitpairs))
+    print(hitpairs)
     return hitpairs
     
 
@@ -214,8 +241,8 @@ start_proc=timer()
 for ev in range(0, nevents):
     #print(inputdata['fAllHits.detectorID'][ev])#for tests
     hitpairs_in_x = make_hitpairs_in_station(3, 0, detectorid[ev],pos[ev])
-    hitpairs_in_u = make_hitpairs_in_station(3, 1, detectorid[ev],pos[ev])
-    hitpairs_in_v = make_hitpairs_in_station(3, 2, detectorid[ev],pos[ev])
+    #hitpairs_in_u = make_hitpairs_in_station(3, 1, detectorid[ev],pos[ev])
+    #hitpairs_in_v = make_hitpairs_in_station(3, 2, detectorid[ev],pos[ev])
     #reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
 # following the same order as in KalmanFastTracking.cxx
 #    reco_tracklet_in_station(3, detectorid[ev],pos[ev])
