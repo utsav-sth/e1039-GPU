@@ -46,8 +46,8 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
     hitctr1 = 0
     hitctr2 = 0
     for i in range(0, len(detectorid)):
-        if(pos[i]>1.e-10):
-            print(pos[i])
+        #if(pos[i]>1.e-10):
+        #    print(pos[i])
         if(detectorid[i]==detid1):
             #hitlist1_pos[hitctr1] = pos[i]
             hitctr1+=1
@@ -105,8 +105,8 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
             np.append(hitpairs, [-1, hitlist2_pos[i]])
             indexpair+=1
             index2+=1
-    print(len(hitpairs))
-    print(hitpairs)
+    #print(len(hitpairs))
+    #print(hitpairs)
     return hitpairs
     
 
