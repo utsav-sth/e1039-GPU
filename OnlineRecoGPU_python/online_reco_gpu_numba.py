@@ -32,10 +32,14 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
     stID-=1
 # makes pairs of hits: check all hits in both detector IDs corresponding to station ID 
     spacingplane = [0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0]
+    #determine the detectorIDs we want to consider for this station/projection 
     detsuperid = [[2, 1, 3], [5, 6, 4], [8, 9, 7], [11, 12, 10], [14, 15, 13], [25, 26], [24, 27]] 
     detid1 = detsuperid[stID][projID]*2
     detid2 = detsuperid[stID][projID]*2-1
 
+    #declaring and filling the list of hits for each detectorID
+    #the fastest way to do it them is declaring them oversized and add counters to save the actual size;
+    #further loops will be made on those counters
     hitlist1_pos = np.zeros(len(detectorid), dtype='float32')
     hitlist2_pos = np.zeros(len(detectorid), dtype='float32')
     hitctr1 = 0
@@ -47,6 +51,8 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
         if(detectorid[i]==detid2):
             hitlist1_pos[hitctr2] = pos[i]
             hitctr2+=1
+    #print("hit list sizes: ", hitctr1,", ",hitctr2)
+    #Once we have both hit lists, we can try combinations
     maxsize = (hitctr1+1)*(hitctr2+1)
     hitpairs = np.zeros( (maxsize, 2), dtype='float32' )
     index1 = -1
@@ -80,11 +86,16 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
             hitpairs[indexpair][1] = hitlist2_pos[j]
             indexpair+=1
             index2+=1
-    return hitpairs
+    hitpairs_ret =  np.zeros( (indexpair, 2), dtype='float32' )
+    #print("hit pair size", indexpair)
+    for i in range(0, indexpair):
+        hitpairs_ret[i][0] = hitpairs[i][0]
+        hitpairs_ret[i][1] = hitpairs[i][1]
+    return hitpairs_ret
     
 
 @numba.jit(nopython=True)
-def reco_tracklet_in_station(stID, detectorid, hitpairs_in_x, hitpairs_in_u, hitpairs_in_v, *pos_exp): #doesn't seem to take another array 
+def reco_tracklet_in_station(stID, detectorid, *pos_exp): #, hitpairs_in_x, hitpairs_in_u, hitpairs_in_v, *pos_exp): #doesn't seem to take another array 
 # - takes pairs of hits in xx', uu', vv', in selected station;
 # - if a view doesn't have hits, stop here.
 # - combination of hits to form tracklets: 
@@ -111,9 +122,10 @@ def reco_tracklet_in_station(stID, detectorid, hitpairs_in_x, hitpairs_in_u, hit
     TYMAX = 1.
     
     #print('reco_tracklet_in_station', stID)
-    #hitpairs_in_x = make_hitpairs_in_station(stID, 0, detectorid, pos)
-    #hitpairs_in_u = make_hitpairs_in_station(stID, 1, detectorid, pos)
-    #hitpairs_in_v = make_hitpairs_in_station(stID, 2, detectorid, pos)
+    #placeholder values below!
+    hitpairs_in_x = ((0.58, 2.267), (0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304),(0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.583, 2.304), (0.543, 2.044), (0.35, 2.322), (0.523, 2.3304))#make_hitpairs_in_station(stID, 0, detectorid, pos)
+    hitpairs_in_u = ((0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044))#make_hitpairs_in_station(stID, 1, detectorid, pos)
+    hitpairs_in_v = ((0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044) )#make_hitpairs_in_station(stID, 2, detectorid, pos)
     nhitsx = len(hitpairs_in_x)
     nhitsu = len(hitpairs_in_u)
     nhitsv = len(hitpairs_in_v)
@@ -216,11 +228,20 @@ for ev in range(0, nevents):
     hitpairs_in_x = make_hitpairs_in_station(3, 0, detectorid[ev],pos[ev])
     hitpairs_in_u = make_hitpairs_in_station(3, 1, detectorid[ev],pos[ev])
     hitpairs_in_v = make_hitpairs_in_station(3, 2, detectorid[ev],pos[ev])
-    #reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
+    reco_tracklet_in_station(3, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+    hitpairs_in_x = make_hitpairs_in_station(4, 0, detectorid[ev],pos[ev])
+    hitpairs_in_u = make_hitpairs_in_station(4, 1, detectorid[ev],pos[ev])
+    hitpairs_in_v = make_hitpairs_in_station(4, 2, detectorid[ev],pos[ev])
+    reco_tracklet_in_station(4, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+    hitpairs_in_x = make_hitpairs_in_station(5, 0, detectorid[ev],pos[ev])
+    hitpairs_in_u = make_hitpairs_in_station(5, 1, detectorid[ev],pos[ev])
+    hitpairs_in_v = make_hitpairs_in_station(5, 2, detectorid[ev],pos[ev])
+    reco_tracklet_in_station(5, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+   #reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
 # following the same order as in KalmanFastTracking.cxx
-#    reco_tracklet_in_station(3, detectorid[ev],pos[ev])
 #    reco_tracklet_in_station(4, detectorid[ev],pos[ev])
 #    reco_tracklet_in_station(5, detectorid[ev],pos[ev])
+    
     reco_backtracks()
     reco_globaltracks()
 
