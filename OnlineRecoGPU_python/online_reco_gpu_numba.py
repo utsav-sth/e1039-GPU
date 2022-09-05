@@ -53,6 +53,7 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
             hitctr2+=1
     #print("hit list sizes: ", hitctr1,", ",hitctr2)
     #Once we have both hit lists, we can try combinations
+    #declare an oversized array of hit pairs, then fill the pairs using the hit arrays from above.
     maxsize = (hitctr1+1)*(hitctr2+1)
     hitpairs = np.zeros( (maxsize, 2), dtype='float32' )
     index1 = -1
@@ -86,6 +87,7 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
             hitpairs[indexpair][1] = hitlist2_pos[j]
             indexpair+=1
             index2+=1
+    # declare a new hit pair array of the right size and shape and fill it with the relevent information from the previos array
     hitpairs_ret =  np.zeros( (indexpair, 2), dtype='float32' )
     #print("hit pair size", indexpair)
     for i in range(0, indexpair):
