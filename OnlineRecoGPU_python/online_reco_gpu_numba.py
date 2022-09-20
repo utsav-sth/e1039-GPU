@@ -25,8 +25,19 @@ from numba import cuda
 # track containers;
 # tracklets = (1)#placeholder #TODO: define those
 
-
 # functions
+@numba.jit(nopython=True)
+def event_reducer(detectorid, elementid, tdctime, driftdistance, pos):
+    nchambersplanes = 30
+    nhodoplanes = 16
+    npropplanes = 8
+    rawhitsize = len(detectorid)
+    for i in range (0, rawhitsize):
+        
+        if(detectorid <= nchamberplanes )
+    return 0
+
+
 @numba.jit(nopython=True)
 def make_hitpairs_in_station(stID, projID, detectorid, pos):
     stID-=1
@@ -97,7 +108,7 @@ def make_hitpairs_in_station(stID, projID, detectorid, pos):
     
 
 @numba.jit(nopython=True)
-def reco_tracklet_in_station(stID, detectorid, *pos_exp): #, hitpairs_in_x, hitpairs_in_u, hitpairs_in_v, *pos_exp): #doesn't seem to take another array 
+def reco_tracklet_in_station(stID, detectorid, hitpairs_in_x, hitpairs_in_u, hitpairs_in_v, *pos_exp): #doesn't seem to take another array 
 # - takes pairs of hits in xx', uu', vv', in selected station;
 # - if a view doesn't have hits, stop here.
 # - combination of hits to form tracklets: 
@@ -125,13 +136,18 @@ def reco_tracklet_in_station(stID, detectorid, *pos_exp): #, hitpairs_in_x, hitp
     
     #print('reco_tracklet_in_station', stID)
     #placeholder values below!
-    hitpairs_in_x = ((0.58, 2.267), (0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304),(0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.583, 2.304), (0.543, 2.044), (0.35, 2.322), (0.523, 2.3304))#make_hitpairs_in_station(stID, 0, detectorid, pos)
-    hitpairs_in_u = ((0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044))#make_hitpairs_in_station(stID, 1, detectorid, pos)
-    hitpairs_in_v = ((0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044) )#make_hitpairs_in_station(stID, 2, detectorid, pos)
+    #hitpairs_in_x = ((0.58, 2.267), (0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304),(0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.583, 2.304), (0.543, 2.044), (0.35, 2.322), (0.523, 2.3304))
+    #hitpairs_in_u = ((0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044))
+    #hitpairs_in_v = ((0.35, 2.322), (0.523, 2.3304), (0.58, 2.267), (0.583, 2.304), (0.543, 2.044), (0.57, 2.42), (0.543, 2.044) )
+    #hitpairs_in_x = make_hitpairs_in_station(stID, 0, detectorid, pos)
+    #hitpairs_in_u = make_hitpairs_in_station(stID, 1, detectorid, pos)
+    #hitpairs_in_v = make_hitpairs_in_station(stID, 2, detectorid, pos)
     nhitsx = len(hitpairs_in_x)
     nhitsu = len(hitpairs_in_u)
     nhitsv = len(hitpairs_in_v)
     detID = 10#placeholder
+    #if(nhitsx*nhitsu*nhitsv>1000000000):
+    #    print(" X pairs: ", nhitsx, " U pairs ", nhitsu, " V pairs ", nhitsv, " total possible combinations = ", nhitsx*nhitsu*nhitsv)
     if nhitsx==0 or nhitsu==0 or nhitsv==0:
         return 0
 #TODO: implement the whole function
@@ -163,7 +179,7 @@ def reco_tracklet_in_station(stID, detectorid, *pos_exp): #, hitpairs_in_x, hitp
                 if vpos<vmin or vpos>vmax:
                     continue
                 #build tracklet here... but I need to define it first... (also the hits)
-           
+    return nhitsx*nhitsu*nhitsv
 
 @numba.jit(nopython=True)
 def reco_backtracks():
@@ -214,6 +230,8 @@ inputtree = uproot.open(filename+':save')
 #inputdata = inputtree.arrays(library="np")
 detectorid=inputtree["fAllHits.detectorID"].arrays(library="np")["fAllHits.detectorID"]
 elementid=inputtree["fAllHits.elementID"].arrays(library="np")["fAllHits.elementID"]
+driftDistance=inputtree["fAllHits.driftDistance"].arrays(library="np")["fAllHits.driftDistance"]
+time_tdc=inputtree["fAllHits.tdcTime"].arrays(library="np")["fAllHits.tdcTime"]
 pos=inputtree["fAllHits.pos"].arrays(library="np")["fAllHits.pos"]
 nevents=len(detectorid)
 if(len(sys.argv)>2):
@@ -224,32 +242,53 @@ print('number of events to process',nevents)
 end_evload=timer()
 
 start_proc=timer()
+#ncombs_over_1B = 0
+#largest_ncombs = 0
+time_in_hitpairs = 0
+time_in_reco_tracklet = 0
 # we will have to parallelize the thing so let's do the loop just to understand, but don't invest too much time in it.
 for ev in range(0, nevents):
     #print(inputdata['fAllHits.detectorID'][ev])#for tests
+    time1 = timer()
     hitpairs_in_x = make_hitpairs_in_station(3, 0, detectorid[ev],pos[ev])
     hitpairs_in_u = make_hitpairs_in_station(3, 1, detectorid[ev],pos[ev])
     hitpairs_in_v = make_hitpairs_in_station(3, 2, detectorid[ev],pos[ev])
-    reco_tracklet_in_station(3, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
-    hitpairs_in_x = make_hitpairs_in_station(4, 0, detectorid[ev],pos[ev])
-    hitpairs_in_u = make_hitpairs_in_station(4, 1, detectorid[ev],pos[ev])
-    hitpairs_in_v = make_hitpairs_in_station(4, 2, detectorid[ev],pos[ev])
-    reco_tracklet_in_station(4, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
-    hitpairs_in_x = make_hitpairs_in_station(5, 0, detectorid[ev],pos[ev])
-    hitpairs_in_u = make_hitpairs_in_station(5, 1, detectorid[ev],pos[ev])
-    hitpairs_in_v = make_hitpairs_in_station(5, 2, detectorid[ev],pos[ev])
-    reco_tracklet_in_station(5, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
-   #reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
+    time2 = timer()
+    time_in_hitpairs+=time2-time1
+    time3 = timer()
+    #reco_tracklet_in_station(3, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+    ncombs = reco_tracklet_in_station(3, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
+    #if(ncombs>1000000000):
+    #    ncombs_over_1B+= 1
+    #if(ncombs>largest_ncombs):
+    #    largest_ncombs = ncombs
+    time4 = timer()
+    time_in_reco_tracklet+= time4-time3
+    #hitpairs_in_x = make_hitpairs_in_station(4, 0, detectorid[ev],pos[ev])
+    #hitpairs_in_u = make_hitpairs_in_station(4, 1, detectorid[ev],pos[ev])
+    #hitpairs_in_v = make_hitpairs_in_station(4, 2, detectorid[ev],pos[ev])
+    #reco_tracklet_in_station(4, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
+    #reco_tracklet_in_station(4, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+    #hitpairs_in_x = make_hitpairs_in_station(5, 0, detectorid[ev],pos[ev])
+    #hitpairs_in_u = make_hitpairs_in_station(5, 1, detectorid[ev],pos[ev])
+    #hitpairs_in_v = make_hitpairs_in_station(5, 2, detectorid[ev],pos[ev])
+    #reco_tracklet_in_station(5, detectorid[ev], hitpairs_in_x, hitpairs_in_u, hitpairs_in_v)
+    #reco_tracklet_in_station(5, detectorid[ev],pos[ev])#warning: this function does not use the hit pairs declared above yet!
+    #
 # following the same order as in KalmanFastTracking.cxx
 #    reco_tracklet_in_station(4, detectorid[ev],pos[ev])
 #    reco_tracklet_in_station(5, detectorid[ev],pos[ev])
     
-    reco_backtracks()
-    reco_globaltracks()
+    #reco_backtracks()
+    #reco_globaltracks()
 
 end_proc=timer()
 
 end_all=timer()
 print("data loading time: ", end_evload-start_evload)
 print("data processing time: ", end_proc-start_proc)
+print("time in hitpairs: ", time_in_hitpairs)
+print("time in reco_tracklet: ", time_in_reco_tracklet)
+#print("number of combinations > 10^9: ", ncombs_over_1B)
+#print("largest number of combinations: ", largest_ncombs)
 print("total time of execution: ", end_all-start_all)
