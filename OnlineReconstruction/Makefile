@@ -13,7 +13,7 @@ PROGRAM = online_reconstruction
 OBJS = online_reconstruction.o LoadInput.o LoadInputDict.o
 
 COMPILE = $(CXX) $(CXXFLAGS) -std=c++14 -m64 $(DEFS) \
-	-I/home/fermipdoc/Products/test_build_6.18/include -I/home/fermipdoc/Documents/Gpufit/Gpufit -c
+	-I/home/fermipdoc/Products/test_build_6.18/include -I/home/fermipdoc/Documents/Gpufit/Gpufit -I/home/fermipdoc/work/e1039-GPU/OnlineReconstruction -c
 
 
 $(PROGRAM) : $(OBJS)

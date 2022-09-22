@@ -36,7 +36,8 @@
 #include <TStopwatch.h>
 #include <TTimeStamp.h>
 #include <TString.h>
-#include "LoadInput.h"
+//#include "LoadInput.h"
+#include "OROutput.h"
 
 #define nChamberPlanes 30
 #define nHodoPlanes 16
@@ -901,6 +902,10 @@ int main(int argn, char * argv[]) {
 	clock_t cp3 = clock();
 
 	delete rawEvent;
+
+	TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
+	TTree* T = new TTree("OR_out", "OR_out");
+	
 
 	//cout<<"output: "<<(device_output_eR)<<endl
 	
