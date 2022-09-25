@@ -36,7 +36,11 @@
 #include <TStopwatch.h>
 #include <TTimeStamp.h>
 #include <TString.h>
-#include "LoadInput.h"
+//#include "LoadInput.h"
+
+#include "SRawEvent.h"
+#include "GeomSvc.h"
+#include "KalmanFastTracking.h"
 
 #define nChamberPlanes 30
 #define nHodoPlanes 16
@@ -697,44 +701,48 @@ int main(int argn, char * argv[]) {
 	for(int i = 0; i < nEvtMax; ++i) {
 		dataTree->GetEntry(i);
 //		cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
+                host_gEvent[i].RunID = rawEvent->getRunID();
+                host_gEvent[i].EventID = rawEvent->getEventID();
+                host_gEvent[i].SpillID = rawEvent->getSpillID();
+                host_gEvent[i].TriggerBits = rawEvent->getTriggerBits();
+                host_gEvent[i].TargetPos = rawEvent->getTargetPos();
+                host_gEvent[i].TurnID = rawEvent->getTurnID();
+                host_gEvent[i].RFID = rawEvent->getRFID();
+  		for(int j=0; j<33; j++) {
+                	host_gEvent[i].Intensity[j] = (rawEvent->getIntensityAll())[j];
+                }
+                host_gEvent[i].TriggerEmu = rawEvent->isEmuTriggered();
+	        //for(int k=0; k<4; k++) {
+                //host_gEvent[i].NRoads = rawEvent->getNRoads();
+                //}
+		host_gEvent[i].NRoads[0] = rawEvent->getNRoadsPosTop();
+		host_gEvent[i].NRoads[1] = rawEvent->getNRoadsPosBot();
+		host_gEvent[i].NRoads[2] = rawEvent->getNRoadsNegTop();
+		host_gEvent[i].NRoads[3] = rawEvent->getNRoadsNegBot();
+                for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
+                        host_gEvent[i].NHits[l] = rawEvent->getNHitsInDetector(l);
+                }
+                host_gEvent[i].nAH = rawEvent->getAllHits().size();
+                host_gEvent[i].nTH = rawEvent->getTriggerHits().size();
+                for(int m=0; m<rawEvent->getAllHits().size(); m++) {
+			host_gEvent[i].AllHits[m].index=rawEvent->getHit(m).index;
+			host_gEvent[i].AllHits[m].detectorID=rawEvent->getHit(m).detectorID;
+			host_gEvent[i].AllHits[m].elementID=rawEvent->getHit(m).elementID;
+			host_gEvent[i].AllHits[m].tdcTime=rawEvent->getHit(m).tdcTime;
+			host_gEvent[i].AllHits[m].driftDistance=rawEvent->getHit(m).driftDistance;
+			host_gEvent[i].AllHits[m].pos=rawEvent->getHit(m).pos;
+			host_gEvent[i].AllHits[m].flag=rawEvent->getHit(m).flag;
+                }
+                for(int n=0; n<rawEvent->getTriggerHits().size(); n++) {
+			host_gEvent[i].TriggerHits[n].index=rawEvent->getTriggerHit(n).index;
+			host_gEvent[i].TriggerHits[n].detectorID=rawEvent->getTriggerHit(n).detectorID;
+			host_gEvent[i].TriggerHits[n].elementID=rawEvent->getTriggerHit(n).elementID;
+			host_gEvent[i].TriggerHits[n].tdcTime=rawEvent->getTriggerHit(n).tdcTime;
+			host_gEvent[i].TriggerHits[n].driftDistance=rawEvent->getTriggerHit(n).driftDistance;
+			host_gEvent[i].TriggerHits[n].pos=rawEvent->getTriggerHit(n).pos;
+			host_gEvent[i].TriggerHits[n].flag=rawEvent->getTriggerHit(n).flag;
+                }
 
-		host_gEvent[i].RunID = rawEvent->fRunID;
-		host_gEvent[i].EventID = rawEvent->fEventID;
-		host_gEvent[i].SpillID = rawEvent->fSpillID;
-		host_gEvent[i].TriggerBits = rawEvent->fTriggerBits;
-		host_gEvent[i].TargetPos = rawEvent->fTargetPos;
-		host_gEvent[i].TurnID = rawEvent->fTurnID;
-		host_gEvent[i].RFID = rawEvent->fRFID;
-		for(int j=0; j<33; j++) {
-			host_gEvent[i].Intensity[j] = rawEvent->fIntensity[j];
-		}
-		host_gEvent[i].TriggerEmu = rawEvent->fTriggerEmu;
-		for(int k=0; k<4; k++) {
-			host_gEvent[i].NRoads[k] = rawEvent->fNRoads[k];
-		}
-		for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
-			host_gEvent[i].NHits[l] = rawEvent->fNHits[l];
-		}
-		host_gEvent[i].nAH = rawEvent->fAllHits.size();
-		host_gEvent[i].nTH = rawEvent->fTriggerHits.size();
-		for(int m=0; m<rawEvent->fAllHits.size(); m++) {
-			host_gEvent[i].AllHits[m].index=(rawEvent->fAllHits[m]).index;
-			host_gEvent[i].AllHits[m].detectorID=(rawEvent->fAllHits[m]).detectorID;
-			host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
-			host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
-			host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-			host_gEvent[i].AllHits[m].pos=(rawEvent->fAllHits[m]).pos;
-			host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
-		}
-		for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
-			host_gEvent[i].TriggerHits[n].index=(rawEvent->fTriggerHits[n]).index;
-			host_gEvent[i].TriggerHits[n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
-			host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
-			host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
-			host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-			host_gEvent[i].TriggerHits[n].pos=(rawEvent->fTriggerHits[n]).pos;
-			host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
-		}
 	}
 
 
