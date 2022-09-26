@@ -7,7 +7,7 @@ DEFS = -DUSE_CUBLAS
 LD = $(CXX)
 LDFLAGS = 
 #LIBS = -L/home/fermipdoc/Products/test_build_6.18/lib -L/home/fermipdoc/work/Gpufit-build/Gpufit -lGpufit -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand
-LIBS = -L/data2/e1039/share/root/lib -L/home/programs/Gpufit-build/Gpufit -L/home/programs/core-inst/lib -lGpufit -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand
+LIBS = -L/data2/e1039/share/root/lib -L/home/programs/Gpufit-build/Gpufit -L/home/programs/core-inst/lib -lGpufit -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand -lktracker_interface -lkfitter -lgenfit2 -lsqgenfit -lphfield -lphgeom -linterface_main -lfun4all -lgeom_svc -lphg4hit -lphool
 
 PROGRAM = online_reconstruction
 
@@ -30,11 +30,11 @@ $(PROGRAM) : $(OBJS)
 online_reconstruction.o : online_reconstruction.cu 
 	$(COMPILE) online_reconstruction.cu -o online_reconstruction.o
 
-#LoadInput.o : LoadInput.cxx 
-#	$(COMPILE) LoadInput.cxx -o LoadInput.o
+# LoadInput.o : LoadInput.cxx 
+# 	$(COMPILE) LoadInput.cxx -o LoadInput.o
 
-#LoadInputDict.o : LoadInputDict.cxx 
-#	$(COMPILE) LoadInputDict.cxx -o LoadInputDict.o
+# LoadInputDict.o : LoadInputDict.cxx 
+# 	$(COMPILE) LoadInputDict.cxx -o LoadInputDict.o
 
 clean:
 	rm -f *.o *~ $(PROGRAM)
