@@ -10,7 +10,7 @@ LIBS = -L/home/fermipdoc/Products/test_build_6.18/lib -L/home/fermipdoc/work/Gpu
 
 PROGRAM = online_reconstruction
 
-OBJS = online_reconstruction.o LoadInput.o LoadInputDict.o
+OBJS = online_reconstruction.o LoadInput.o LoadInputDict.o OROutput.o OROutputDict.o
 
 COMPILE = $(CXX) $(CXXFLAGS) -std=c++14 -m64 $(DEFS) \
 	-I/home/fermipdoc/Products/test_build_6.18/include -I/home/fermipdoc/Documents/Gpufit/Gpufit -I/home/fermipdoc/work/e1039-GPU/OnlineReconstruction -c
@@ -27,6 +27,12 @@ LoadInput.o : LoadInput.cxx
 
 LoadInputDict.o : LoadInputDict.cxx 
 	$(COMPILE) LoadInputDict.cxx -o LoadInputDict.o
+
+OROutput.o : OROutput.cxx
+	$(COMPILE) OROutput.cxx -o OROutput.o
+
+OROutputDict.o : OROutputDict.cxx
+	$(COMPILE) OROutputDict.cxx -o OROutputDict.o
 
 clean:
 	rm -f *.o *~ $(PROGRAM)

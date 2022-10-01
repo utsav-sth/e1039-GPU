@@ -130,6 +130,33 @@ public:
 	int nAH;
 };
 
+class gTracklet {
+      public:
+      int stationID;
+      int nXHits;
+      int nUHits;
+      int nVHits;
+
+      float chisq;
+      float chisq_vtx;
+
+      gHit hits[nDetectors];// array of all hits
+
+      float tx;
+      float ty;
+      float x0;
+      float y0;
+      float invP;
+      
+      float err_tx;
+      float err_ty;
+      float err_x0;
+      float err_y0;
+      float err_invP;
+      
+      float residual[nChamberPlanes];
+};
+
 // Hit comparison
 struct lessthan {
 	__host__ __device__ bool operator()(const gHit& lhs, const gHit& rhs)
@@ -540,26 +567,28 @@ __global__ void gkernel_eR(gEvent* ic) {
 
 	//we do not accept the event unless there is at least one hit in the first DC
 
+	/*
 	if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1){
 		//printf("Event rejected...\n");
 		}
 		else {
 			//counting total hit number, for all events < 6668? why? because she wanted just a subset!
-			if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
+			if( (ic[index].EventID)>10000 && (ic[index].EventID)<10050 ){//just look at a subset with something in it
 				int totalDetectorHits = 0;
 				for(int i = 1; i <= nDetectors; ++i) {
 					totalDetectorHits += ic[index].NHits[i];
-				}
-	
-				int nFirstRegionHits = 0;
-				for(int i = 1; i < 6; ++i) {
-					nFirstRegionHits += ic[index].NHits[i];
-					printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
-			}
+					//printf("%d ", ic[index].NHits[i]);
+				}//printf("\n");
+				
+				//int nFirstRegionHits = 0;
+				//for(int i = 1; i < 6; ++i) {
+					//nFirstRegionHits += ic[index].NHits[i];
+					//printf("nHits[%d] = %d\n", i, ic[index].NHits[i]);
+				//}
 			
-				// printf("AllHits value : %d\n", (ic[index].NHits[0]));
+				//printf("AllHits value : %d\n", (ic[index].NHits[0]));
 				//printf("event : %d\n", (ic[index].EventID));
-				//printf("reduced AllHits value : %d\n", (nAH_reduced[index]));
+				//printf("all detector hit sum : %d; reduced AllHits value : %d\n", totalDetectorHits, (nAH_reduced[index]));
 				//printf("sum of detectors : %d (%d)\n", totalDetectorHits, nFirstRegionHits);
 				//}
 			}
@@ -567,7 +596,88 @@ __global__ void gkernel_eR(gEvent* ic) {
 	//		Process the accepted events (tracking) here.
 			// where is the tracking though?
 		}
+	*/
+}
 
+// function to make the hit pairs in station;
+// I assume it will only be called by the tracklet builder
+// (not by the main function), so I can make it a "device" function. 
+__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int stID, int projID){
+	   stID--;
+	   //can't see those from outside... so be it...
+	   double spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
+	   double detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
+
+	   int npairs = 0;
+	   
+	   // I think we assume that by default we want to know where we are
+	   int index = threadIdx.x + blockIdx.x * blockDim.x;
+
+	   // can't call a vector inside a device...
+	   // I need to figure how to carry the info.
+	   //thrust::device_vector<gHit> hitlist1;
+	   //thrust::device_vector<gHit> hitlist2;
+
+	   int hitidx1[100]; 
+	   int hitidx2[100];
+	   int hitflag1[100]; 
+	   int hitflag2[100];
+	   for(int i = 0; i<100; i++){
+	   	   hitidx1[i] = hitidx2[i] = 0;
+		   hitflag1[i] = hitflag2[i] = 0;
+	   }
+	   
+	   int detid1 = detsuperid[stID][projID]*2;
+	   int detid2 = detsuperid[stID][projID]*2-1;
+	   int superdetid = detsuperid[stID][projID];
+	   int hitctr1 = 0, hitctr2 = 0;
+	   for(int i = 0; i<ic[index].nAH; i++){
+	   	  if(ic[index].AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
+			hitctr1++;
+		  }
+	   	  if(ic[index].AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
+			hitctr2++;
+		  }
+	   }
+	   
+	   int idx1 = -1;
+	   int idx2 = -1;
+	   for(int i = 0; i<hitctr1; i++){
+	   	   idx1++;
+		   idx2 = -1;
+	   	   for(int j = 0; j<hitctr2; j++){
+		   	   idx2++;
+			   if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > spacingplane[superdetid] ){
+			       continue;
+			   }//else if(abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > 0){
+			   //	 printf("%d - %d >0 \n", ic[index].AllHits[ hitidx1[idx1] ].pos, ic[index].AllHits[ hitidx2[idx2] ].pos);
+			   //}
+			   hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			   npairs++;
+			   hitflag1[idx1] = 1;
+			   hitflag1[idx2] = 1;
+	   	   }
+	   }
+	   idx1 = 0;
+	   for(int i = 0; i<hitctr1; i++){
+	   	   if(hitflag1[idx1]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], -1);
+			npairs++;
+			idx1++;
+		   }
+	   }
+	   idx2 = 0;
+	   for(int i = 0; i<hitctr2; i++){
+	   	   if(hitflag2[idx2]<2){
+			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[idx2]);
+			npairs++;
+			idx2++;
+		   }
+	   }
+	   
+	   return npairs;
 }
 
 
@@ -581,10 +691,22 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
 	//if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
 	//	printf("core idx %d, evt %d: reduced AllHits value : %d\n", (index), ic[index].EventID, (Nhits));
 	//}
-	// answer is yes, we still have the info from the previous function i.e. running this function after running eR still offers 
+	// answer is yes, we still have the info from the previous function i.e. running after eR we still benefit from hit reduction;
+	// was worth checking, just in case...
+
+	//we don't need pairs of *HITS* necessarily, we just need pairs of indices...
+	thrust::pair<int, int> hitpairs_st3x[1500];
+	thrust::pair<int, int> hitpairs_st3u[1500];
+	thrust::pair<int, int> hitpairs_st3v[1500];
+
+	int n3x = make_hitpairs_in_station(ic, hitpairs_st3x, 3, 0);
+	int n3u = make_hitpairs_in_station(ic, hitpairs_st3u, 3, 1);
+	int n3v = make_hitpairs_in_station(ic, hitpairs_st3v, 3, 2);
+	
+	if(n3x>800 || n3u>800 || n3v>800)printf("npairs x = %d, u = %d, v = %d \n", n3x, n3u, n3v);
+	
 	
 }
-
 
 
 // test code
@@ -693,7 +815,7 @@ int main(int argn, char * argv[]) {
 	int nEvtMax = dataTree->GetEntries();
 	static gEvent host_gEvent[EstnEvtMax];
 
-
+	
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
 		dataTree->GetEntry(i);
@@ -736,6 +858,16 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].TriggerHits[n].pos=(rawEvent->fTriggerHits[n]).pos;
 			host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 		}
+		// printouts for test
+		//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
+		//	printf("%d:\n ", rawEvent->fEventID);
+		//	for(int l = 1; l<=nChamberPlanes; l++){
+		//		printf("%d ", rawEvent->fNHits[l]);
+		//	}printf("; %d\n", rawEvent->fAllHits.size());
+		//	for(int m = 0; m<=50; m++){
+		//		printf("%d, %1.3f;", (rawEvent->fAllHits[m]).detectorID, (rawEvent->fAllHits[m]).pos);
+		//	}printf("\n");
+		//}
 	}
 
 
@@ -808,8 +940,8 @@ int main(int argn, char * argv[]) {
 
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
-	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
 
+	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
 
 	// thrust objects: C++ template library based on STL
 	// convert raw pointer device_gEvent to device_vector
@@ -891,7 +1023,7 @@ int main(int argn, char * argv[]) {
 
 
 
-	// cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
 	// cudaMemcpy(host_output, device_output_eR, sizeofoutput_eR, cudaMemcpyDeviceToHost);
 	// cudaFree(device_gEvent);
 	// // cudaFree(device_output_eR);
@@ -904,13 +1036,33 @@ int main(int argn, char * argv[]) {
 	delete rawEvent;
 
 	TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
-	TTree* T = new TTree("OR_out", "OR_out");
-	
+	/*
+	//TTree* ORoutput_tree = new TTree("OR_out", "OR_out");
+	ORoutput_tree* output = new ORoutput_tree();
+	for(int i = 0; i < nEvtMax; ++i) {
+		output->Clear();
+		for(int k = 1; k<=nDetectors; k++ )output->fNhitsReduced[k] = host_output_eR[i].NHits[k];
+		//output->Write();
+	}
+	output->Write();
+	*/
 
-	//cout<<"output: "<<(device_output_eR)<<endl
-	
+	// printouts for test
+	//for(int i = 1; i < nEvtMax; ++i) {
+	//	if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
+	//		printf("%d:\n ", host_gEvent[i].EventID);
+	//		for(int j = 0; j<=nChamberPlanes; j++){
+	//			printf("%d ", host_gEvent[i].NHits[j]);
+	//		}printf("; %d\n", host_gEvent[i].nAH);
+	//		for(int j = 0; j<=50; j++){
+	//			printf("%d, %1.3f;", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
+	//		}
+	//		printf("\n");
+	//	}
+	//}
+		
 	//for(int i = 0; i < host_gEvent[0].nAH; ++i) {
-		  //cout<<"D0_1st_wire:" << (host_gEvent[0].NHits[1])<<endl;
+		//cout<<"D0_1st_wire:" << (host_gEvent[0].NHits[1])<<endl;
 		//cout<<"output: "<<(host_gEvent[0].nAH)<<endl;
 		//cout<<"output: "<<(device_output_eR)<<endl;
 		//cout<<"output: "<<(sizeof(int))<<endl;
