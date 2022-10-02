@@ -657,12 +657,14 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			   hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
 			   npairs++;
 			   hitflag1[idx1] = 1;
-			   hitflag1[idx2] = 1;
+			   hitflag2[idx2] = 1;
+			   //if(ic[index].EventID==92508)printf("%d, %d, %d, %d\n", i, j, hitflag1[idx1], hitflag2[idx2]);
 	   	   }
 	   }
 	   idx1 = 0;
 	   for(int i = 0; i<hitctr1; i++){
 	   	   if(hitflag1[idx1]<1){
+			if(ic[index].EventID==92508)printf("hit1: %d, %d\n", i, hitflag1[idx1]);
 			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], -1);
 			npairs++;
 			idx1++;
@@ -670,7 +672,8 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   }
 	   idx2 = 0;
 	   for(int i = 0; i<hitctr2; i++){
-	   	   if(hitflag2[idx2]<2){
+	   	   if(hitflag2[idx2]<1){
+			if(ic[index].EventID==92508)printf("hit2: %d, %d\n", i, hitflag2[idx1]);
 			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[idx2]);
 			npairs++;
 			idx2++;
@@ -702,8 +705,18 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
 	int n3x = make_hitpairs_in_station(ic, hitpairs_st3x, 3, 0);
 	int n3u = make_hitpairs_in_station(ic, hitpairs_st3u, 3, 1);
 	int n3v = make_hitpairs_in_station(ic, hitpairs_st3v, 3, 2);
+
+	//if(n3x>800 || n3u>800 || n3v>800){
+	//if(n3x<(ic[index].NHits[16]+ic[index].NHits[15]) || n3x>(ic[index].NHits[16]*ic[index].NHits[15])){
+	//printf("Event %d: hits x = %d, x'= %d, npairs x = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], n3x);
+	//}
+	//if(n3u<(ic[index].NHits[18]+ic[index].NHits[17]) || n3u>(ic[index].NHits[18]*ic[index].NHits[17])){
+	//printf("Event %d: hits u = %d, u' = %d, %d <? npairs u = %d <? %d\n", ic[index].EventID, ic[index].NHits[18], ic[index].NHits[17], (ic[index].NHits[18]+ic[index].NHits[17]), n3u, (ic[index].NHits[18]*ic[index].NHits[17]));
+	//}
+	//if(n3v<(ic[index].NHits[14]+ic[index].NHits[13]) || n3v>(ic[index].NHits[14]*ic[index].NHits[13])){
+	//printf("Event %d: hits v = %d, v' = %d, npairs v = %d \n", ic[index].EventID, ic[index].NHits[14], ic[index].NHits[13], n3v);
+	//}
 	
-	if(n3x>800 || n3u>800 || n3v>800)printf("npairs x = %d, u = %d, v = %d \n", n3x, n3u, n3v);
 	
 	
 }
