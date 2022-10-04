@@ -657,7 +657,17 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			hitctr2++;
 		  }
 	   }
-	   
+	   //if(ic[index].EventID==92508)printf("hitctr1 = %d, hitctr2 = %d\n",hitctr1, hitctr2);
+
+	   //if(ic[index].EventID==92508){
+	//	for(int i = 0; i<hitctr1; i++){
+	//	printf("%d ", hitidx1[i]);
+	//	}printf("\n");
+	//	for(int i = 0; i<hitctr2; i++){
+	//	printf("%d ", hitidx2[i]);
+	//	}printf("\n");
+	   //}
+
 	   int idx1 = -1;
 	   int idx2 = -1;
 	   for(int i = 0; i<hitctr1; i++){
@@ -667,9 +677,9 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 		   	   idx2++;
 			   if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > spacingplane[superdetid] ){
 			       continue;
-			   }//else if(abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > 0){
-			   //	 printf("%d - %d >0 \n", ic[index].AllHits[ hitidx1[idx1] ].pos, ic[index].AllHits[ hitidx2[idx2] ].pos);
-			   //}
+			   }
+			   //if(ic[index].EventID==92508)printf("hitidx1 = %d, hitidx2 = %d, hit1 pos = %1.3f, hit2 pos = %1.3f\n", hitidx1[idx1], hitidx2[idx2], ic[index].AllHits[ hitidx1[idx1] ].pos, ic[index].AllHits[ hitidx2[idx2] ].pos);
+			   	   
 			   hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
 			   npairs++;
 			   hitflag1[idx1] = 1;
@@ -677,25 +687,24 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			   //if(ic[index].EventID==92508)printf("%d, %d, %d, %d\n", i, j, hitflag1[idx1], hitflag2[idx2]);
 	   	   }
 	   }
-	   idx1 = 0;
+	   //if(ic[index].EventID==92508)printf("npairs = %d; hitctr1 = %d, hitctr2 = %d\n", npairs,hitctr1, hitctr2);
 	   for(int i = 0; i<hitctr1; i++){
-	   	   if(hitflag1[idx1]<1){
-			//if(ic[index].EventID==92508)printf("hit1: %d, %d\n", i, hitflag1[idx1]);
-			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], -1);
+	   	   if(hitflag1[i]<1){
+			//if(ic[index].EventID==92508)printf("hit1: %d, %d, %d\n", i, hitidx1[i], hitflag1[i]);
+			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
 			npairs++;
-			idx1++;
 		   }
 	   }
-	   idx2 = 0;
+	   //if(ic[index].EventID==92508)printf("npairs = %d\n", npairs);
 	   for(int i = 0; i<hitctr2; i++){
-	   	   if(hitflag2[idx2]<1){
-			//if(ic[index].EventID==92508)printf("hit2: %d, %d\n", i, hitflag2[idx1]);
-			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[idx2]);
+	   	   if(hitflag2[i]<1){
+			//if(ic[index].EventID==92508)printf("hit2: %d, %d, %d\n", i, hitidx2[i], hitflag2[i]);
+			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[i]);
 			npairs++;
-			idx2++;
 		   }
 	   }
-	   
+	   //if(ic[index].EventID==92508)printf("npairs = %d\n", npairs);
+	   	   
 	   return npairs;
 }
 
@@ -717,12 +726,15 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
 	thrust::pair<int, int> hitpairs_st3x[100];
 	thrust::pair<int, int> hitpairs_st3u[100];
 	thrust::pair<int, int> hitpairs_st3v[100];
-	
+
+	//if(ic[index].EventID==92508)printf("Event %d: hits x = %d, x'= %d, u = %d, u' = %d, v = %d, v' = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], ic[index].NHits[18], ic[index].NHits[17], ic[index].NHits[14], ic[index].NHits[13]);
+
 	int n3x = make_hitpairs_in_station(ic, hitpairs_st3x, 3, 0);
 	int n3u = make_hitpairs_in_station(ic, hitpairs_st3u, 3, 1);
 	int n3v = make_hitpairs_in_station(ic, hitpairs_st3v, 3, 2);
-
-	//if(n3x>25 || n3u>25 || n3v>25){
+	
+	//if(ic[index].EventID==92508){
+	//if(n3x>40 || n3u>40 || n3v>40){
 	//if(n3x<(ic[index].NHits[16]+ic[index].NHits[15]) || n3x>(ic[index].NHits[16]*ic[index].NHits[15])){
 	//printf("Event %d: hits x = %d, x'= %d, npairs x = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], n3x);
 	//}
