@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <fstream>
 #include <string>
 #include <ctime>
 #include <chrono>
@@ -24,7 +25,6 @@
 
 // #include <cublasLt.h>
 
-
 #include <TObject.h>
 #include <TROOT.h>
 #include <TFile.h>
@@ -36,6 +36,7 @@
 #include <TStopwatch.h>
 #include <TTimeStamp.h>
 #include <TString.h>
+#include <unordered_map>
 //#include "LoadInput.h"
 #include "OROutput.h"
 
@@ -56,6 +57,8 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
+
+typedef std::unordered_map<int, double>::value_type   posType;
 
 // function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -121,6 +124,19 @@ class gEvent {
 	int nTH; // size of TriggerHits
 	gHit AllHits[EstnAHMax]; // array of all hits
 	gHit TriggerHits[EstnTHMax]; // array of trigger hits
+};
+
+class gPlane {
+      public:
+      double z;
+      int nelem;
+      double spacing;
+      double xoffset;
+      double x0;
+      double costheta;
+      double y0;
+      double sintheta;
+      double deltaW_[9];
 };
 
 // SW = SearchWindows?
@@ -664,7 +680,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   idx1 = 0;
 	   for(int i = 0; i<hitctr1; i++){
 	   	   if(hitflag1[idx1]<1){
-			if(ic[index].EventID==92508)printf("hit1: %d, %d\n", i, hitflag1[idx1]);
+			//if(ic[index].EventID==92508)printf("hit1: %d, %d\n", i, hitflag1[idx1]);
 			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], -1);
 			npairs++;
 			idx1++;
@@ -673,7 +689,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   idx2 = 0;
 	   for(int i = 0; i<hitctr2; i++){
 	   	   if(hitflag2[idx2]<1){
-			if(ic[index].EventID==92508)printf("hit2: %d, %d\n", i, hitflag2[idx1]);
+			//if(ic[index].EventID==92508)printf("hit2: %d, %d\n", i, hitflag2[idx1]);
 			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[idx2]);
 			npairs++;
 			idx2++;
@@ -698,20 +714,20 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
 	// was worth checking, just in case...
 
 	//we don't need pairs of *HITS* necessarily, we just need pairs of indices...
-	thrust::pair<int, int> hitpairs_st3x[1500];
-	thrust::pair<int, int> hitpairs_st3u[1500];
-	thrust::pair<int, int> hitpairs_st3v[1500];
-
+	thrust::pair<int, int> hitpairs_st3x[100];
+	thrust::pair<int, int> hitpairs_st3u[100];
+	thrust::pair<int, int> hitpairs_st3v[100];
+	
 	int n3x = make_hitpairs_in_station(ic, hitpairs_st3x, 3, 0);
 	int n3u = make_hitpairs_in_station(ic, hitpairs_st3u, 3, 1);
 	int n3v = make_hitpairs_in_station(ic, hitpairs_st3v, 3, 2);
 
-	//if(n3x>800 || n3u>800 || n3v>800){
+	//if(n3x>25 || n3u>25 || n3v>25){
 	//if(n3x<(ic[index].NHits[16]+ic[index].NHits[15]) || n3x>(ic[index].NHits[16]*ic[index].NHits[15])){
 	//printf("Event %d: hits x = %d, x'= %d, npairs x = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], n3x);
 	//}
 	//if(n3u<(ic[index].NHits[18]+ic[index].NHits[17]) || n3u>(ic[index].NHits[18]*ic[index].NHits[17])){
-	//printf("Event %d: hits u = %d, u' = %d, %d <? npairs u = %d <? %d\n", ic[index].EventID, ic[index].NHits[18], ic[index].NHits[17], (ic[index].NHits[18]+ic[index].NHits[17]), n3u, (ic[index].NHits[18]*ic[index].NHits[17]));
+	//printf("Event %d: hits u = %d, u' = %d, npairs u = %d\n", ic[index].EventID, ic[index].NHits[18], ic[index].NHits[17], n3u);
 	//}
 	//if(n3v<(ic[index].NHits[14]+ic[index].NHits[13]) || n3v>(ic[index].NHits[14]*ic[index].NHits[13])){
 	//printf("Event %d: hits v = %d, v' = %d, npairs v = %d \n", ic[index].EventID, ic[index].NHits[14], ic[index].NHits[13], n3v);
@@ -813,22 +829,83 @@ int main(int argn, char * argv[]) {
 	clock_t cp1 = clock();
 
 	TString inputFile;
+	TString inputGeom;
 	TString outputFile;
 	inputFile = argv[1];
-	outputFile = argv[2];
+	inputGeom = argv[2];	
+	outputFile = argv[3];
 
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
-	cout<<"Writing "<<argv[2]<<endl;
-
+	cout<<"with geometry: "<<argv[2]<<endl;
+	cout<<"Writing "<<argv[3]<<endl;
+	
+	//Get basic geometry here:
+	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	ifstream in_geom(inputGeom.Data());
+  	string buffer;
+	int ipl, nelem;
+	double z, spacing, xoffset, x0, costheta, y0, sintheta, deltaW_;
+ 	while ( getline(in_geom, buffer) ) {
+    	      if (buffer[0] == '#') continue;
+	      std::istringstream iss;
+	      iss.str(buffer);
+	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> x0 >> costheta >> y0 >> sintheta;
+	      plane[ipl].z = z;
+	      plane[ipl].nelem = nelem;
+	      plane[ipl].spacing = spacing;
+	      plane[ipl].xoffset = xoffset;
+	      plane[ipl].x0 = x0;
+	      plane[ipl].costheta = costheta;
+	      plane[ipl].y0 = y0;
+	      plane[ipl].sintheta = sintheta;
+	      if(ipl>nChamberPlanes+nHodoPlanes){
+		for(int k = 0; k<9; k++){
+			iss >> deltaW_;
+			plane[ipl].deltaW_[k] = deltaW_;
+		}
+	      }else{
+		iss >> deltaW_;
+		plane[ipl].deltaW_[0] = deltaW_;
+	      }
+	      ipl++;
+	}
+	cout << "Geometry file read out" << endl;
+	
 	SRawEvent* rawEvent = new SRawEvent();
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = (TTree *)dataFile->Get("save");
 	dataTree->SetBranchAddress("rawEvent", &rawEvent);
 	int nEvtMax = dataTree->GetEntries();
 	static gEvent host_gEvent[EstnEvtMax];
-
 	
+	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	for(int i = 1; i <= nChamberPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+      		for(int j = 1; j <= plane[i].nelem; ++j){
+          		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
+          		map_elemPosition[i].insert(posType(j, pos));
+		}
+	}
+	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
+          		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
+          		map_elemPosition[i].insert(posType(j, pos));
+		}
+	}
+	for(int i = nChamberPlanes+nHodoPlanes; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
+          		int moduleID = 8 - int((j - 1)/8);
+			//cout << moduleID << endl;
+             		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
+          		map_elemPosition[i].insert(posType(j, pos));
+		}
+		
+	}
+
+	cout << "unfodling events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
 		dataTree->GetEntry(i);
@@ -859,7 +936,7 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
 			host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
 			host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-			host_gEvent[i].AllHits[m].pos=(rawEvent->fAllHits[m]).pos;
+			host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
 			host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
 		}
 		for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
@@ -868,7 +945,7 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
 			host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
 			host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-			host_gEvent[i].TriggerHits[n].pos=(rawEvent->fTriggerHits[n]).pos;
+			host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
 			host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 		}
 		// printouts for test
@@ -882,7 +959,7 @@ int main(int argn, char * argv[]) {
 		//	}printf("\n");
 		//}
 	}
-
+	cout << "loaded events" << endl;
 
 
 //If the decoded has NOT been sorted...
@@ -959,8 +1036,9 @@ int main(int argn, char * argv[]) {
 	// thrust objects: C++ template library based on STL
 	// convert raw pointer device_gEvent to device_vector
 	// TODO: just don't use raw pointers to begin with
-    thrust::device_ptr<gEvent> d_p_events(device_gEvent);
-    thrust::device_vector<gEvent> d_events(d_p_events, d_p_events + nEvents);
+	thrust::device_ptr<gEvent> d_p_events(device_gEvent);
+	thrust::device_vector<gEvent> d_events(d_p_events, d_p_events + nEvents);
+    	
 	std::vector<gEvent> h_events(nEvents);
 	std::copy(d_events.begin(), d_events.end(), h_events.begin());
 
@@ -997,11 +1075,11 @@ int main(int argn, char * argv[]) {
 	// }
 	
 	
-	
+	/*
 	// ###############################################################
 	// Gpufit
 	// ###############################################################
-
+	
 	thrust::device_vector< REAL > d_parameters(2);
 	
 	//data is array of xz-positions of v,v',x,x',u,u' planes of each tracklet
@@ -1033,7 +1111,7 @@ int main(int argn, char * argv[]) {
 	thrust::copy(true_parameters_y.begin(), true_parameters_y.end(), d_parameters.begin());
 
 	linear_regression_example(d_tkl_y.size(), d_tkl_y.data().get(), d_parameters);
-
+	*/
 
 
 	cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
