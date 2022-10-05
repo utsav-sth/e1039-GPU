@@ -629,11 +629,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   // I think we assume that by default we want to know where we are
 	   int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-	   // can't call a vector inside a device...
-	   // I need to figure how to carry the info.
-	   //thrust::device_vector<gHit> hitlist1;
-	   //thrust::device_vector<gHit> hitlist2;
-
+	   //declaring arrays for the hit lists	   
 	   int hitidx1[100]; 
 	   int hitidx2[100];
 	   int hitflag1[100]; 
@@ -642,7 +638,8 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   	   hitidx1[i] = hitidx2[i] = 0;
 		   hitflag1[i] = hitflag2[i] = 0;
 	   }
-	   
+
+	   //building the lists of hits for each detector plane
 	   int detid1 = detsuperid[stID][projID]*2;
 	   int detid2 = detsuperid[stID][projID]*2-1;
 	   int superdetid = detsuperid[stID][projID];
@@ -847,6 +844,10 @@ int main(int argn, char * argv[]) {
 	inputGeom = argv[2];	
 	outputFile = argv[3];
 
+	//by default we should use e1039 
+	bool e906data = false;
+	if(argn>=4)e906data = atoi(argv[4]);
+
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
 	cout<<"with geometry: "<<argv[2]<<endl;
@@ -884,13 +885,6 @@ int main(int argn, char * argv[]) {
 	}
 	cout << "Geometry file read out" << endl;
 	
-	SRawEvent* rawEvent = new SRawEvent();
-	TFile* dataFile = new TFile(inputFile.Data(), "READ");
-	TTree* dataTree = (TTree *)dataFile->Get("save");
-	dataTree->SetBranchAddress("rawEvent", &rawEvent);
-	int nEvtMax = dataTree->GetEntries();
-	static gEvent host_gEvent[EstnEvtMax];
-	
 	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
 	for(int i = 1; i <= nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
@@ -917,59 +911,76 @@ int main(int argn, char * argv[]) {
 		
 	}
 
-	cout << "unfodling events" << endl;
+	TFile* dataFile = new TFile(inputFile.Data(), "READ");
+	TTree* dataTree = (TTree *)dataFile->Get("save");
+	SRawEvent* rawEvent = new SRawEvent();
+	SQEvent* Event = new SQEvent();
+	if(e906data){
+		dataTree->SetBranchAddress("rawEvent", &rawEvent);
+	}else{
+		dataTree->SetBranchAddress("SQEvent", &Event);
+		//default option
+	}
+	int nEvtMax = dataTree->GetEntries();
+	static gEvent host_gEvent[EstnEvtMax];
+
+	cout << "unfolding events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
 		dataTree->GetEntry(i);
 //		cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
-
-		host_gEvent[i].RunID = rawEvent->fRunID;
-		host_gEvent[i].EventID = rawEvent->fEventID;
-		host_gEvent[i].SpillID = rawEvent->fSpillID;
-		host_gEvent[i].TriggerBits = rawEvent->fTriggerBits;
-		host_gEvent[i].TargetPos = rawEvent->fTargetPos;
-		host_gEvent[i].TurnID = rawEvent->fTurnID;
-		host_gEvent[i].RFID = rawEvent->fRFID;
-		for(int j=0; j<33; j++) {
-			host_gEvent[i].Intensity[j] = rawEvent->fIntensity[j];
+		if(e906data){
+			host_gEvent[i].RunID = rawEvent->fRunID;
+			host_gEvent[i].EventID = rawEvent->fEventID;
+			host_gEvent[i].SpillID = rawEvent->fSpillID;
+			host_gEvent[i].TriggerBits = rawEvent->fTriggerBits;
+			host_gEvent[i].TargetPos = rawEvent->fTargetPos;
+			host_gEvent[i].TurnID = rawEvent->fTurnID;
+			host_gEvent[i].RFID = rawEvent->fRFID;
+			for(int j=0; j<33; j++) {
+				host_gEvent[i].Intensity[j] = rawEvent->fIntensity[j];
+			}
+			host_gEvent[i].TriggerEmu = rawEvent->fTriggerEmu;
+			for(int k=0; k<4; k++) {
+				host_gEvent[i].NRoads[k] = rawEvent->fNRoads[k];
+			}
+			for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
+				host_gEvent[i].NHits[l] = rawEvent->fNHits[l];
+			}
+			host_gEvent[i].nAH = rawEvent->fAllHits.size();
+			host_gEvent[i].nTH = rawEvent->fTriggerHits.size();
+			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
+				host_gEvent[i].AllHits[m].index=(rawEvent->fAllHits[m]).index;
+				host_gEvent[i].AllHits[m].detectorID=(rawEvent->fAllHits[m]).detectorID;
+				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
+				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
+				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
+				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
+			}
+			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
+				host_gEvent[i].TriggerHits[n].index=(rawEvent->fTriggerHits[n]).index;
+				host_gEvent[i].TriggerHits[n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
+				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
+				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
+				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
+				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
+			}
+			// printouts for test
+			//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
+			//	printf("%d:\n ", rawEvent->fEventID);
+			//	for(int l = 1; l<=nChamberPlanes; l++){
+			//		printf("%d ", rawEvent->fNHits[l]);
+			//	}printf("; %d\n", rawEvent->fAllHits.size());
+			//	for(int m = 0; m<=50; m++){
+			//		printf("%d, %1.3f;", (rawEvent->fAllHits[m]).detectorID, (rawEvent->fAllHits[m]).pos);
+			//	}printf("\n");
+			//}
+		}else{
+			//Default option: e1039
+			//Adding this code will not be obvious without a file
 		}
-		host_gEvent[i].TriggerEmu = rawEvent->fTriggerEmu;
-		for(int k=0; k<4; k++) {
-			host_gEvent[i].NRoads[k] = rawEvent->fNRoads[k];
-		}
-		for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
-			host_gEvent[i].NHits[l] = rawEvent->fNHits[l];
-		}
-		host_gEvent[i].nAH = rawEvent->fAllHits.size();
-		host_gEvent[i].nTH = rawEvent->fTriggerHits.size();
-		for(int m=0; m<rawEvent->fAllHits.size(); m++) {
-			host_gEvent[i].AllHits[m].index=(rawEvent->fAllHits[m]).index;
-			host_gEvent[i].AllHits[m].detectorID=(rawEvent->fAllHits[m]).detectorID;
-			host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
-			host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
-			host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-			host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
-			host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
-		}
-		for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
-			host_gEvent[i].TriggerHits[n].index=(rawEvent->fTriggerHits[n]).index;
-			host_gEvent[i].TriggerHits[n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
-			host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
-			host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
-			host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-			host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
-			host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
-		}
-		// printouts for test
-		//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
-		//	printf("%d:\n ", rawEvent->fEventID);
-		//	for(int l = 1; l<=nChamberPlanes; l++){
-		//		printf("%d ", rawEvent->fNHits[l]);
-		//	}printf("; %d\n", rawEvent->fAllHits.size());
-		//	for(int m = 0; m<=50; m++){
-		//		printf("%d, %1.3f;", (rawEvent->fAllHits[m]).detectorID, (rawEvent->fAllHits[m]).pos);
-		//	}printf("\n");
-		//}
 	}
 	cout << "loaded events" << endl;
 
