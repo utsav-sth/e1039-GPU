@@ -57,6 +57,15 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
+const int TrackletSizeMax = 200;// guess
+
+const int TX_MAX = 0.15;
+const int TY_MAX = 0.1;
+const int X0_MAX = 150;
+const int Y0_MAX = 50;
+const int INVP_MAX = 0.2;
+const int INVP_MIN = 0.01;
+
 
 typedef std::unordered_map<int, double>::value_type   posType;
 
@@ -107,47 +116,12 @@ class gHit {
 	short flag; // 1: in time; 2: hodo mask; 3: trigger mask
 };
 
-class gEvent {
-	public:
-	int RunID; // Run Number
-	int EventID; // Event number
-	int SpillID; // Spill number
-	int TriggerBits; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
-	short TargetPos; // target position: proxy for target ID?
-	int TurnID; // => related to beam intensity
-	int RFID; // => related to beam intensity
-	int Intensity[33]; //  16 before, one onset, and 16 after
-	short TriggerEmu; // 1 if MC event
-	short NRoads[4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
-	int NHits[nDetectors+1]; // number of hits in each detector plane
-	int nAH; // size of AllHits
-	int nTH; // size of TriggerHits
-	gHit AllHits[EstnAHMax]; // array of all hits
-	gHit TriggerHits[EstnTHMax]; // array of trigger hits
-};
-
-class gPlane {
-      public:
-      double z;
-      int nelem;
-      double spacing;
-      double xoffset;
-      double x0;
-      double costheta;
-      double y0;
-      double sintheta;
-      double deltaW_[9];
-};
-
-// SW = SearchWindows?
-class gSW {
-public:
-	int EventID;
-	int nAH;
-};
-
 class gTracklet {
       public:
+      gTracklet(){
+	nXHits = nUHits = nVHits = 0;
+      }
+      
       int stationID;
       int nXHits;
       int nUHits;
@@ -171,6 +145,55 @@ class gTracklet {
       float err_invP;
       
       float residual[nChamberPlanes];
+};
+
+class gEvent {
+	public:
+	int RunID; // Run Number
+	int EventID; // Event number
+	int SpillID; // Spill number
+	int TriggerBits; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
+	short TargetPos; // target position: proxy for target ID?
+	int TurnID; // => related to beam intensity
+	int RFID; // => related to beam intensity
+	int Intensity[33]; //  16 before, one onset, and 16 after
+	short TriggerEmu; // 1 if MC event
+	short NRoads[4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
+	int NHits[nDetectors+1]; // number of hits in each detector plane
+	int nAH; // size of AllHits
+	int nTH; // size of TriggerHits
+	gHit AllHits[EstnAHMax]; // array of all hits
+	gHit TriggerHits[EstnTHMax]; // array of trigger hits
+};
+
+//Output class
+class gSW {
+public:
+	int EventID;
+	int nAH;
+	int nTracklets;
+	gTracklet AllTracklets[TrackletSizeMax];//add tracklet here???
+};
+
+//geometry carrier
+class gPlane {
+      public:
+      float z;
+      int nelem;
+      float spacing;
+      float xoffset;
+      float scalex;
+      float x0;
+      float costheta;
+      float scaley;
+      float y0;
+      float sintheta;
+      float deltaW_[9];
+      float z_mean;
+      float u_win;
+      float v_win_fac1;
+      float v_win_fac2;
+      float v_win_fac3;
 };
 
 // Hit comparison
@@ -410,12 +433,6 @@ void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust:
 // kernel functions: 
 // CUDA C++ extends C++ by allowing the programmer to define C++ functions, called kernels, that, when called, 
 // are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
-// I guess TKL is for tracklet selection? 
-__global__ void gkernel_TKL(gEvent* ic, gSW* sw) {
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	sw[index].nAH = ic[index].nAH;
-	sw[index].EventID = ic[index].EventID;
-}
 
 // event reducer: 
 __global__ void gkernel_eR(gEvent* ic) {
@@ -654,17 +671,10 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			hitctr2++;
 		  }
 	   }
-	   //if(ic[index].EventID==92508)printf("hitctr1 = %d, hitctr2 = %d\n",hitctr1, hitctr2);
 
-	   //if(ic[index].EventID==92508){
-	//	for(int i = 0; i<hitctr1; i++){
-	//	printf("%d ", hitidx1[i]);
-	//	}printf("\n");
-	//	for(int i = 0; i<hitctr2; i++){
-	//	printf("%d ", hitidx2[i]);
-	//	}printf("\n");
-	   //}
-
+	   // pair the hits by position:
+	   // if one hit on e.g. x and one hit on x' are closer than
+	   // the "spacing" defined for the plane, then the hits can be paired together.
 	   int idx1 = -1;
 	   int idx2 = -1;
 	   for(int i = 0; i<hitctr1; i++){
@@ -675,44 +685,41 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			   if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > spacingplane[superdetid] ){
 			       continue;
 			   }
-			   //if(ic[index].EventID==92508)printf("hitidx1 = %d, hitidx2 = %d, hit1 pos = %1.3f, hit2 pos = %1.3f\n", hitidx1[idx1], hitidx2[idx2], ic[index].AllHits[ hitidx1[idx1] ].pos, ic[index].AllHits[ hitidx2[idx2] ].pos);
 			   	   
 			   hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
 			   npairs++;
 			   hitflag1[idx1] = 1;
 			   hitflag2[idx2] = 1;
-			   //if(ic[index].EventID==92508)printf("%d, %d, %d, %d\n", i, j, hitflag1[idx1], hitflag2[idx2]);
 	   	   }
 	   }
-	   //if(ic[index].EventID==92508)printf("npairs = %d; hitctr1 = %d, hitctr2 = %d\n", npairs,hitctr1, hitctr2);
+	   // here the hits that cannot be paired to another hit are paired to "nothing"
+	   // (but they still have to be paired to be used in the trackletteing)
 	   for(int i = 0; i<hitctr1; i++){
 	   	   if(hitflag1[i]<1){
-			//if(ic[index].EventID==92508)printf("hit1: %d, %d, %d\n", i, hitidx1[i], hitflag1[i]);
 			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
 			npairs++;
 		   }
 	   }
-	   //if(ic[index].EventID==92508)printf("npairs = %d\n", npairs);
 	   for(int i = 0; i<hitctr2; i++){
 	   	   if(hitflag2[i]<1){
-			//if(ic[index].EventID==92508)printf("hit2: %d, %d, %d\n", i, hitidx2[i], hitflag2[i]);
-			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[i]);
+			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
 			npairs++;
 		   }
 	   }
-	   //if(ic[index].EventID==92508)printf("npairs = %d\n", npairs);
 	   	   
 	   return npairs;
 }
 
 
 // tracklet in station builder: 
-__global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
+__global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane* planes) {
 	// I think we assume that by default we want to know where we are
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
+
+	oc[index].EventID = ic[index].EventID;
+	oc[index].nAH = ic[index].nAH;
 	
 	// loop on hits
-	int Nhits = ic[index].nAH;
 	//if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
 	//	printf("core idx %d, evt %d: reduced AllHits value : %d\n", (index), ic[index].EventID, (Nhits));
 	//}
@@ -720,30 +727,78 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, int stID) {
 	// was worth checking, just in case...
 
 	//we don't need pairs of *HITS* necessarily, we just need pairs of indices...
-	thrust::pair<int, int> hitpairs_st3x[100];
-	thrust::pair<int, int> hitpairs_st3u[100];
-	thrust::pair<int, int> hitpairs_st3v[100];
+	thrust::pair<int, int> hitpairs_x[100];
+	thrust::pair<int, int> hitpairs_u[100];
+	thrust::pair<int, int> hitpairs_v[100];
 
-	//if(ic[index].EventID==92508)printf("Event %d: hits x = %d, x'= %d, u = %d, u' = %d, v = %d, v' = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], ic[index].NHits[18], ic[index].NHits[17], ic[index].NHits[14], ic[index].NHits[13]);
+	int nx = make_hitpairs_in_station(ic, hitpairs_x, stID, 0);
+	int nu = make_hitpairs_in_station(ic, hitpairs_u, stID, 1);
+	int nv = make_hitpairs_in_station(ic, hitpairs_v, stID, 2);
 
-	int n3x = make_hitpairs_in_station(ic, hitpairs_st3x, 3, 0);
-	int n3u = make_hitpairs_in_station(ic, hitpairs_st3u, 3, 1);
-	int n3v = make_hitpairs_in_station(ic, hitpairs_st3v, 3, 2);
+	//one has to have at least one hit in x, u, v
+	if(nx==0 || nu==0 || nv==0)return;
+
+	int n_tkl = 0;
 	
-	//if(ic[index].EventID==92508){
-	//if(n3x>40 || n3u>40 || n3v>40){
-	//if(n3x<(ic[index].NHits[16]+ic[index].NHits[15]) || n3x>(ic[index].NHits[16]*ic[index].NHits[15])){
-	//printf("Event %d: hits x = %d, x'= %d, npairs x = %d\n", ic[index].EventID, ic[index].NHits[16], ic[index].NHits[15], n3x);
-	//}
-	//if(n3u<(ic[index].NHits[18]+ic[index].NHits[17]) || n3u>(ic[index].NHits[18]*ic[index].NHits[17])){
-	//printf("Event %d: hits u = %d, u' = %d, npairs u = %d\n", ic[index].EventID, ic[index].NHits[18], ic[index].NHits[17], n3u);
-	//}
-	//if(n3v<(ic[index].NHits[14]+ic[index].NHits[13]) || n3v>(ic[index].NHits[14]*ic[index].NHits[13])){
-	//printf("Event %d: hits v = %d, v' = %d, npairs v = %d \n", ic[index].EventID, ic[index].NHits[14], ic[index].NHits[13], n3v);
-	//}
-	
-	
-	
+	//X-U combinations first
+	for(int i = 0; i< nx; i++){
+		double xpos = hitpairs_x[i].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_x[i].first ].pos+ic[index].AllHits[ hitpairs_x[i].second ].pos): ic[index].AllHits[ hitpairs_x[i].first ].pos;
+		//u index for this station is simply stID*6
+		double umin = xpos*planes[stID*6].costheta*planes[stID*6].u_win;
+		double umax = umin+2*planes[stID*6].u_win;
+		for(int j = 0; j< nu; j++){
+			double upos = hitpairs_u[j].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_u[j].first ].pos+ic[index].AllHits[ hitpairs_u[j].second ].pos): ic[index].AllHits[ hitpairs_u[j].first ].pos;
+			if(upos<umin || upos>umax)continue;
+
+			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z;
+			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z;
+			//v index for this station is simply stID*6+4
+			double z_v = planes[stID*6+4].z_mean;
+
+			double v_win1 = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].v_win_fac1;
+			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ stID*6+4 ].v_win_fac2;
+			double v_win3 = fabs(z_v-z_u)*planes[ stID*6+4 ].v_win_fac3;
+			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].spacing;
+
+			double vmin = 2*xpos*planes[stID*6].costheta-upos-v_win;
+			double vmax = vmin+2*v_win;
+
+			for(int k = 0; k< nv; k++){
+				double vpos = hitpairs_v[k].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_v[k].first ].pos+ic[index].AllHits[ hitpairs_v[k].second ].pos): ic[index].AllHits[ hitpairs_v[k].first ].pos;
+				if(vpos<vmin || vpos>vmax)continue;
+				int nhits_tkl = 0;
+				oc[index].AllTracklets[n_tkl].stationID = stID;
+				if(hitpairs_x[i].first>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].first ];
+					oc[index].AllTracklets[n_tkl].nXHits++;
+				}
+				if(hitpairs_x[i].second>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
+					oc[index].AllTracklets[n_tkl].nXHits++;
+				}
+				if(hitpairs_u[j].first>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].first ];
+					oc[index].AllTracklets[n_tkl].nUHits++;
+				}
+				if(hitpairs_u[j].second>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].second ];
+					oc[index].AllTracklets[n_tkl].nUHits++;
+				}
+				if(hitpairs_v[k].first>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].first ];
+					oc[index].AllTracklets[n_tkl].nVHits++;
+				}
+				if(hitpairs_v[k].second>=0){
+					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].second ];
+					oc[index].AllTracklets[n_tkl].nVHits++;
+				}
+				if(n_tkl>TrackletSizeMax)printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
+				n_tkl++;
+			}
+			
+		}
+	}
+	oc[index].nTracklets = n_tkl;
 }
 
 
@@ -854,34 +909,55 @@ int main(int argn, char * argv[]) {
 	cout<<"Writing "<<argv[3]<<endl;
 	
 	//Get basic geometry here:
-	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	double u_factor[5] = {5., 5., 5., 15., 15.};
+	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes];
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
 	int ipl, nelem;
-	double z, spacing, xoffset, x0, costheta, y0, sintheta, deltaW_;
+	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, deltaW_;
  	while ( getline(in_geom, buffer) ) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
 	      iss.str(buffer);
-	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> x0 >> costheta >> y0 >> sintheta;
-	      plane[ipl].z = z;
-	      plane[ipl].nelem = nelem;
-	      plane[ipl].spacing = spacing;
-	      plane[ipl].xoffset = xoffset;
-	      plane[ipl].x0 = x0;
-	      plane[ipl].costheta = costheta;
-	      plane[ipl].y0 = y0;
-	      plane[ipl].sintheta = sintheta;
+	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta;
+	      plane[ipl-1].z = z;
+	      plane[ipl-1].nelem = nelem;
+	      plane[ipl-1].spacing = spacing;
+	      plane[ipl-1].xoffset = xoffset;
+	      plane[ipl-1].scalex = scalex;
+	      plane[ipl-1].x0 = x0;
+	      plane[ipl-1].costheta = costheta;
+	      plane[ipl-1].scaley = scaley;
+	      plane[ipl-1].y0 = y0;
+	      plane[ipl-1].sintheta = sintheta;
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
-			plane[ipl].deltaW_[k] = deltaW_;
+			plane[ipl-1].deltaW_[k] = deltaW_;
 		}
 	      }else{
 		iss >> deltaW_;
-		plane[ipl].deltaW_[0] = deltaW_;
+		plane[ipl-1].deltaW_[0] = deltaW_;
 	      }
 	      ipl++;
+	}
+	
+	for(int i = 0; i<5; i++){
+		int u_idx = i*6; 
+		int x_idx = i*6+2;
+		for(int j = 0; j<6; j++){
+			int idx = i*6+j;
+			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx-1].z):0.5*(plane[idx].z+plane[idx+1].z);
+			
+			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
+			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
+			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
+		}
+		
+		for(int j = 1; j<=6; j++){
+			int idx = i*6+j;
+			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[i].spacing + u_factor[i];
+		}
 	}
 	cout << "Geometry file read out" << endl;
 	
@@ -891,6 +967,7 @@ int main(int argn, char * argv[]) {
       		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
           		map_elemPosition[i].insert(posType(j, pos));
+			
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
@@ -910,7 +987,7 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
@@ -995,40 +1072,43 @@ int main(int argn, char * argv[]) {
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
 	size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
+	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
 
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
-	gSW * host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
-
+	gSW *host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
+	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent *device_gEvent;
 	// gEvent *device_output_eR;
-	gEvent *device_input_TKL;
+	// gEvent *device_input_TKL;
 	gSW *device_output_TKL;
-	
+	gPlane *device_gPlane;
 	
 	// copy of data from host to device: evaluate operation time 
 	clock_t cp2 = clock();
-	auto start_kernel = std::chrono::system_clock::now();
-
+	
 	// printDeviceStatus();
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
-	gpuErrchk( cudaMalloc((void**)&device_input_TKL, NBytesAllEvent));
+	//gpuErrchk( cudaMalloc((void**)&device_input_TKL, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllSearchWindow));
+	//allocating the memory for the planes, just in case...
+	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
 
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	// cudaMalloc((void**)&device_output_eR, sizeofoutput_eR);
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
+	// gpuErrchk( cudaMemcpy(device_output_TKL, host_output_TKL, NBytesAllEvent, cudaMemcpyHostToDevice));
+	// gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
 	// cudaMemcpy(device_output_eR, host_output, sizeofoutput_eR, cudaMemcpyHostToDevice);
-	auto end_kernel = std::chrono::system_clock::now();
 	
 	// now data is transfered in the device: kernel function for event reconstruction called;
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
-	//auto start_kernel = std::chrono::system_clock::now();
+	auto start_er = std::chrono::system_clock::now();
 	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
-	//auto end_kernel = std::chrono::system_clock::now();
+	auto end_er = std::chrono::system_clock::now();
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;
@@ -1037,14 +1117,16 @@ int main(int argn, char * argv[]) {
 
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
 	// this input_tkl should be the information that the device uses to reconstruct the tracklets
-	gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
+	// gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
 
 	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
 
+	auto start_tkl = std::chrono::system_clock::now();
 	// I first want to see if indeed we can reuse the "gEvent" pointer
 	int stID = 3;// to make explicit that we are requiring station 3
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, stID);
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, stID, device_gPlane);
+	auto end_tkl = std::chrono::system_clock::now();
 
 	// check status of device and synchronize again;
 	
@@ -1188,10 +1270,12 @@ int main(int argn, char * argv[]) {
 
 	//double cpu_secs = double(cp4-cp3+cp2-cp1) / CLOCKS_PER_SEC;
 	double cpu_secs = double(cp2-cp1) / CLOCKS_PER_SEC;
-	auto gpu_ns = end_kernel - start_kernel;
+	auto gpu_er = end_er - start_er;
+	auto gpu_tkl = end_tkl - start_tkl;
 	auto overall = end - start;
 	cout<<"Read/prepare events: "<<cpu_secs<<endl;
-	cout<<"eR "<<(gpu_ns.count()/1000000000.0)<<endl;
+	cout<<"event reducing: "<<(gpu_er.count()/1000000000.0)<<endl;
+	cout<<"trackletting: "<<(gpu_tkl.count()/1000000000.0)<<endl;
 	cout<<"Total time: "<<(overall.count()/1000000000.0)<<endl;
 
 	return 0;
