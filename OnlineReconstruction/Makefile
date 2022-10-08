@@ -6,14 +6,14 @@ CXXFLAGS = -g --cudart=static -ccbin g++
 DEFS = -DUSE_CUBLAS
 LD = $(CXX)
 LDFLAGS = 
-LIBS = -L/home/fermipdoc/Products/test_build_6.18/lib -L/home/fermipdoc/work/Gpufit-build/Gpufit -lGpufit -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand
+LIBS = -L${ROOTSYS}/lib -L${GPUFIT}/Gpufit-build/Gpufit -lGpufit -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand
 
 PROGRAM = online_reconstruction
 
 OBJS = online_reconstruction.o LoadInput.o LoadInputDict.o OROutput.o OROutputDict.o
 
 COMPILE = $(CXX) $(CXXFLAGS) -std=c++14 -m64 $(DEFS) \
-	-I/home/fermipdoc/Products/test_build_6.18/include -I/home/fermipdoc/Documents/Gpufit/Gpufit -I/home/fermipdoc/work/e1039-GPU/OnlineReconstruction -c
+	-I${ROOTSYS}/include -I${GPUFIT}/Gpufit/Gpufit -I${PWD} -c
 
 
 $(PROGRAM) : $(OBJS)
