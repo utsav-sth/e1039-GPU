@@ -636,7 +636,6 @@ __global__ void gkernel_eR(gEvent* ic) {
 // I assume it will only be called by the tracklet builder
 // (not by the main function), so I can make it a "device" function. 
 __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int stID, int projID){
-	   stID--;
 	   //can't see those from outside... so be it...
 	   double spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
 	   double detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
@@ -715,10 +714,15 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane* planes) {
 	// I think we assume that by default we want to know where we are
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
-
+	stID--;
 	oc[index].EventID = ic[index].EventID;
 	oc[index].nAH = ic[index].nAH;
 	
+	//if(10000<ic[index].EventID && ic[index].EventID<10050){
+	//	for(int m = 0; m<30; m++){
+	//		if(planes[m].u_win!=0)printf("index= %d, m = %d, u_win = %1.6f, costheta = %1.6f\n", index, m, planes[m].u_win, planes[m].costheta);
+	//	}
+	//}
 	// loop on hits
 	//if( (ic[index].EventID)>10000 && (ic[index].EventID)<10100 ){//just look at a subset with something in it
 	//	printf("core idx %d, evt %d: reduced AllHits value : %d\n", (index), ic[index].EventID, (Nhits));
@@ -734,10 +738,15 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	int nx = make_hitpairs_in_station(ic, hitpairs_x, stID, 0);
 	int nu = make_hitpairs_in_station(ic, hitpairs_u, stID, 1);
 	int nv = make_hitpairs_in_station(ic, hitpairs_v, stID, 2);
-
+	
+	bool print = false;
+	//if(ic[index].EventID==10042){
+	//      print = true;
+	//	printf("evt %d, nx = %d, nu = %d, nv = %d, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, stID*6, planes[stID*6].u_win);
+	//}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
-
+	
 	int n_tkl = 0;
 	
 	//X-U combinations first
@@ -746,10 +755,17 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 		//u index for this station is simply stID*6
 		double umin = xpos*planes[stID*6].costheta*planes[stID*6].u_win;
 		double umax = umin+2*planes[stID*6].u_win;
+		//if(print){
+		//	printf("evt %d, xpos = %1.6f, umin = %1.6f, umax = %1.6f\n", ic[index].EventID, xpos, umin, umax);
+		//	printf("x1 pos = %1.6f, x2 pos =%1.6f\n", ic[index].AllHits[ hitpairs_x[i].first ].pos, 
+		//		hitpairs_x[i].second >=0 ? ic[index].AllHits[ hitpairs_x[i].second ].pos : -1000000);
+		//}
 		for(int j = 0; j< nu; j++){
 			double upos = hitpairs_u[j].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_u[j].first ].pos+ic[index].AllHits[ hitpairs_u[j].second ].pos): ic[index].AllHits[ hitpairs_u[j].first ].pos;
-			if(upos<umin || upos>umax)continue;
 
+			if(upos<umin || upos>umax)continue;
+			//if(print)printf("evt %d, %1.6f <? upos = %1.6f <? %1.6f \n", ic[index].EventID, umin, upos, umax);
+			
 			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z;
 			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z;
 			//v index for this station is simply stID*6+4
@@ -798,7 +814,9 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 			
 		}
 	}
+	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	oc[index].nTracklets = n_tkl;
+	
 }
 
 
@@ -954,10 +972,11 @@ int main(int argn, char * argv[]) {
 			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
 		}
 		
-		for(int j = 1; j<=6; j++){
+		for(int j = 0; j<6; j++){
 			int idx = i*6+j;
 			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[i].spacing + u_factor[i];
 		}
+		//cout << i*6 << " " << plane[i*6].u_win << endl;
 	}
 	cout << "Geometry file read out" << endl;
 	
@@ -1100,7 +1119,7 @@ int main(int argn, char * argv[]) {
 	// cudaMalloc((void**)&device_output_eR, sizeofoutput_eR);
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
 	// gpuErrchk( cudaMemcpy(device_output_TKL, host_output_TKL, NBytesAllEvent, cudaMemcpyHostToDevice));
-	// gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
 	// cudaMemcpy(device_output_eR, host_output, sizeofoutput_eR, cudaMemcpyHostToDevice);
 	
 	// now data is transfered in the device: kernel function for event reconstruction called;
@@ -1121,6 +1140,11 @@ int main(int argn, char * argv[]) {
 
 	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
+
+	//for(int m = 0; m<30; m++){
+	//	if(plane[m].u_win!=0)printf("plane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, plane[m].u_win, plane[m].costheta);
+	//	if(device_gPlane[m].u_win!=0)printf("device_gplane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, device_gPlane[m].u_win, device_gPlane[m].costheta);
+	//}
 
 	auto start_tkl = std::chrono::system_clock::now();
 	// I first want to see if indeed we can reuse the "gEvent" pointer
@@ -1245,13 +1269,14 @@ int main(int argn, char * argv[]) {
 
 	// printouts for test
 	//for(int i = 1; i < nEvtMax; ++i) {
-	//	if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
+	//	//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
+	//	if(host_gEvent[i].EventID==10042){
 	//		printf("%d:\n ", host_gEvent[i].EventID);
 	//		for(int j = 0; j<=nChamberPlanes; j++){
 	//			printf("%d ", host_gEvent[i].NHits[j]);
 	//		}printf("; %d\n", host_gEvent[i].nAH);
-	//		for(int j = 0; j<=50; j++){
-	//			printf("%d, %1.3f;", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
+	//		for(int j = 0; j<=host_gEvent[i].nAH; j++){
+	//			if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
 	//		}
 	//		printf("\n");
 	//	}
