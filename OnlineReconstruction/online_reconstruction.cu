@@ -37,10 +37,15 @@
 #include <TTimeStamp.h>
 #include <TString.h>
 //#include "LoadInput.h"
+#include "OROutput.h"
 
 #include "SRawEvent.h"
 #include "GeomSvc.h"
 #include "KalmanFastTracking.h"
+
+#include "SQEvent_v1.h"
+#include "SQHit_v1.h"
+#include "SQHitVector_v1.h"
 
 #define nChamberPlanes 30
 #define nHodoPlanes 16
@@ -683,70 +688,246 @@ int main(int argn, char * argv[]) {
 	TString inputFile;
 	TString outputFile;
 	inputFile = argv[1];
-	outputFile = argv[2];
+	inputGeom = argv[2];	
+	outputFile = argv[3];
+
+	cout << argn << endl;
+
+	//by default we should use e1039 
+	bool e906data = false;
+	if(argn>4)e906data = atoi(argv[4]);
 
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
-	cout<<"Writing "<<argv[2]<<endl;
-
-	SRawEvent* rawEvent = new SRawEvent();
+	cout<<"with geometry: "<<argv[2]<<endl;
+	cout<<"Writing "<<argv[3]<<endl;
+	
+	//Get basic geometry here:
+	double u_factor[5] = {5., 5., 5., 15., 15.};
+	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes];
+	ifstream in_geom(inputGeom.Data());
+  	string buffer;
+	int ipl, nelem;
+	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, deltaW_;
+ 	while ( getline(in_geom, buffer) ) {
+    	      if (buffer[0] == '#') continue;
+	      std::istringstream iss;
+	      iss.str(buffer);
+	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta;
+	      plane[ipl-1].z = z;
+	      plane[ipl-1].nelem = nelem;
+	      plane[ipl-1].spacing = spacing;
+	      plane[ipl-1].xoffset = xoffset;
+	      plane[ipl-1].scalex = scalex;
+	      plane[ipl-1].x0 = x0;
+	      plane[ipl-1].costheta = costheta;
+	      plane[ipl-1].scaley = scaley;
+	      plane[ipl-1].y0 = y0;
+	      plane[ipl-1].sintheta = sintheta;
+	      if(ipl>nChamberPlanes+nHodoPlanes){
+		for(int k = 0; k<9; k++){
+			iss >> deltaW_;
+			plane[ipl-1].deltaW_[k] = deltaW_;
+		}
+	      }else{
+		iss >> deltaW_;
+		plane[ipl-1].deltaW_[0] = deltaW_;
+	      }
+	      ipl++;
+	}
+	
+	for(int i = 0; i<5; i++){
+		int u_idx = i*6; 
+		int x_idx = i*6+2;
+		for(int j = 0; j<6; j++){
+			int idx = i*6+j;
+			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx-1].z):0.5*(plane[idx].z+plane[idx+1].z);
+			
+			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
+			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
+			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
+		}
+		
+		for(int j = 0; j<6; j++){
+			int idx = i*6+j;
+			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[i].spacing + u_factor[i];
+		}
+		//cout << i*6 << " " << plane[i*6].u_win << endl;
+	}
+	cout << "Geometry file read out" << endl;
+	
+	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	for(int i = 0; i < nChamberPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+      		for(int j = 1; j <= plane[i].nelem; ++j){
+          		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
+          		map_elemPosition[i].insert(posType(j, pos));
+			
+		}
+	}
+	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
+          		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
+          		map_elemPosition[i].insert(posType(j, pos));
+		}
+	}
+	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
+		//cout << plane[i].nelem << endl;
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
+          		int moduleID = 8 - int((j - 1)/8);
+			//cout << moduleID << endl;
+             		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
+          		map_elemPosition[i].insert(posType(j, pos));
+		}
+		
+	}
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
-	TTree* dataTree = (TTree *)dataFile->Get("save");
-	dataTree->SetBranchAddress("rawEvent", &rawEvent);
+	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
+	SRawEvent* rawEvent = new SRawEvent();
+	//SQEvent_v1* event = new SQEvent_v1();
+	//SQHitVector_v1* hitvec = new SQHitVector_v1();
+	
+	Int_t     _run_id = 0;
+ 	Int_t     _spill_id = 0;
+	Int_t     _event_id = 0;
+   	UShort_t  _trigger;
+	Int_t     _qie_presums[4];
+	Int_t     _qie_turn_id;
+	Int_t     _qie_rf_id;
+	Int_t     _qie_rf_inte[33];
+	
+	std::vector<SQHit*> hit_vec;
+	
+	
+	if(e906data){
+		dataTree = (TTree *)dataFile->Get("save");
+		dataTree->SetBranchAddress("rawEvent", &rawEvent);
+	}else{
+		//default option: e1039
+		dataTree = (TTree *)dataFile->Get("T");
+		dataTree->SetMakeClass(1); //this is necessary to get the tree to read the branch correctly
+		dataTree->SetBranchStatus("*", 0);// this speeds up the loop on events
+		
+		dataTree->SetBranchStatus("DST.SQEvent._run_id", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._spill_id", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._event_id", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._trigger", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._qie_presums[4]", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._qie_turn_id", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._qie_rf_id", 1);
+		dataTree->SetBranchStatus("DST.SQEvent._qie_rf_inte[33]", 1);
+		
+		dataTree->SetBranchAddress("DST.SQEvent._run_id", &_run_id);
+		dataTree->SetBranchAddress("DST.SQEvent._spill_id", &_spill_id);
+		dataTree->SetBranchAddress("DST.SQEvent._event_id", &_event_id);
+		dataTree->SetBranchAddress("DST.SQEvent._trigger", &_trigger);
+		dataTree->SetBranchAddress("DST.SQEvent._qie_presums[4]", &_qie_presums);
+		dataTree->SetBranchAddress("DST.SQEvent._qie_turn_id", &_qie_turn_id);
+		dataTree->SetBranchAddress("DST.SQEvent._qie_rf_id", &_qie_rf_id);
+		dataTree->SetBranchAddress("DST.SQEvent._qie_rf_inte[33]", &_qie_rf_inte[33]);
+		
+		dataTree->SetBranchStatus("DST.SQHitVector._vector", 1);
+		dataTree->SetBranchAddress("DST.SQHitVector._vector", &hit_vec);
+	}
 	int nEvtMax = dataTree->GetEntries();
 	static gEvent host_gEvent[EstnEvtMax];
 
-
+	cout << "unfolding " << nEvtMax <<" events" << endl;
+	
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
+		if(i%1000==0)cout << i << "/" << nEvtMax <<  endl;
 		dataTree->GetEntry(i);
-//		cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
-                host_gEvent[i].RunID = rawEvent->getRunID();
-                host_gEvent[i].EventID = rawEvent->getEventID();
-                host_gEvent[i].SpillID = rawEvent->getSpillID();
-                host_gEvent[i].TriggerBits = rawEvent->getTriggerBits();
-                host_gEvent[i].TargetPos = rawEvent->getTargetPos();
-                host_gEvent[i].TurnID = rawEvent->getTurnID();
-                host_gEvent[i].RFID = rawEvent->getRFID();
-  		for(int j=0; j<33; j++) {
-                	host_gEvent[i].Intensity[j] = (rawEvent->getIntensityAll())[j];
-                }
-                host_gEvent[i].TriggerEmu = rawEvent->isEmuTriggered();
-	        //for(int k=0; k<4; k++) {
-                //host_gEvent[i].NRoads = rawEvent->getNRoads();
-                //}
-		host_gEvent[i].NRoads[0] = rawEvent->getNRoadsPosTop();
-		host_gEvent[i].NRoads[1] = rawEvent->getNRoadsPosBot();
-		host_gEvent[i].NRoads[2] = rawEvent->getNRoadsNegTop();
-		host_gEvent[i].NRoads[3] = rawEvent->getNRoadsNegBot();
-                for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
-                        host_gEvent[i].NHits[l] = rawEvent->getNHitsInDetector(l);
-                }
-                host_gEvent[i].nAH = rawEvent->getAllHits().size();
-                host_gEvent[i].nTH = rawEvent->getTriggerHits().size();
-                for(int m=0; m<rawEvent->getAllHits().size(); m++) {
-			host_gEvent[i].AllHits[m].index=rawEvent->getHit(m).index;
-			host_gEvent[i].AllHits[m].detectorID=rawEvent->getHit(m).detectorID;
-			host_gEvent[i].AllHits[m].elementID=rawEvent->getHit(m).elementID;
-			host_gEvent[i].AllHits[m].tdcTime=rawEvent->getHit(m).tdcTime;
-			host_gEvent[i].AllHits[m].driftDistance=rawEvent->getHit(m).driftDistance;
-			host_gEvent[i].AllHits[m].pos=rawEvent->getHit(m).pos;
-			host_gEvent[i].AllHits[m].flag=rawEvent->getHit(m).flag;
-                }
-                for(int n=0; n<rawEvent->getTriggerHits().size(); n++) {
-			host_gEvent[i].TriggerHits[n].index=rawEvent->getTriggerHit(n).index;
-			host_gEvent[i].TriggerHits[n].detectorID=rawEvent->getTriggerHit(n).detectorID;
-			host_gEvent[i].TriggerHits[n].elementID=rawEvent->getTriggerHit(n).elementID;
-			host_gEvent[i].TriggerHits[n].tdcTime=rawEvent->getTriggerHit(n).tdcTime;
-			host_gEvent[i].TriggerHits[n].driftDistance=rawEvent->getTriggerHit(n).driftDistance;
-			host_gEvent[i].TriggerHits[n].pos=rawEvent->getTriggerHit(n).pos;
-			host_gEvent[i].TriggerHits[n].flag=rawEvent->getTriggerHit(n).flag;
-                }
-
+		//cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
+		if(e906data){
+			host_gEvent[i].RunID = rawEvent->fRunID;
+			host_gEvent[i].EventID = rawEvent->fEventID;
+			host_gEvent[i].SpillID = rawEvent->fSpillID;
+			host_gEvent[i].TriggerBits = rawEvent->fTriggerBits;
+			host_gEvent[i].TargetPos = rawEvent->fTargetPos;
+			host_gEvent[i].TurnID = rawEvent->fTurnID;
+			host_gEvent[i].RFID = rawEvent->fRFID;
+			for(int j=0; j<33; j++) {
+				host_gEvent[i].Intensity[j] = rawEvent->fIntensity[j];
+			}
+			host_gEvent[i].TriggerEmu = rawEvent->fTriggerEmu;
+			for(int k=0; k<4; k++) {
+				host_gEvent[i].NRoads[k] = rawEvent->fNRoads[k];
+			}
+			for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
+				host_gEvent[i].NHits[l] = rawEvent->fNHits[l];
+			}
+			host_gEvent[i].nAH = rawEvent->fAllHits.size();
+			host_gEvent[i].nTH = rawEvent->fTriggerHits.size();
+			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
+				host_gEvent[i].AllHits[m].index=(rawEvent->fAllHits[m]).index;
+				host_gEvent[i].AllHits[m].detectorID=(rawEvent->fAllHits[m]).detectorID;
+				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
+				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
+				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
+				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
+			}
+			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
+				host_gEvent[i].TriggerHits[n].index=(rawEvent->fTriggerHits[n]).index;
+				host_gEvent[i].TriggerHits[n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
+				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
+				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
+				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
+				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
+			}
+			// printouts for test
+			//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
+			//	printf("%d:\n ", rawEvent->fEventID);
+			//	for(int l = 1; l<=nChamberPlanes; l++){
+			//		printf("%d ", rawEvent->fNHits[l]);
+			//	}printf("; %d\n", rawEvent->fAllHits.size());
+			//	for(int m = 0; m<=50; m++){
+			//		printf("%d, %1.3f;", (rawEvent->fAllHits[m]).detectorID, (rawEvent->fAllHits[m]).pos);
+			//	}printf("\n");
+			//}
+		}else{
+			//Default option: e1039
+			//if(i%1000==0){
+			//	cout << i << " " << _event_id << " " << _trigger << " " << &hit_vec << " " << hit_vec.size() << endl;
+			//	dataTree->Show(i);
+			//}
+			host_gEvent[i].RunID = _run_id;
+			host_gEvent[i].SpillID = _spill_id;
+			host_gEvent[i].EventID = _event_id;
+			host_gEvent[i].TriggerBits = _trigger;
+			for(int k = 0; k<4; k++)host_gEvent[i].NRoads[k] = _qie_presums[k];
+			host_gEvent[i].TurnID = _qie_turn_id;
+			host_gEvent[i].RFID = _qie_rf_id;
+			for(int k = 0; k<33; k++)host_gEvent[i].Intensity[k] = _qie_rf_inte[k];
+			
+			int ntrighits = 0;
+			host_gEvent[i].nAH = hit_vec.size();
+			for(int m = 0; m<hit_vec.size(); m++){
+				host_gEvent[i].AllHits[m].index=hit_vec[m]->get_hit_id();
+				host_gEvent[i].AllHits[m].detectorID=hit_vec[m]->get_detector_id();
+				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
+				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
+				host_gEvent[i].AllHits[m].driftDistance=hit_vec[m]->get_drift_distance();
+				host_gEvent[i].AllHits[m].pos=hit_vec[m]->get_pos();
+				if(hit_vec[m]->is_trigger_mask()){
+					ntrighits++;
+					host_gEvent[i].TriggerHits[m].index=hit_vec[m]->get_hit_id();
+					host_gEvent[i].TriggerHits[m].detectorID=hit_vec[m]->get_detector_id();
+					host_gEvent[i].TriggerHits[m].elementID=hit_vec[m]->get_element_id();
+					host_gEvent[i].TriggerHits[m].tdcTime=hit_vec[m]->get_tdc_time();
+					host_gEvent[i].TriggerHits[m].driftDistance=hit_vec[m]->get_drift_distance();
+					host_gEvent[i].TriggerHits[m].pos=hit_vec[m]->get_pos();
+				}
+			}
+			host_gEvent[i].nTH = ntrighits;
+		}
 	}
-
-
-
+	cout << "loaded events" << endl;
+	
 //If the decoded has NOT been sorted...
 //	for(int i = 0; i < nEvtMax; ++i) {
 //		thrust::stable_sort(host_gEvent[i].AllHits, host_gEvent[i].AllHits+host_gEvent[i].nAH, lessthan());

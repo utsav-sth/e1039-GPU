@@ -48,4 +48,3 @@ public:
     std::vector<Hit> fTriggerHits;
     ClassDef(SRawEvent, 1)
 }; 
-
