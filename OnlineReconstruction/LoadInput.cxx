@@ -22,4 +22,3 @@ SRawEvent::SRawEvent() : fRunID(-1), fEventID(-1), fSpillID(-1), fTriggerBits(-1
 SRawEvent::~SRawEvent()
 {
 }
-
