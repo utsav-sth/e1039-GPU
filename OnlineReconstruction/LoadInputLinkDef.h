@@ -4,6 +4,3 @@
 
 #pragma link C++ class Hit+;
 #pragma link C++ class SRawEvent+;
-#pragma link C++ class SQHit+;
-#pragma link C++ class SQVector+;
-#pragma link C++ class SQEvent+;

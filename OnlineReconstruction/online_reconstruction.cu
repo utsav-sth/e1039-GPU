@@ -819,6 +819,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 		}
 	}
 	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
+	printf("%d ", n_tkl);
 	oc[index].nTracklets = n_tkl;
 	
 }
@@ -985,31 +986,36 @@ int main(int argn, char * argv[]) {
 	cout << "Geometry file read out" << endl;
 	
 	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	double wire_position[54][400];//let's see if this gets corrupted as well?
+		
 	for(int i = 0; i < nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-      		for(int j = 1; j <= plane[i].nelem; ++j){
+      		for(int j = 0; j < plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
           		map_elemPosition[i].insert(posType(j, pos));
-			
+			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
+	      	for(int j = 0; j < plane[i].nelem; ++j){
           		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
           		map_elemPosition[i].insert(posType(j, pos));
+			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
+	      	for(int j = 0; j < plane[i].nelem; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
              		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
           		map_elemPosition[i].insert(posType(j, pos));
+			wire_position[i][j] = pos;
 		}
 		
 	}
+	
 	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
@@ -1037,7 +1043,7 @@ int main(int argn, char * argv[]) {
 		dataTree = (TTree *)dataFile->Get("T");
 		dataTree->SetMakeClass(1); //this is necessary to get the tree to read the branch correctly
 		dataTree->SetBranchStatus("*", 0);// this speeds up the loop on events
-		
+
 		dataTree->SetBranchStatus("DST.SQEvent._run_id", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._spill_id", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._event_id", 1);
@@ -1067,6 +1073,7 @@ int main(int argn, char * argv[]) {
 	for(int i = 0; i < nEvtMax; ++i) {
 		if(i%1000==0)cout << i << "/" << nEvtMax <<  endl;
 		dataTree->GetEntry(i);
+		
 		//cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
 		if(e906data){
 			host_gEvent[i].RunID = rawEvent->fRunID;
@@ -1094,7 +1101,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
 				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
 				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
 				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
 			}
 			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
@@ -1103,7 +1110,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
 				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
 				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
 				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 			}
 			// printouts for test
@@ -1130,24 +1137,28 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].TurnID = _qie_turn_id;
 			host_gEvent[i].RFID = _qie_rf_id;
 			for(int k = 0; k<33; k++)host_gEvent[i].Intensity[k] = _qie_rf_inte[k];
-			
+
 			int ntrighits = 0;
 			host_gEvent[i].nAH = hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
+				if(hit_vec[m]->get_detector_id()>54){
+					continue;
+					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
+				}
 				host_gEvent[i].AllHits[m].index=hit_vec[m]->get_hit_id();
 				host_gEvent[i].AllHits[m].detectorID=hit_vec[m]->get_detector_id();
 				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
 				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
 				host_gEvent[i].AllHits[m].driftDistance=hit_vec[m]->get_drift_distance();
-				host_gEvent[i].AllHits[m].pos=hit_vec[m]->get_pos();
+				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
 				if(hit_vec[m]->is_trigger_mask()){
+					host_gEvent[i].TriggerHits[ntrighits].index=hit_vec[m]->get_hit_id();
+					host_gEvent[i].TriggerHits[ntrighits].detectorID=hit_vec[m]->get_detector_id();
+					host_gEvent[i].TriggerHits[ntrighits].elementID=hit_vec[m]->get_element_id();
+					host_gEvent[i].TriggerHits[ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
+					host_gEvent[i].TriggerHits[ntrighits].driftDistance=hit_vec[m]->get_drift_distance();
+					host_gEvent[i].TriggerHits[ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
 					ntrighits++;
-					host_gEvent[i].TriggerHits[m].index=hit_vec[m]->get_hit_id();
-					host_gEvent[i].TriggerHits[m].detectorID=hit_vec[m]->get_detector_id();
-					host_gEvent[i].TriggerHits[m].elementID=hit_vec[m]->get_element_id();
-					host_gEvent[i].TriggerHits[m].tdcTime=hit_vec[m]->get_tdc_time();
-					host_gEvent[i].TriggerHits[m].driftDistance=hit_vec[m]->get_drift_distance();
-					host_gEvent[i].TriggerHits[m].pos=hit_vec[m]->get_pos();
 				}
 			}
 			host_gEvent[i].nTH = ntrighits;
@@ -1225,7 +1236,7 @@ int main(int argn, char * argv[]) {
 	int stID = 3;// to make explicit that we are requiring station 3
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, stID, device_gPlane);
 	auto end_tkl = std::chrono::system_clock::now();
-
+	cout << endl;
 	// check status of device and synchronize again;
 	
 	gpuErrchk( cudaPeekAtLastError() );
