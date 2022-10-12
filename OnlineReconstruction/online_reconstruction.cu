@@ -816,7 +816,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	}
 	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	oc[index].nTracklets = n_tkl;
-	
 }
 
 
@@ -981,24 +980,24 @@ int main(int argn, char * argv[]) {
 	cout << "Geometry file read out" << endl;
 	
 	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
-	for(int i = 1; i <= nChamberPlanes; ++i){
-		//cout << plane[i].nelem << endl;
-      		for(int j = 1; j <= plane[i].nelem; ++j){
+	for(int i = 0; i < nChamberPlanes; ++i){
+		cout << plane[i].nelem << endl;
+      		for(int j = 0; j < plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
           		map_elemPosition[i].insert(posType(j, pos));
 			
 		}
 	}
-	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
-		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
+	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
+		cout << plane[i].nelem << endl;
+	      	for(int j = 0; j < plane[i].nelem; ++j){
           		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
           		map_elemPosition[i].insert(posType(j, pos));
 		}
 	}
-	for(int i = nChamberPlanes+nHodoPlanes; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
-		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
+	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
+		cout << plane[i].nelem << endl;
+	      	for(int j = 0; j < plane[i].nelem; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
              		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
@@ -1051,7 +1050,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
 				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
 				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
 				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
 			}
 			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
@@ -1060,7 +1059,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
 				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
 				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
 				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 			}
 			// printouts for test
@@ -1151,7 +1150,7 @@ int main(int argn, char * argv[]) {
 	int stID = 3;// to make explicit that we are requiring station 3
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, stID, device_gPlane);
 	auto end_tkl = std::chrono::system_clock::now();
-
+	cout << endl;
 	// check status of device and synchronize again;
 	
 	gpuErrchk( cudaPeekAtLastError() );
