@@ -16,9 +16,9 @@ OBJS = online_reconstruction.o LoadInput.o LoadInputDict.o OROutput.o OROutputDi
 COMPILE = $(CXX) $(CXXFLAGS) -std=c++14 -m64 $(DEFS) \
 	-I${ROOTSYS}/include -I${GPUFIT}/Gpufit/Gpufit -I${PWD} \
 	-I/home/programs/e1039-core/interface_main -c
-#	-I/home/programs/e1039-core/framework/fun4all \
 #	-I/home/programs/e1039-core/simulation/g4detectors \
 #	-I/home/programs/e1039-core/packages/reco/ktracker -c
+#	-I/home/programs/e1039-core/framework/fun4all \
 #	-I/home/programs/e1039-core/framework/phool \
 
 $(PROGRAM) : $(OBJS)

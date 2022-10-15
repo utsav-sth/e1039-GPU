@@ -153,6 +153,9 @@ class gTracklet {
 
 class gEvent {
 	public:
+	gEvent(){
+		RunID = EventID = SpillID = -1;
+	}
 	int RunID; // Run Number
 	int EventID; // Event number
 	int SpillID; // Spill number
@@ -459,18 +462,25 @@ __global__ void gkernel_eR(gEvent* ic) {
 	// int nHitsPerDetector[nDetectors+1];
 	
 
+	if(ic[index].EventID==0){
+		printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
+		for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
+		printf("\n");
+	}
+
 	// initialization of array size
 	cluster_iAH_arr_size[index] = 0;
 	nAH_reduced[index] = 0;
-		
+	
 	// event reducing/hit filtering
 	for(iAH[index] = 0; iAH[index]<ic[index].nAH; ++iAH[index]) {
 		// if hit not good, set its detID to 0 and continue;
 		if((ic[index].AllHits[iAH[index]].flag & hitFlagBit(1)) == 0) {
-//			printf("Skip out-of-time...\n");
+			if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", ic[index].AllHits[iAH[index]].detectorID);
 			ic[index].AllHits[iAH[index]].detectorID = 0;
 			continue;
 		}
+		uniqueID[index] = uniqueID_curr[index] = -1;
 		// hits in DCs or Prop tubes
 		if(ic[index].AllHits[iAH[index]].detectorID < 31 || ic[index].AllHits[iAH[index]].detectorID > 46) {
 			// evaluate "unique ID"
@@ -485,7 +495,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
 			else {
 				if(ic[index].AllHits[iAH[index]].detectorID > 36 || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] >= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] < 80.0)) || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] <= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] > -80.0))) {
-//					printf("Skip after-pulse...\n");
+					if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 					ic[index].AllHits[iAH[index]].detectorID = 0;
 					continue;
 				}
@@ -497,7 +507,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 		// declustering of hits in DCs (from CPU code, I understand this one better)
 		// if there are hits in the same plane and hitting two neighboring wires, they both give redundant information: 
 		if(ic[index].AllHits[iAH[index]].detectorID <= nChamberPlanes) {
-//			printf("%d\n", cluster_iAH_arr_size[index]);
+			if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size[index]);
 //			printf("Decluster...\n");
 			if(cluster_iAH_arr_size[index] == ClusterSizeMax) {
 //				printf("Oversized cluster...\n");
@@ -506,30 +516,38 @@ __global__ void gkernel_eR(gEvent* ic) {
 			if(cluster_iAH_arr_size[index] == 0) {
 				cluster_iAH_arr[index][0] = iAH[index];
 				++cluster_iAH_arr_size[index];
-			}
-			// otherwise
-			else {
+			} else { // otherwise
 				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
 				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
-				if((ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID) || (ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID > 1)) {
+				if(ic[index].EventID==0){
+printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
+printf("hit det/elem: %d, %d; %d, %d\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, 
+	    	      	      	  	 ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
+printf("diffs: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
+	       	   	  (ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID));
+printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
+	       	   	  (abs(ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID) > 1));
+	    	     	   	}
+				if((ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID) || (abs(ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID) > 1)) {
 					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size[index] == 2) {
 						w_max[index] = 0.9*0.5*(ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].pos - ic[index].AllHits[cluster_iAH_arr[index][0]].pos);
 						w_min[index] = 4.0/9.0*w_max[index];
 						if((ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_max[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_min[index]) || (ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_min[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_max[index])) {
+						if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
 							//eliminating the existing hit with the lagest drift distance
 							if(ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance) {
-//								printf("Skip cluster...\n");
+								if(ic[index].EventID==0)printf("1 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][0]].elementID);
 								ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
 							}
 							else {
-//								printf("Skip cluster...\n");
+								if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 							}
 						}
 						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
 						else if((((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) >= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) < 8.0) || ((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) <= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) > -8.0)) && (ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID >= 19 && ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID <= 24)) {
-//							printf("Skip cluster...\n");
+						        if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
 							ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 						}
@@ -544,25 +562,27 @@ __global__ void gkernel_eR(gEvent* ic) {
 						dt_mean[index] = dt_mean[index]/(cluster_iAH_arr_size[index] - 1);
 						// if mean time difference is less than 10, that's electronic noise, so we remove them all.
 						if(dt_mean[index] < 10.0) {
-//							printf("Skip cluster...\n");
+						        if(ic[index].EventID==0)printf("4 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							for(cluster_iAH_arr_cur[index] = 0; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].detectorID = 0;
 							}
 						}
 						// otherwise, we remove them all except first and last
 						else {
-//							printf("Skip cluster...\n");
+						        if(ic[index].EventID==0)printf("5 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							for(cluster_iAH_arr_cur[index] = 1; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].detectorID = 0;
 							}
 						}
 					}
 					cluster_iAH_arr_size[index] = 0;
+				} else { // if hits are in the same detector and in two neighboring cells!
+				        // current hit and previous hit are in same detector plane and in neighbor wires: 
+				  	// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
+				  	if(ic[index].EventID==0)printf("h1: det %d el %d; h2 det %d el %d \n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
+				  	cluster_iAH_arr[index][cluster_iAH_arr_size[index]] = iAH[index];
+				  	++cluster_iAH_arr_size[index];
 				}
-				// current hit and previous hit are in same detector plane and in neighbor wires: 
-				// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
-				cluster_iAH_arr[index][cluster_iAH_arr_size[index]] = iAH[index];
-				++cluster_iAH_arr_size[index];
 			}
 		}
 	}
@@ -597,7 +617,11 @@ __global__ void gkernel_eR(gEvent* ic) {
 	ic[index].nAH = nAH_reduced[index];
 	//ic[index].NHits[0] = NHits_reduced[index];
 	
-
+	if(ic[index].EventID==0){
+		printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
+		for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
+		printf("\n");
+	}
 
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])>0) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>0) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>0) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>0) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>0)){	
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<270) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>350) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>170) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>140) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>140))
@@ -750,7 +774,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	//}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
-	
 	int n_tkl = 0;
 	
 	//X-U combinations first
@@ -1023,13 +1046,13 @@ int main(int argn, char * argv[]) {
 	//SQEvent_v1* event = new SQEvent_v1();
 	//SQHitVector_v1* hitvec = new SQHitVector_v1();
 	
-	Int_t     _run_id = 0;
- 	Int_t     _spill_id = 0;
-	Int_t     _event_id = 0;
+	Int_t     _run_id;
+ 	Int_t     _spill_id;
+	Int_t     _event_id;
    	UShort_t  _trigger;
 	Int_t     _qie_presums[4];
-	Int_t     _qie_turn_id;
-	Int_t     _qie_rf_id;
+	Int_t     _qie_turn_id = 0;
+	Int_t     _qie_rf_id = 0;
 	Int_t     _qie_rf_inte[33];
 	
 	std::vector<SQHit*> hit_vec;
@@ -1048,19 +1071,19 @@ int main(int argn, char * argv[]) {
 		dataTree->SetBranchStatus("DST.SQEvent._spill_id", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._event_id", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._trigger", 1);
-		dataTree->SetBranchStatus("DST.SQEvent._qie_presums[4]", 1);
+		//dataTree->SetBranchStatus("DST.SQEvent._qie_presums[4]", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._qie_turn_id", 1);
 		dataTree->SetBranchStatus("DST.SQEvent._qie_rf_id", 1);
-		dataTree->SetBranchStatus("DST.SQEvent._qie_rf_inte[33]", 1);
+		//dataTree->SetBranchStatus("DST.SQEvent._qie_rf_inte[33]", 1);
 		
 		dataTree->SetBranchAddress("DST.SQEvent._run_id", &_run_id);
 		dataTree->SetBranchAddress("DST.SQEvent._spill_id", &_spill_id);
 		dataTree->SetBranchAddress("DST.SQEvent._event_id", &_event_id);
 		dataTree->SetBranchAddress("DST.SQEvent._trigger", &_trigger);
-		dataTree->SetBranchAddress("DST.SQEvent._qie_presums[4]", &_qie_presums);
+		//dataTree->SetBranchAddress("DST.SQEvent._qie_presums[4]", &_qie_presums);
 		dataTree->SetBranchAddress("DST.SQEvent._qie_turn_id", &_qie_turn_id);
 		dataTree->SetBranchAddress("DST.SQEvent._qie_rf_id", &_qie_rf_id);
-		dataTree->SetBranchAddress("DST.SQEvent._qie_rf_inte[33]", &_qie_rf_inte[33]);
+		//dataTree->SetBranchAddress("DST.SQEvent._qie_rf_inte[33]", &_qie_rf_inte[33]);
 		
 		dataTree->SetBranchStatus("DST.SQHitVector._vector", 1);
 		dataTree->SetBranchAddress("DST.SQHitVector._vector", &hit_vec);
@@ -1125,19 +1148,16 @@ int main(int argn, char * argv[]) {
 			//}
 		}else{
 			//Default option: e1039
-			//if(i%1000==0){
-			//	cout << i << " " << _event_id << " " << _trigger << " " << &hit_vec << " " << hit_vec.size() << endl;
-			//	dataTree->Show(i);
-			//}
 			host_gEvent[i].RunID = _run_id;
 			host_gEvent[i].SpillID = _spill_id;
 			host_gEvent[i].EventID = _event_id;
 			host_gEvent[i].TriggerBits = _trigger;
-			for(int k = 0; k<4; k++)host_gEvent[i].NRoads[k] = _qie_presums[k];
+			//for(int k = 0; k<4; k++)host_gEvent[i].NRoads[k] = _qie_presums[k];
 			host_gEvent[i].TurnID = _qie_turn_id;
 			host_gEvent[i].RFID = _qie_rf_id;
-			for(int k = 0; k<33; k++)host_gEvent[i].Intensity[k] = _qie_rf_inte[k];
-
+			//for(int k = 0; k<33; k++)host_gEvent[i].Intensity[k] = _qie_rf_inte[k];
+			
+			for(int k = 0; k<nDetectors; k++)host_gEvent[i].NHits[k] = 0;//we will increment those in the vector hit loop
 			int ntrighits = 0;
 			host_gEvent[i].nAH = hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
@@ -1145,19 +1165,23 @@ int main(int argn, char * argv[]) {
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
+				host_gEvent[i].NHits[hit_vec[m]->get_detector_id()]++;
 				host_gEvent[i].AllHits[m].index=hit_vec[m]->get_hit_id();
 				host_gEvent[i].AllHits[m].detectorID=hit_vec[m]->get_detector_id();
 				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
 				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
-				host_gEvent[i].AllHits[m].driftDistance=hit_vec[m]->get_drift_distance();
+				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
 				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
+				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
+				if(host_gEvent[i].EventID==0)cout << host_gEvent[i].AllHits[m].detectorID << " " << host_gEvent[i].AllHits[m].elementID << " " << host_gEvent[i].AllHits[m].tdcTime << " " << host_gEvent[i].AllHits[m].driftDistance << " " << host_gEvent[i].AllHits[m].pos << " " << host_gEvent[i].AllHits[m].flag << endl;
 				if(hit_vec[m]->is_trigger_mask()){
 					host_gEvent[i].TriggerHits[ntrighits].index=hit_vec[m]->get_hit_id();
 					host_gEvent[i].TriggerHits[ntrighits].detectorID=hit_vec[m]->get_detector_id();
 					host_gEvent[i].TriggerHits[ntrighits].elementID=hit_vec[m]->get_element_id();
 					host_gEvent[i].TriggerHits[ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
-					host_gEvent[i].TriggerHits[ntrighits].driftDistance=hit_vec[m]->get_drift_distance();
+					host_gEvent[i].TriggerHits[ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
 					host_gEvent[i].TriggerHits[ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
+					host_gEvent[i].TriggerHits[ntrighits].flag=(1<<hit_vec[m]->is_in_time());
 					ntrighits++;
 				}
 			}
@@ -1353,19 +1377,20 @@ int main(int argn, char * argv[]) {
 	*/
 
 	// printouts for test
-	//for(int i = 1; i < nEvtMax; ++i) {
-	//	//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
-	//	if(host_gEvent[i].EventID==10042){
-	//		printf("%d:\n ", host_gEvent[i].EventID);
-	//		for(int j = 0; j<=nChamberPlanes; j++){
-	//			printf("%d ", host_gEvent[i].NHits[j]);
-	//		}printf("; %d\n", host_gEvent[i].nAH);
-	//		for(int j = 0; j<=host_gEvent[i].nAH; j++){
-	//			if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
-	//		}
-	//		printf("\n");
-	//	}
-	//}
+	for(int i = 0; i < nEvtMax; ++i) {
+		//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
+		if(host_gEvent[i].EventID==0){
+			printf("%d:\n ", host_gEvent[i].EventID);
+			for(int j = 0; j<=nChamberPlanes; j++){
+				printf("%d ", host_gEvent[i].NHits[j]);
+			}printf("; %d\n", host_gEvent[i].nAH);
+			for(int j = 0; j<=host_gEvent[i].nAH; j++){
+				//if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)
+printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
+			}
+			printf("\n");
+		}
+	}
 		
 	//for(int i = 0; i < host_gEvent[0].nAH; ++i) {
 		//cout<<"D0_1st_wire:" << (host_gEvent[0].NHits[1])<<endl;
