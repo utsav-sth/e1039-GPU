@@ -462,11 +462,11 @@ __global__ void gkernel_eR(gEvent* ic) {
 	// int nHitsPerDetector[nDetectors+1];
 	
 
-	if(ic[index].EventID==0){
-		printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
-		for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
-		printf("\n");
-	}
+	//if(ic[index].EventID==0){
+	//	printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
+	//	for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
+	//	printf("\n");
+	//}
 
 	// initialization of array size
 	cluster_iAH_arr_size[index] = 0;
@@ -476,7 +476,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 	for(iAH[index] = 0; iAH[index]<ic[index].nAH; ++iAH[index]) {
 		// if hit not good, set its detID to 0 and continue;
 		if((ic[index].AllHits[iAH[index]].flag & hitFlagBit(1)) == 0) {
-			if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", ic[index].AllHits[iAH[index]].detectorID);
+			//if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", ic[index].AllHits[iAH[index]].detectorID);
 			ic[index].AllHits[iAH[index]].detectorID = 0;
 			continue;
 		}
@@ -495,7 +495,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
 			else {
 				if(ic[index].AllHits[iAH[index]].detectorID > 36 || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] >= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] < 80.0)) || ((ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] <= 0.0) && (ic[index].AllHits[iAH[index]].tdcTime - tdcTime_curr[index] > -80.0))) {
-					if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
+					//if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 					ic[index].AllHits[iAH[index]].detectorID = 0;
 					continue;
 				}
@@ -507,7 +507,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 		// declustering of hits in DCs (from CPU code, I understand this one better)
 		// if there are hits in the same plane and hitting two neighboring wires, they both give redundant information: 
 		if(ic[index].AllHits[iAH[index]].detectorID <= nChamberPlanes) {
-			if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size[index]);
+			//if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size[index]);
 //			printf("Decluster...\n");
 			if(cluster_iAH_arr_size[index] == ClusterSizeMax) {
 //				printf("Oversized cluster...\n");
@@ -519,35 +519,35 @@ __global__ void gkernel_eR(gEvent* ic) {
 			} else { // otherwise
 				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
 				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
-				if(ic[index].EventID==0){
-printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
-printf("hit det/elem: %d, %d; %d, %d\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, 
-	    	      	      	  	 ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
-printf("diffs: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
-	       	   	  (ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID));
-printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
-	       	   	  (abs(ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID) > 1));
-	    	     	   	}
+				//if(ic[index].EventID==0){
+//printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
+//printf("hit det/elem: %d, %d; %d, %d\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, 
+//	    	      	      	  	 ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
+//printf("diffs: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
+//	       	   	  (ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID));
+//printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID),
+//	       	   	  (abs(ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID) > 1));
+	    	     	   	//}
 				if((ic[index].AllHits[iAH[index]].detectorID != ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID) || (abs(ic[index].AllHits[iAH[index]].elementID - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID) > 1)) {
 					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size[index] == 2) {
 						w_max[index] = 0.9*0.5*(ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].pos - ic[index].AllHits[cluster_iAH_arr[index][0]].pos);
 						w_min[index] = 4.0/9.0*w_max[index];
 						if((ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_max[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_min[index]) || (ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > w_min[index] && ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance > w_max[index])) {
-						if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
+						//if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH[index], cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1], cluster_iAH_arr[index][0]);
 							//eliminating the existing hit with the lagest drift distance
 							if(ic[index].AllHits[cluster_iAH_arr[index][0]].driftDistance > ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].driftDistance) {
-								if(ic[index].EventID==0)printf("1 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][0]].elementID);
+								//if(ic[index].EventID==0)printf("1 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][0]].elementID);
 								ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
 							}
 							else {
-								if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
+								//if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 							}
 						}
 						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
 						else if((((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) >= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) < 8.0) || ((ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) <= 0.0 && (ic[index].AllHits[cluster_iAH_arr[index][0]].tdcTime - ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].tdcTime) > -8.0)) && (ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID >= 19 && ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID <= 24)) {
-						        if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
+						        //if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							ic[index].AllHits[cluster_iAH_arr[index][0]].detectorID = 0;
 							ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID = 0;
 						}
@@ -562,14 +562,14 @@ printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index]
 						dt_mean[index] = dt_mean[index]/(cluster_iAH_arr_size[index] - 1);
 						// if mean time difference is less than 10, that's electronic noise, so we remove them all.
 						if(dt_mean[index] < 10.0) {
-						        if(ic[index].EventID==0)printf("4 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
+						        //if(ic[index].EventID==0)printf("4 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							for(cluster_iAH_arr_cur[index] = 0; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].detectorID = 0;
 							}
 						}
 						// otherwise, we remove them all except first and last
 						else {
-						        if(ic[index].EventID==0)printf("5 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
+						        //if(ic[index].EventID==0)printf("5 - hit det %d elem %d Skip cluster...\n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID);
 							for(cluster_iAH_arr_cur[index] = 1; cluster_iAH_arr_cur[index] < cluster_iAH_arr_size[index]; ++cluster_iAH_arr_cur[index]) {
 								ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_cur[index]]].detectorID = 0;
 							}
@@ -579,7 +579,7 @@ printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index]
 				} else { // if hits are in the same detector and in two neighboring cells!
 				        // current hit and previous hit are in same detector plane and in neighbor wires: 
 				  	// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
-				  	if(ic[index].EventID==0)printf("h1: det %d el %d; h2 det %d el %d \n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
+				  	//if(ic[index].EventID==0)printf("h1: det %d el %d; h2 det %d el %d \n", ic[index].AllHits[iAH[index]].detectorID, ic[index].AllHits[iAH[index]].elementID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].detectorID, ic[index].AllHits[cluster_iAH_arr[index][cluster_iAH_arr_size[index]-1]].elementID);
 				  	cluster_iAH_arr[index][cluster_iAH_arr_size[index]] = iAH[index];
 				  	++cluster_iAH_arr_size[index];
 				}
@@ -617,11 +617,11 @@ printf("bools: %d, %d\n", (ic[index].AllHits[iAH[index]].detectorID != ic[index]
 	ic[index].nAH = nAH_reduced[index];
 	//ic[index].NHits[0] = NHits_reduced[index];
 	
-	if(ic[index].EventID==0){
-		printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
-		for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
-		printf("\n");
-	}
+	//if(ic[index].EventID==0){
+	//	printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
+	//	for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
+	//	printf("\n");
+	//}
 
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])>0) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>0) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>0) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>0) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>0)){	
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<270) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>350) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>170) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>140) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>140))
@@ -767,11 +767,14 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	int nu = make_hitpairs_in_station(ic, hitpairs_u, stID, 1);
 	int nv = make_hitpairs_in_station(ic, hitpairs_v, stID, 2);
 	
+	int uidx = stID==0? stID*6 : stID*6+4;
+	int vidx = stID==0? stID*6+4 : stID*6;
+	
 	bool print = false;
-	//if(ic[index].EventID==10042){
-	//      print = true;
-	//	printf("evt %d, nx = %d, nu = %d, nv = %d, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, stID*6, planes[stID*6].u_win);
-	//}
+	if(0<=ic[index].EventID && ic[index].EventID<20){
+		print = true;
+		printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
+	}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
 	int n_tkl = 0;
@@ -779,14 +782,13 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	//X-U combinations first
 	for(int i = 0; i< nx; i++){
 		double xpos = hitpairs_x[i].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_x[i].first ].pos+ic[index].AllHits[ hitpairs_x[i].second ].pos): ic[index].AllHits[ hitpairs_x[i].first ].pos;
-		//u index for this station is simply stID*6
-		double umin = xpos*planes[stID*6].costheta*planes[stID*6].u_win;
-		double umax = umin+2*planes[stID*6].u_win;
-		//if(print){
-		//	printf("evt %d, xpos = %1.6f, umin = %1.6f, umax = %1.6f\n", ic[index].EventID, xpos, umin, umax);
-		//	printf("x1 pos = %1.6f, x2 pos =%1.6f\n", ic[index].AllHits[ hitpairs_x[i].first ].pos, 
-		//		hitpairs_x[i].second >=0 ? ic[index].AllHits[ hitpairs_x[i].second ].pos : -1000000);
-		//}
+		double umin = xpos*planes[uidx].costheta-planes[uidx].u_win;
+		double umax = umin+2*planes[uidx].u_win;
+		if(print){
+			printf("evt %d, xpos = %1.6f, umin = %1.6f, umax = %1.6f\n", ic[index].EventID, xpos, umin, umax);
+			printf("evt %d, x1 pos = %1.6f, x2 pos =%1.6f\n", ic[index].EventID, ic[index].AllHits[ hitpairs_x[i].first ].pos, 
+				hitpairs_x[i].second >=0 ? ic[index].AllHits[ hitpairs_x[i].second ].pos : -1000000);
+		}
 		for(int j = 0; j< nu; j++){
 			double upos = hitpairs_u[j].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_u[j].first ].pos+ic[index].AllHits[ hitpairs_u[j].second ].pos): ic[index].AllHits[ hitpairs_u[j].first ].pos;
 
@@ -795,15 +797,14 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 			
 			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z;
 			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z;
-			//v index for this station is simply stID*6+4
-			double z_v = planes[stID*6+4].z_mean;
+			double z_v = planes[vidx].z_mean;
 
 			double v_win1 = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].v_win_fac1;
-			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ stID*6+4 ].v_win_fac2;
-			double v_win3 = fabs(z_v-z_u)*planes[ stID*6+4 ].v_win_fac3;
+			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ vidx ].v_win_fac2;
+			double v_win3 = fabs(z_v-z_u)*planes[ vidx ].v_win_fac3;
 			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].spacing;
 
-			double vmin = 2*xpos*planes[stID*6].costheta-upos-v_win;
+			double vmin = 2*xpos*planes[uidx].costheta-upos-v_win;
 			double vmax = vmin+2*v_win;
 
 			for(int k = 0; k< nv; k++){
@@ -841,8 +842,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 			
 		}
 	}
-	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
-	printf("%d ", n_tkl);
+	if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
+	//printf("%d ", n_tkl);
 	oc[index].nTracklets = n_tkl;
 	
 }
@@ -989,7 +990,8 @@ int main(int argn, char * argv[]) {
 	}
 	
 	for(int i = 0; i<5; i++){
-		int u_idx = i*6; 
+		int u_idx = i*6+4;
+		if(i==0)int u_idx = i*6;
 		int x_idx = i*6+2;
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j;
@@ -1008,32 +1010,32 @@ int main(int argn, char * argv[]) {
 	}
 	cout << "Geometry file read out" << endl;
 	
-	std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
-	double wire_position[54][400];//let's see if this gets corrupted as well?
-		
+	//std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
+	double wire_position[54][400];//Let's keep this: simpler, more robust
+	
 	for(int i = 0; i < nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-      		for(int j = 0; j < plane[i].nelem; ++j){
+      		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
-          		map_elemPosition[i].insert(posType(j, pos));
+          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 0; j < plane[i].nelem; ++j){
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
-          		map_elemPosition[i].insert(posType(j, pos));
+          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 0; j < plane[i].nelem; ++j){
+	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
              		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
-          		map_elemPosition[i].insert(posType(j, pos));
+          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 		
@@ -1124,7 +1126,8 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
 				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
 				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
+				//host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
 				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
 			}
 			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
@@ -1133,7 +1136,8 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
 				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
 				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
+				//host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
 				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 			}
 			// printouts for test
@@ -1173,7 +1177,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
 				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
 				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
-				if(host_gEvent[i].EventID==0)cout << host_gEvent[i].AllHits[m].detectorID << " " << host_gEvent[i].AllHits[m].elementID << " " << host_gEvent[i].AllHits[m].tdcTime << " " << host_gEvent[i].AllHits[m].driftDistance << " " << host_gEvent[i].AllHits[m].pos << " " << host_gEvent[i].AllHits[m].flag << endl;
+				//if(host_gEvent[i].EventID<20)cout << host_gEvent[i].AllHits[m].detectorID << " " << host_gEvent[i].AllHits[m].elementID << " " << host_gEvent[i].AllHits[m].tdcTime << " " << host_gEvent[i].AllHits[m].driftDistance << " " << host_gEvent[i].AllHits[m].pos << " " << host_gEvent[i].AllHits[m].flag << endl;
 				if(hit_vec[m]->is_trigger_mask()){
 					host_gEvent[i].TriggerHits[ntrighits].index=hit_vec[m]->get_hit_id();
 					host_gEvent[i].TriggerHits[ntrighits].detectorID=hit_vec[m]->get_detector_id();
@@ -1377,20 +1381,20 @@ int main(int argn, char * argv[]) {
 	*/
 
 	// printouts for test
-	for(int i = 0; i < nEvtMax; ++i) {
-		//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
-		if(host_gEvent[i].EventID==0){
-			printf("%d:\n ", host_gEvent[i].EventID);
-			for(int j = 0; j<=nChamberPlanes; j++){
-				printf("%d ", host_gEvent[i].NHits[j]);
-			}printf("; %d\n", host_gEvent[i].nAH);
-			for(int j = 0; j<=host_gEvent[i].nAH; j++){
-				//if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)
-printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
-			}
-			printf("\n");
-		}
-	}
+	//for(int i = 0; i < nEvtMax; ++i) {
+	//	//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
+	//	if(host_gEvent[i].EventID==0){
+	//		printf("%d:\n ", host_gEvent[i].EventID);
+	//		for(int j = 0; j<=nChamberPlanes; j++){
+	//			printf("%d ", host_gEvent[i].NHits[j]);
+	//		}printf("; %d\n", host_gEvent[i].nAH);
+	//		for(int j = 0; j<=host_gEvent[i].nAH; j++){
+	//			//if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)
+	//			printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
+	//		}
+	//		printf("\n");
+	//	}
+	//}
 		
 	//for(int i = 0; i < host_gEvent[0].nAH; ++i) {
 		//cout<<"D0_1st_wire:" << (host_gEvent[0].NHits[1])<<endl;
