@@ -771,11 +771,11 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	int vidx = stID==0? stID*6+4 : stID*6;
 	
 	bool print = false;
-	if(0<=ic[index].EventID && ic[index].EventID<20){
-		print = true;
-		//printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
-		printf("evt %d, nx = %d, nu = %d, nv = %d\n", ic[index].EventID, nx, nu, nv);
-	}
+	//if(0<=ic[index].EventID && ic[index].EventID<20){
+	//	print = true;
+	//printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
+	//	printf("evt %d, nx = %d, nu = %d, nv = %d\n", ic[index].EventID, nx, nu, nv);
+	//}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
 	int n_tkl = 0;
@@ -785,21 +785,21 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 		double xpos = hitpairs_x[i].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_x[i].first ].pos+ic[index].AllHits[ hitpairs_x[i].second ].pos): ic[index].AllHits[ hitpairs_x[i].first ].pos;
 		double umin = xpos*planes[uidx].costheta-planes[uidx].u_win;
 		double umax = umin+2*planes[uidx].u_win;
-		if(print){
-			printf("evt %d, xpos = %1.6f, umin = %1.6f, umax = %1.6f\n", ic[index].EventID, xpos, umin, umax);
-			printf("evt %d, x1 pos = %1.6f, x2 pos =%1.6f\n", ic[index].EventID, ic[index].AllHits[ hitpairs_x[i].first ].pos, 
-				hitpairs_x[i].second >=0 ? ic[index].AllHits[ hitpairs_x[i].second ].pos : -1000000);
-		}
+		//if(print){
+		//	printf("evt %d, xpos = %1.6f, umin = %1.6f, umax = %1.6f\n", ic[index].EventID, xpos, umin, umax);
+		//	printf("evt %d, x1 pos = %1.6f, x2 pos =%1.6f\n", ic[index].EventID, ic[index].AllHits[ hitpairs_x[i].first ].pos, 
+		//		hitpairs_x[i].second >=0 ? ic[index].AllHits[ hitpairs_x[i].second ].pos : -1000000);
+		//}
 		for(int j = 0; j< nu; j++){
 			double upos = hitpairs_u[j].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_u[j].first ].pos+ic[index].AllHits[ hitpairs_u[j].second ].pos): ic[index].AllHits[ hitpairs_u[j].first ].pos;
 
 			if(upos<umin || upos>umax)continue;
 			//if(print)printf("evt %d, %1.6f <? upos = %1.6f <? %1.6f \n", ic[index].EventID, umin, upos, umax);
-			
+			//we chose by convention to start the numbering of the "planes" object arrays to 0 instead of 1, this is why we have to subtract 1 to detectorID to get the correct information
 			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z;
 			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z;
 			double z_v = planes[vidx].z_mean;
-			if(ic[index].EventID==0)printf("detid x = %d, detid u = %d, z_x = %1.6f, z_u = %1.6f, z_v = %1.6f\n", ic[index].AllHits[ hitpairs_x[i].first ].detectorID, ic[index].AllHits[ hitpairs_u[j].first ].detectorID, z_x, z_u, z_v);
+			//if(ic[index].EventID==0)printf("detid x = %d, detid u = %d, z_x = %1.6f, z_u = %1.6f, z_v = %1.6f\n", ic[index].AllHits[ hitpairs_x[i].first ].detectorID, ic[index].AllHits[ hitpairs_u[j].first ].detectorID, z_x, z_u, z_v);
 			double v_win1 = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].v_win_fac1;
 			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ vidx ].v_win_fac2;
 			double v_win3 = fabs(z_v-z_u)*planes[ vidx ].v_win_fac3;
@@ -807,9 +807,10 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 
 			double vmin = 2*xpos*planes[uidx].costheta-upos-v_win;
 			double vmax = vmin+2*v_win;
-			if(ic[index].EventID==0)printf("vmin = %1.6f, vmax = %1.6f, vwin = %1.6f, vwin1 = %1.6f, vwin2 = %1.6f, vwin3 = %1.6f\n", vmin, vmax, v_win, v_win1, v_win2, v_win3);
+			//if(ic[index].EventID==0)printf("vmin = %1.6f, vmax = %1.6f, vwin = %1.6f, vwin1 = %1.6f, vwin2 = %1.6f, vwin3 = %1.6f\n", vmin, vmax, v_win, v_win1, v_win2, v_win3);
 			for(int k = 0; k< nv; k++){
 				double vpos = hitpairs_v[k].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_v[k].first ].pos+ic[index].AllHits[ hitpairs_v[k].second ].pos): ic[index].AllHits[ hitpairs_v[k].first ].pos;
+				//if(ic[index].EventID<20)printf("evt %d: vmin = %1.6f <? vpos = %1.6f <? vmax = %1.6f\n", ic[index].EventID, vmin, vpos, vmax);
 				if(vpos<vmin || vpos>vmax)continue;
 				int nhits_tkl = 0;
 				oc[index].AllTracklets[n_tkl].stationID = stID;
@@ -839,11 +840,12 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 				}
 				if(n_tkl>TrackletSizeMax)printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
 				n_tkl++;
+				
 			}
 			
 		}
 	}
-	if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
+	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	//printf("%d ", n_tkl);
 	oc[index].nTracklets = n_tkl;
 	
@@ -1007,8 +1009,8 @@ int main(int argn, char * argv[]) {
 			int idx = i*6+j;
 			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[u_idx].spacing + u_factor[i];
 		}
-		cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
-		cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
+		//cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
+		//cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
 	}
 	cout << "Geometry file read out" << endl;
 	
