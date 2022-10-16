@@ -63,12 +63,12 @@ const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 const int TrackletSizeMax = 200;// guess
 
-const int TX_MAX = 0.15;
-const int TY_MAX = 0.1;
-const int X0_MAX = 150;
-const int Y0_MAX = 50;
-const int INVP_MAX = 0.2;
-const int INVP_MIN = 0.01;
+const double TX_MAX = 0.15;
+const double TY_MAX = 0.1;
+const double X0_MAX = 150;
+const double Y0_MAX = 50;
+const double INVP_MAX = 0.2;
+const double INVP_MIN = 0.01;
 
 
 typedef std::unordered_map<int, double>::value_type   posType;
@@ -773,7 +773,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 	bool print = false;
 	if(0<=ic[index].EventID && ic[index].EventID<20){
 		print = true;
-		printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
+		//printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
+		printf("evt %d, nx = %d, nu = %d, nv = %d\n", ic[index].EventID, nx, nu, nv);
 	}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
@@ -991,11 +992,11 @@ int main(int argn, char * argv[]) {
 	
 	for(int i = 0; i<5; i++){
 		int u_idx = i*6+4;
-		if(i==0)int u_idx = i*6;
+		if(i==0)u_idx = i*6;
 		int x_idx = i*6+2;
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j;
-			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx-1].z):0.5*(plane[idx].z+plane[idx+1].z);
+			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx+1].z):0.5*(plane[idx].z+plane[idx-1].z);
 			
 			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
 			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
@@ -1004,9 +1005,10 @@ int main(int argn, char * argv[]) {
 		
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j;
-			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[i].spacing + u_factor[i];
+			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[u_idx].spacing + u_factor[i];
 		}
-		//cout << i*6 << " " << plane[i*6].u_win << endl;
+		cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
+		cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
 	}
 	cout << "Geometry file read out" << endl;
 	
