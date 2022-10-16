@@ -796,18 +796,18 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 			if(upos<umin || upos>umax)continue;
 			//if(print)printf("evt %d, %1.6f <? upos = %1.6f <? %1.6f \n", ic[index].EventID, umin, upos, umax);
 			
-			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID ].z;
-			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].z;
+			double z_x = hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z;
+			double z_u = hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z;
 			double z_v = planes[vidx].z_mean;
-
-			double v_win1 = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].v_win_fac1;
+			if(ic[index].EventID==0)printf("detid x = %d, detid u = %d, z_x = %1.6f, z_u = %1.6f, z_v = %1.6f\n", ic[index].AllHits[ hitpairs_x[i].first ].detectorID, ic[index].AllHits[ hitpairs_u[j].first ].detectorID, z_x, z_u, z_v);
+			double v_win1 = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].v_win_fac1;
 			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ vidx ].v_win_fac2;
 			double v_win3 = fabs(z_v-z_u)*planes[ vidx ].v_win_fac3;
-			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID ].spacing;
+			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].spacing;
 
 			double vmin = 2*xpos*planes[uidx].costheta-upos-v_win;
 			double vmax = vmin+2*v_win;
-
+			if(ic[index].EventID==0)printf("vmin = %1.6f, vmax = %1.6f, vwin = %1.6f, vwin1 = %1.6f, vwin2 = %1.6f, vwin3 = %1.6f\n", vmin, vmax, v_win, v_win1, v_win2, v_win3);
 			for(int k = 0; k< nv; k++){
 				double vpos = hitpairs_v[k].second>=0 ? 0.5*(ic[index].AllHits[ hitpairs_v[k].first ].pos+ic[index].AllHits[ hitpairs_v[k].second ].pos): ic[index].AllHits[ hitpairs_v[k].first ].pos;
 				if(vpos<vmin || vpos>vmax)continue;
@@ -1000,7 +1000,7 @@ int main(int argn, char * argv[]) {
 			
 			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
 			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
-			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
+			plane[idx].v_win_fac3 = fabs(plane[u_idx].sintheta*TY_MAX);
 		}
 		
 		for(int j = 0; j<6; j++){
