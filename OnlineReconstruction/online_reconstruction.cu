@@ -1,4 +1,5 @@
 #include "gpufit.h"
+#include "interface.h"
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -36,9 +37,10 @@
 #include <TStopwatch.h>
 #include <TTimeStamp.h>
 #include <TString.h>
-#include <unordered_map>
+//#include <unordered_map>
 //#include "LoadInput.h"
 #include "OROutput.h"
+#include "device_fit_interface.cuh"
 
 #include "SQEvent_v1.h"
 #include "SQHit_v1.h"
@@ -71,7 +73,7 @@ const double INVP_MAX = 0.2;
 const double INVP_MIN = 0.01;
 
 
-typedef std::unordered_map<int, double>::value_type   posType;
+//typedef std::unordered_map<int, double>::value_type   posType;
 
 // function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -249,6 +251,67 @@ struct get_first_event_hit_pos
   }
 };
 
+
+// Linear regression: fit of tracks
+__device__ void linear_regression_1D(size_t const n_points_per_fit, REAL *x_points, REAL *z_points, REAL *x_weights, REAL* output_parameters)
+{
+	size_t const n_fits = 1;
+	size_t const n_model_parameters = 2;
+
+	
+	size_t const user_info_size = n_points_per_fit * sizeof(REAL);
+	
+
+	// tolerance
+	REAL const tolerance = 0.001f;
+
+	// maximum number of iterations
+	int const max_number_iterations = 20;
+
+	// estimator ID
+	int const estimator_id = LSE;
+
+	// model ID
+	int const model_id = LINEAR_1D;
+
+	// parameters to fit (all of them)
+	int parameters_to_fit[n_model_parameters] = {1, 1};
+	REAL initial_parameters[n_model_parameters] = { x_points[0], (x_points[n_points_per_fit]-x_points[0])/(z_points[n_points_per_fit]-z_points[0]) };
+	
+	int output_states[n_fits];
+	REAL output_chi_squares[n_fits];
+	int output_n_iterations[n_fits];
+	
+	REAL constraints[n_model_parameters];
+	int constraint_types[n_model_parameters];
+	
+	device_fit_interface(
+		n_fits,
+		max_number_iterations,
+        	tolerance,
+        	model_id,
+        	estimator_id,
+        	n_points_per_fit,
+        	x_points,
+        	x_weights,
+        	user_info_size,
+        	reinterpret_cast< char * >( thrust::raw_pointer_cast(z_points) ),
+		initial_parameters,
+        	parameters_to_fit,
+        	output_parameters,
+        	output_states,
+        	output_chi_squares,
+        	output_n_iterations,
+        	constraints,
+        	constraint_types
+	);
+	
+	/*
+	int const status = _gpu_fit_interface(
+        );
+	*/
+}
+
 // Linear regression: fit of tracks
 void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust::device_vector<REAL> &d_parameters)
 {
@@ -306,7 +369,7 @@ void linear_regression_example(int n_points_per_fit, REAL *device_input, thrust:
 
 	// parameters to fit (all of them)
 	std::vector< int > parameters_to_fit(n_model_parameters, 1);
-
+	
 	
 	thrust::device_vector< int > d_states(n_fits);
 	thrust::device_vector< REAL > d_chi_square(n_fits);
@@ -814,33 +877,64 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, int stID, gPlane*
 				if(vpos<vmin || vpos>vmax)continue;
 				int nhits_tkl = 0;
 				oc[index].AllTracklets[n_tkl].stationID = stID;
+				float x_array[6];
+				float dx_array[6];
+				float z_array[6];
+				int npts = 0;
 				if(hitpairs_x[i].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_x[i].first ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_x[i].first ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z;
+					npts++;
 				}
 				if(hitpairs_x[i].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_x[i].second ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_x[i].second ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].z;
+					npts++;
 				}
 				if(hitpairs_u[j].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].first ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z;
+					npts++;
 				}
 				if(hitpairs_u[j].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].z;
+					npts++;
 				}
 				if(hitpairs_v[k].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].z;
+					npts++;
 				}
 				if(hitpairs_v[k].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
+					x_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].pos;
+					dx_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].driftDistance;
+					z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].z;
+					npts++;
 				}
+				//include fit here:
+				float d_parameters[2];
+				linear_regression_1D(npts, x_array, z_array, dx_array, d_parameters);
+				
 				if(n_tkl>TrackletSizeMax)printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
 				n_tkl++;
-				
 			}
 			
 		}
@@ -1156,6 +1250,7 @@ int main(int argn, char * argv[]) {
 			//}
 		}else{
 			//Default option: e1039
+			//if(_event_id<20)cout << " evt: " << _event_id << " nhits = " << hit_vec.size() << endl; 
 			host_gEvent[i].RunID = _run_id;
 			host_gEvent[i].SpillID = _spill_id;
 			host_gEvent[i].EventID = _event_id;
@@ -1170,6 +1265,7 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].nAH = hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
 				if(hit_vec[m]->get_detector_id()>54){
+					//if(_event_id<20)cout << " dark photon plane hit! " << hit_vec[m]->get_detector_id() << endl;  
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
@@ -1181,7 +1277,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
 				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
 				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
-				//if(host_gEvent[i].EventID<20)cout << host_gEvent[i].AllHits[m].detectorID << " " << host_gEvent[i].AllHits[m].elementID << " " << host_gEvent[i].AllHits[m].tdcTime << " " << host_gEvent[i].AllHits[m].driftDistance << " " << host_gEvent[i].AllHits[m].pos << " " << host_gEvent[i].AllHits[m].flag << endl;
+				//if(host_gEvent[i].EventID<20)cout << " det " << host_gEvent[i].AllHits[m].detectorID << " elem " << host_gEvent[i].AllHits[m].elementID << " time " << host_gEvent[i].AllHits[m].tdcTime << " dd " << host_gEvent[i].AllHits[m].driftDistance << " pos " << host_gEvent[i].AllHits[m].pos << endl;
 				if(hit_vec[m]->is_trigger_mask()){
 					host_gEvent[i].TriggerHits[ntrighits].index=hit_vec[m]->get_hit_id();
 					host_gEvent[i].TriggerHits[ntrighits].detectorID=hit_vec[m]->get_detector_id();
