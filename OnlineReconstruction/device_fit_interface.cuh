@@ -52,11 +52,11 @@ __device__ int _gpu_run_fit(
 	int* constraint_types
 )
 {
+	/*
 	for(int i = 0; i<n_parameters; i++){
 		output_parameters[i] = initial_parameters[i];
 	}
-	/*
-	REAL* values;
+	REAL* values;// same as number of points
 	REAL* derivatives;
 	REAL* chi_squares;
 	REAL* gradients;
@@ -71,7 +71,6 @@ __device__ int _gpu_run_fit(
 			project_parameter_to_box(output_parameters[i], lower_bound, upper_bound, constraint_types[i]);
 		}
 	}
-	
 	
 	//_calc_curve_values();
 	calculate_model(
@@ -101,7 +100,7 @@ __device__ int _gpu_run_fit(
 	);
 	
 	for (int parameter_index = 0; parameter_index < n_parameters; parameter_index++){
-		int derivative_index = parameters_to_fit[parameter_index]*n_points;
+		int derivative_index = parameters_to_fit_indices[parameter_index]*n_points;
 		calculate_gradient(
 			estimator_id,
                     	gradients,
