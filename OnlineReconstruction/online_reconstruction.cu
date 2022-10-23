@@ -167,6 +167,8 @@ public:
       float B[4];// input vector
       
       float output_parameters[4];
+      float output_parameters_errors[4];
+      float chi2;
 };
 
 
@@ -330,7 +332,7 @@ __device__ void linear_regression_1D(size_t const n_points_per_fit, REAL *x_poin
 	*/
 }
 
-__device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters)
+__device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL chi2)
 {
 	//For a 3D fit to a straight-line:
 	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2 + wyi*(y - (Y+Yp*zi))^2
@@ -1044,11 +1046,15 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				//include fit here:
 				float d_parameters[4];
 				//if(ic[index].EventID==0)
-				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters);
+				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters, fitarrays[index].chi2);
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
 				oc[index].AllTracklets[n_tkl].ty = fitarrays[index].output_parameters[3];
+				oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters[0];
+				oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters[1];
+				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters[2];
+				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters[3];
 				//linear_regression_1D(npts, x_array, z_array, dx_array, d_parameters);
 				
 				if(ic[index].EventID==0)printf("track: x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f\n", 
