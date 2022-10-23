@@ -995,7 +995,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_x[i].second ].pos; // costheta = 1.
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].resolution; // costheta = 1.
+					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].resolution; // costheta = 1.
 					fitarrays[index].y_array[npts] = 0.0; // sintheta = 0
 					fitarrays[index].dy_array[npts] = 0.0; // sintheta = 0
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].z;
@@ -1043,7 +1043,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				}
 				//include fit here:
 				float d_parameters[4];
-				if(ic[index].EventID==0)linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters);
+				//if(ic[index].EventID==0)
+				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters);
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
@@ -1178,7 +1179,7 @@ int main(int argn, char * argv[]) {
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
 	int ipl, nelem;
-	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, deltaW_;
+	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, resolution, deltaW_;
  	while ( getline(in_geom, buffer) ) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
@@ -1194,6 +1195,7 @@ int main(int argn, char * argv[]) {
 	      plane[ipl-1].scaley = scaley;
 	      plane[ipl-1].y0 = y0;
 	      plane[ipl-1].sintheta = sintheta;
+	      plane[ipl-1].resolution = resolution;
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
