@@ -378,7 +378,6 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
     		A[3*4+3] += y_weights[i]*z_points[i]*z_points[i];
     	}
 	
-	
 	//printf("\n");
 	//for(int j = 0; j<4; j++){//row
         //        for(int k = 0; k<4; k++){//column
@@ -409,11 +408,17 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 	
 	for(int j = 0; j<4; j++){//row
 		output_parameters[j] = 0.0;
+		printf(" %d sqrt(%1.6f) = %1.6f \n", j, fabs(A[j*4+j]), sqrtf(fabs(A[j*4+j])));
+		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
 		for(int k = 0; k<4; k++){//column
 			output_parameters[j]+= Ainv[j*4+k]*B[k];
 		}
 	}
 	
+	chi2 = 0;
+	for( int i=0; i<n_points; i++ ){
+		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[2])+y_weights[i]*(output_parameters[1]+z_points[i]*output_parameters[3]);
+	}
 	
 }
 
@@ -1046,19 +1051,24 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				//include fit here:
 				float d_parameters[4];
 				//if(ic[index].EventID==0)
-				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters, fitarrays[index].chi2);
+				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
 				oc[index].AllTracklets[n_tkl].ty = fitarrays[index].output_parameters[3];
-				oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters[0];
-				oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters[1];
-				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters[2];
-				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters[3];
+				oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters_errors[0];
+				oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters_errors[1];
+				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters_errors[2];
+				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
+				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
 				//linear_regression_1D(npts, x_array, z_array, dx_array, d_parameters);
 				
-				if(ic[index].EventID==0)printf("track: x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f\n", 
-					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].ty);
+				//if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
+					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
+					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
+					oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].err_tx, 
+					oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
+					oc[index].AllTracklets[n_tkl].chisq);
 				
 				if(n_tkl>TrackletSizeMax)printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
 				n_tkl++;
