@@ -228,6 +228,18 @@ class gPlane {
       float v_win_fac1;
       float v_win_fac2;
       float v_win_fac3;
+      float p1x_w1;
+      float p1y_w1;
+      float p1z_w1;
+      float deltapx;
+      float deltapy;
+      float deltapz;
+      float dp1x;
+      float dp1y;
+      float dp1z;
+      float ddeltapx;
+      float ddeltapy;
+      float ddeltapz;
 };
 
 // Hit comparison
@@ -1242,7 +1254,7 @@ int main(int argn, char * argv[]) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
 	      iss.str(buffer);
-	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta >> resolution;
+	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z >> ddeltapx >> ddeltapy >> ddeltapz >> resolution;
 	      plane[ipl-1].z = z;
 	      plane[ipl-1].nelem = nelem;
 	      plane[ipl-1].spacing = spacing;
@@ -1263,6 +1275,18 @@ int main(int argn, char * argv[]) {
 		iss >> deltaW_;
 		plane[ipl-1].deltaW_[0] = deltaW_;
 	      }
+	      gPlane[ipl-1].p1x = p1x;
+	      gPlane[ipl-1].p1y = p1y;
+	      gPlane[ipl-1].p1z = p1z;
+	      gPlane[ipl-1].deltapx = deltapx;
+	      gPlane[ipl-1].deltapy = deltapy;
+	      gPlane[ipl-1].deltapz = deltapz;
+	      gPlane[ipl-1].dp1x = dp1x;
+	      gPlane[ipl-1].dp1y = dp1y;
+	      gPlane[ipl-1].dp1z = dp1z;
+	      gPlane[ipl-1].ddeltapx = dp2x;
+	      gPlane[ipl-1].ddeltapy = dp2y;
+	      gPlane[ipl-1].ddeltapz = dp2z;
 	      ipl++;
 	}
 	
@@ -1290,7 +1314,6 @@ int main(int argn, char * argv[]) {
 	
 	//std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
 	double wire_position[54][400];//Let's keep this: simpler, more robust
-	
 	for(int i = 0; i < nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
       		for(int j = 1; j <= plane[i].nelem; ++j){
