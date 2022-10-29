@@ -64,7 +64,7 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
-const int TrackletSizeMax = 200;// guess
+const int TrackletSizeMax = 300;
 
 const double TX_MAX = 0.15;
 const double TY_MAX = 0.1;
@@ -197,6 +197,11 @@ class gEvent {
 //Output class
 class gSW {
 public:
+	gSW(){
+		EventID = -1;
+		nAH = 0;
+		nTracklets = 0;
+	}
 	int EventID;
 	int nAH;
 	int nTracklets;
@@ -332,7 +337,7 @@ __device__ void linear_regression_1D(size_t const n_points_per_fit, REAL *x_poin
 	*/
 }
 
-__device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL chi2)
+__device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL& chi2)
 {
 	//For a 3D fit to a straight-line:
 	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2 + wyi*(y - (Y+Yp*zi))^2
@@ -348,6 +353,13 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 			Ainv[j*4+k] = 0;
 		}
 	}
+	
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", A[j*4+k]);
+		}printf("\n");
+	}printf("\n");
 	
 	for( int i=0; i<n_points; i++ ){
 		B[0] += x_weights[i]*x_points[i];
@@ -376,23 +388,25 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
     		A[3*4+1] += y_weights[i]*z_points[i];
     		A[3*4+2] += 0.0;
     		A[3*4+3] += y_weights[i]*z_points[i]*z_points[i];
+
+		printf("pt %d: x: %1.6f +- %1.6f, y: %1.6f +- %1.6f, z = %1.6f\n", i, x_points[i], x_weights[i], y_points[i], y_weights[i], z_points[i]);
     	}
 	
-	//printf("\n");
-	//for(int j = 0; j<4; j++){//row
-        //        for(int k = 0; k<4; k++){//column
-	//		printf("%1.6f ,", A[j*4+k]);
-	//	}printf("\n");
-	//}printf("\n");
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", A[j*4+k]);
+		}printf("\n");
+	}printf("\n");
 	
 	matinv_4x4_matrix_per_thread(A, Ainv);
 	
-	//printf("\n");
-	//for(int j = 0; j<4; j++){//row
-        //        for(int k = 0; k<4; k++){//column
-	//		printf("%1.6f ,", Ainv[j*4+k]);
-	//	}printf("\n");
-	//}printf("\n");
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", Ainv[j*4+k]);
+		}printf("\n");
+	}printf("\n");
 	
 	//printf("\n");
 	//REAL  I_test[16];
@@ -408,7 +422,6 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 	
 	for(int j = 0; j<4; j++){//row
 		output_parameters[j] = 0.0;
-		//printf(" %d sqrt(%1.6f) = %1.6f \n", j, fabs(A[j*4+j]), sqrtf(fabs(A[j*4+j])));
 		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
 		for(int k = 0; k<4; k++){//column
 			output_parameters[j]+= Ainv[j*4+k]*B[k];
@@ -417,7 +430,8 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 	
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
-		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[2])+y_weights[i]*(output_parameters[1]+z_points[i]*output_parameters[3]);
+		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[2])*(output_parameters[0]+z_points[i]*output_parameters[2])
+		+y_weights[i]*(output_parameters[1]+z_points[i]*output_parameters[3])*(output_parameters[1]+z_points[i]*output_parameters[3]);
 	}
 	
 }
@@ -833,6 +847,21 @@ __global__ void gkernel_eR(gEvent* ic) {
 	*/
 }
 
+// function to match a tracklet to a hodoscope hit
+__device__ int match_tracklet_to_hodo(gTracklet *tkl, int stID, gEvent* ic, gPlane* planes)
+{
+	
+	// define the region in which we are supposed to have hits:
+	
+	
+	// loop on the hits and select hodoscope hits corresponding to the station
+	
+	
+	// 
+	return 0;
+}
+
+
 // function to make the hit pairs in station;
 // I assume it will only be called by the tracklet builder
 // (not by the main function), so I can make it a "device" function. 
@@ -951,7 +980,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	//}
 	//one has to have at least one hit in x, u, v
 	if(nx==0 || nu==0 || nv==0)return;
-	int n_tkl = 0;
+	int n_tkl = oc[index].nTracklets;
 	
 	//X-U combinations first
 	for(int i = 0; i< nx; i++){
@@ -988,15 +1017,17 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				int nhits_tkl = 0;
 				oc[index].AllTracklets[n_tkl].stationID = stID;
 				int npts = 0;
+				int nxhits = 0, nuhits = 0, nvhits = 0;
 				if(hitpairs_x[i].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_x[i].first ].pos; // costheta = 1.
 					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].resolution; // costheta = 1.
 					fitarrays[index].y_array[npts] = 0.0; // sintheta = 0
-					fitarrays[index].dy_array[npts] = 0.0; // sintheta = 0
+					fitarrays[index].dy_array[npts] = 1000.0; // sintheta = 0
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z;
 					npts++;
+					nxhits++;
 				}
 				if(hitpairs_x[i].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
@@ -1004,54 +1035,62 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_x[i].second ].pos; // costheta = 1.
 					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].resolution; // costheta = 1.
 					fitarrays[index].y_array[npts] = 0.0; // sintheta = 0
-					fitarrays[index].dy_array[npts] = 0.0; // sintheta = 0
+					fitarrays[index].dy_array[npts] = 1000.0; // sintheta = 0
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].z;
 					npts++;
+					nxhits++;
 				}
 				if(hitpairs_u[j].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].first ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
+					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta);
 					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
+					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta);
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z;
 					npts++;
+					nuhits++;
 				}
 				if(hitpairs_u[j].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
+					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta);
 					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
+					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta);
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].z;
 					npts++;
+					nuhits++;
 				}
 				if(hitpairs_v[k].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
+					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta);
 					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
+					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta);
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].z;
 					npts++;
+					nvhits++;
 				}
 				if(hitpairs_v[k].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
+					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta);
 					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
+					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta);
 					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].z;
 					npts++;
+					nvhits++;
 				}
+				if(npts<4)continue;
+				if(nxhits<1 || nuhits<1 || nvhits<1)continue;
+				
 				//include fit here:
 				float d_parameters[4];
-				//if(ic[index].EventID==0)
-				linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
+				if(ic[index].EventID==0)
+					linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
@@ -1063,14 +1102,17 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
 				//linear_regression_1D(npts, x_array, z_array, dx_array, d_parameters);
 				
-				//if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
-				//	oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
-				//	oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
-				//	oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].err_tx, 
-				//	oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
-				//	oc[index].AllTracklets[n_tkl].chisq);
+				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
+					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
+					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
+					oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].err_tx, 
+					oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
+					oc[index].AllTracklets[n_tkl].chisq);
 				
-				if(n_tkl>TrackletSizeMax)printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
+				if(n_tkl>TrackletSizeMax){
+					continue;
+					//printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
+				}
 				n_tkl++;
 			}
 			
@@ -1431,12 +1473,13 @@ int main(int argn, char * argv[]) {
 		}
 	}
 	cout << "loaded events" << endl;
+	clock_t cp2 = clock();
 	
-//If the decoded has NOT been sorted...
 //	for(int i = 0; i < nEvtMax; ++i) {
 //		thrust::stable_sort(host_gEvent[i].AllHits, host_gEvent[i].AllHits+host_gEvent[i].nAH, lessthan());
 //	}
-	
+
+	clock_t cp3 = clock();
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
@@ -1456,8 +1499,6 @@ int main(int argn, char * argv[]) {
 	gFitArrays *device_gFitArrays;
 	
 	// copy of data from host to device: evaluate operation time 
-	clock_t cp2 = clock();
-	
 	// printDeviceStatus();
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
@@ -1474,7 +1515,8 @@ int main(int argn, char * argv[]) {
 	// gpuErrchk( cudaMemcpy(device_output_TKL, host_output_TKL, NBytesAllEvent, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
 	// cudaMemcpy(device_output_eR, host_output, sizeofoutput_eR, cudaMemcpyHostToDevice);
-	
+	clock_t cp4 = clock();
+		
 	// now data is transfered in the device: kernel function for event reconstruction called;
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
@@ -1499,17 +1541,25 @@ int main(int argn, char * argv[]) {
 	//	if(device_gPlane[m].u_win!=0)printf("device_gplane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, device_gPlane[m].u_win, device_gPlane[m].costheta);
 	//}
 	
-	auto start_tkl = std::chrono::system_clock::now();
+	auto start_tkl2 = std::chrono::system_clock::now();
 	// I first want to see if indeed we can reuse the "gEvent" pointer
 	int stID = 3;// to make explicit that we are requiring station 3
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane);
-	auto end_tkl = std::chrono::system_clock::now();
+	auto end_tkl2 = std::chrono::system_clock::now();
+	
+	auto start_tkl3 = std::chrono::system_clock::now();
+	stID = 4;
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane);
+	stID = 5;
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane);
 	//cout << endl;
 	// check status of device and synchronize again;
+	auto end_tkl3 = std::chrono::system_clock::now();
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
+	clock_t cp5 = clock();
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
 
@@ -1604,7 +1654,7 @@ int main(int argn, char * argv[]) {
 	// cudaFree(device_output_TKL);
 
 	//auto end_kernel = std::chrono::system_clock::now();
-	clock_t cp3 = clock();
+
 
 	delete rawEvent;
 
@@ -1644,18 +1694,28 @@ int main(int argn, char * argv[]) {
 		//cout<<"size: "<<i<<endl;
 	//}
 	// printing the time required for all operations
-	clock_t cp4 = clock();
+	clock_t cp6 = clock();
 	auto end = std::chrono::system_clock::now();
 
-	//double cpu_secs = double(cp4-cp3+cp2-cp1) / CLOCKS_PER_SEC;
-	double cpu_secs = double(cp2-cp1) / CLOCKS_PER_SEC;
+	auto evt_prep = cp2-cp1;
+	auto cp_to_gpu = cp4-cp3;
+	auto cp_from_gpu = cp6-cp5;
+	
 	auto gpu_er = end_er - start_er;
-	auto gpu_tkl = end_tkl - start_tkl;
+	auto er_tkl = start_tkl2-end_er;
+	auto gpu_tkl2 = end_tkl2 - start_tkl2;
+	auto tkl2_tkl3 = start_tkl3-end_tkl2;
+	auto gpu_tkl3 = end_tkl3 - start_tkl3;
 	auto overall = end - start;
-	cout<<"Read/prepare events: "<<cpu_secs<<endl;
-	cout<<"event reducing: "<<(gpu_er.count()/1000000000.0)<<endl;
-	cout<<"trackletting: "<<(gpu_tkl.count()/1000000000.0)<<endl;
-	cout<<"Total time: "<<(overall.count()/1000000000.0)<<endl;
-
+	cout<<"Read/prepare events: "<<evt_prep/1000000000.<<endl;
+	cout<<"Copy to GPU: "<<cp_to_gpu/1000000000.<<endl;
+	cout<<"Copy from GPU: "<<cp_from_gpu/1000000000.<<endl;
+	cout<<"event reducing: "<<(gpu_er.count())/1000000000.<<endl;
+	cout<<" <-> : "<<(er_tkl.count())/1000000000.<<endl;
+	cout<<"st2 trackletting: "<<(gpu_tkl2.count())/1000000000.<<endl;
+	cout<<" <-> : "<<(tkl2_tkl3.count())/1000000000.<<endl;
+	cout<<"st3 trackletting: "<<(gpu_tkl3.count())/1000000000.<<endl;
+	cout<<"Total time: "<<(overall.count())/1000000000.<<endl;
+		
 	return 0;
 }
