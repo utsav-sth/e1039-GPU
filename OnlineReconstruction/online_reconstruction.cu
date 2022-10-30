@@ -156,11 +156,22 @@ class gTracklet {
 
 class gFitArrays {
 public:
-      float x_array[nDetectors];// x position arrays
-      float y_array[nDetectors];// y position arrays
-      float z_array[nDetectors];// z position arrays
-      float dx_array[nDetectors];// x position uncertainty
-      float dy_array[nDetectors];// x position uncertainty
+      //float x_array[nDetectors];// x position arrays
+      //float y_array[nDetectors];// y position arrays
+      //float z_array[nDetectors];// z position arrays
+      //float dx_array[nDetectors];// x position uncertainty
+      //float dy_array[nDetectors];// x position uncertainty
+
+      float drift_dist[nDetectors]; // hit drift distance
+      float resolution[nDetectors]; // detector resolution
+      
+      float p1x[nDetectors];// x bottom end point of the wire hit 
+      float p1y[nDetectors];// y bottom end point of the wire hit 
+      float p1z[nDetectors];// z bottom end point of the wire hit 
+      
+      float deltapx[nDetectors];// x distance between bottom and top end points of the wire hit 
+      float deltapy[nDetectors];// y distance between bottom and top end points of the wire hit 
+      float deltapz[nDetectors];// z distance between bottom and top end points of the wire hit 
       
       float A[16];// matrix
       float Ainv[16];// matrix
@@ -231,15 +242,12 @@ class gPlane {
       float p1x_w1;
       float p1y_w1;
       float p1z_w1;
-      float deltapx_w1;
-      float deltapy_w1;
-      float deltapz_w1;
+      float deltapx;
+      float deltapy;
+      float deltapz;
       float dp1x;
       float dp1y;
       float dp1z;
-      float ddeltapx;
-      float ddeltapy;
-      float ddeltapz;
 };
 
 // Hit comparison
@@ -875,66 +883,84 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				if(hitpairs_x[i].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_x[i].first ].pos; // costheta = 1.
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].resolution; // costheta = 1.
-					fitarrays[index].y_array[npts] = 0.0; // sintheta = 0
-					fitarrays[index].dy_array[npts] = 1000.0; // sintheta = 0
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].z;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_x[i].first ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].first ].detectorID-1 ].deltapz;
 					npts++;
 					nxhits++;
 				}
 				if(hitpairs_x[i].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_x[i].second ].pos; // costheta = 1.
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].resolution; // costheta = 1.
-					fitarrays[index].y_array[npts] = 0.0; // sintheta = 0
-					fitarrays[index].dy_array[npts] = 1000.0; // sintheta = 0
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].z;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_x[i].second ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_x[i].second ].detectorID-1 ].deltapz;
 					npts++;
 					nxhits++;
 				}
 				if(hitpairs_u[j].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].first ];
-					oc[index].AllTracklets[n_tkl].nUHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta);
-					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta);
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].z;
+					oc[index].AllTracklets[n_tkl].nXHits++;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_u[j].first ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_u[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_u[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].deltapz;
 					npts++;
 					nuhits++;
 				}
 				if(hitpairs_u[j].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].costheta);
-					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_u[j].first ].detectorID-1 ].sintheta);
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].z;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_u[j].second ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_u[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_u[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_u[j].second ].detectorID-1 ].deltapz;
 					npts++;
 					nuhits++;
 				}
 				if(hitpairs_v[k].first>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta);
-					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta);
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].z;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_v[k].first ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_v[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_v[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].deltapz;
 					npts++;
 					nvhits++;
 				}
 				if(hitpairs_v[k].second>=0){
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
-					fitarrays[index].x_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta;
-					fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].costheta);
-					fitarrays[index].y_array[npts] = ic[index].AllHits[ hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta;
-					fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].resolution/fabs(planes[ ic[index].AllHits[ hitpairs_v[k].first ].detectorID-1 ].sintheta);
-					fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].z;
+					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ hitpairs_v[k].second ].driftDistance;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ hitpairs_v[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ hitpairs_v[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].deltapx;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].deltapy;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ hitpairs_v[k].second ].detectorID-1 ].deltapz;
 					npts++;
 					nvhits++;
 				}
@@ -943,8 +969,9 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				
 				//include fit here:
 				float d_parameters[4];
-				if(ic[index].EventID==0)
-					linear_regression_3D(npts, fitarrays[index].x_array, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
+				
+				//if(ic[index].EventID==0)
+				track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
@@ -954,8 +981,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters_errors[2];
 				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
 				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
-				//linear_regression_1D(npts, x_array, z_array, dx_array, d_parameters);
-				
+								
 				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
 					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
 					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
@@ -1092,13 +1118,12 @@ int main(int argn, char * argv[]) {
   	string buffer;
 	int ipl, nelem;
 	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, resolution, deltaW_;
-	double p1x, p1y, p1z, deltapx, deltapy, deltapz;
-	double dp1x, dp1y, dp1z, ddeltapx, ddeltapy, ddeltapz;
+	double p1x, p1y, p1z, deltapx, deltapy, deltapz, dp1x, dp1y, dp1z;
  	while ( getline(in_geom, buffer) ) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
 	      iss.str(buffer);
-	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z >> ddeltapx >> ddeltapy >> ddeltapz >> resolution;
+	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
 	      plane[ipl-1].z = z;
 	      plane[ipl-1].nelem = nelem;
 	      plane[ipl-1].spacing = spacing;
@@ -1110,6 +1135,15 @@ int main(int argn, char * argv[]) {
 	      plane[ipl-1].y0 = y0;
 	      plane[ipl-1].sintheta = sintheta;
 	      plane[ipl-1].resolution = resolution;
+	      plane[ipl-1].p1x_w1 = p1x;
+	      plane[ipl-1].p1y_w1 = p1y;
+	      plane[ipl-1].p1z_w1 = p1z;
+	      plane[ipl-1].deltapx = deltapx;
+	      plane[ipl-1].deltapy = deltapy;
+	      plane[ipl-1].deltapz = deltapz;
+	      plane[ipl-1].dp1x = dp1x;
+	      plane[ipl-1].dp1y = dp1y;
+	      plane[ipl-1].dp1z = dp1z;
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
@@ -1119,18 +1153,6 @@ int main(int argn, char * argv[]) {
 		iss >> deltaW_;
 		plane[ipl-1].deltaW_[0] = deltaW_;
 	      }
-	      plane[ipl-1].p1x_w1 = p1x;
-	      plane[ipl-1].p1y_w1 = p1y;
-	      plane[ipl-1].p1z_w1 = p1z;
-	      plane[ipl-1].deltapx_w1 = deltapx;
-	      plane[ipl-1].deltapy_w1 = deltapy;
-	      plane[ipl-1].deltapz_w1 = deltapz;
-	      plane[ipl-1].dp1x = dp1x;
-	      plane[ipl-1].dp1y = dp1y;
-	      plane[ipl-1].dp1z = dp1z;
-	      plane[ipl-1].ddeltapx = ddeltapx;
-	      plane[ipl-1].ddeltapy = ddeltapy;
-	      plane[ipl-1].ddeltapz = ddeltapz;
 	      ipl++;
 	}
 	
