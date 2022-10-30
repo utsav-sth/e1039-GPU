@@ -265,3 +265,168 @@ __device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
         Ainv[3*4+icol3] = AA33;
     //}
 }
+
+
+
+__device__ void track_residual_minimizer(size_t const n_points, 
+	   				 REAL* driftdist, REAL* resolutions, 
+					 REAL* p1x, REAL* p1y, REAL* p1z, 
+					 REAL* deltapx, REAL* deltapy, REAL* deltapz, 
+					 REAL *A, REAL* Ainv, REAL* B, 
+					 REAL* output_parameters, REAL* output_parameters_errors, REAL& chi2)
+{
+	for(int j = 0; j<4; j++){
+		B[j] = 0;
+		for(int k = 0; k<4; k++){
+			A[j*4+k] = 0;
+			Ainv[j*4+k] = 0;
+		}
+	}
+	
+	for( int i=0; i<n_points; i++ ){
+		B[0] += 0.0;
+		B[1] += 0.0;
+		B[2] += 0.0;
+		B[3] += 0.0;
+		
+		// first index: row; second index: col;
+		// (consistent with what is used in the matrix inversion routine) 
+		A[0*4+0] += 0.0;
+		A[0*4+1] += 0.0;
+		A[0*4+2] += 0.0;
+		A[0*4+3] += 0.0;
+
+		A[1*4+0] += 0.0;
+		A[1*4+1] += 0.0;
+		A[1*4+2] += 0.0;
+		A[1*4+3] += 0.0;
+
+		A[2*4+0] += 0.0;
+    		A[2*4+1] += 0.0;
+		A[2*4+2] += 0.0;
+		A[2*4+3] += 0.0;
+
+    		A[3*4+0] += 0.0;
+    		A[3*4+1] += 0.0;
+    		A[3*4+2] += 0.0;
+    		A[3*4+3] += 0.0;
+	}
+	
+	matinv_4x4_matrix_per_thread(A, Ainv);
+	
+	for(int j = 0; j<4; j++){//row
+		output_parameters[j] = 0.0;
+		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
+		for(int k = 0; k<4; k++){//column
+			output_parameters[j]+= Ainv[j*4+k]*B[k];
+		}
+	}
+	
+	chi2 = 0;
+	REAL dca;
+	for( int i=0; i<n_points; i++ ){
+		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / ( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
+		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
+	}
+}
+
+
+
+__device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL& chi2)
+{
+	//For a 3D fit to a straight-line:
+	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2 + wyi*(y - (Y+Yp*zi))^2
+	// dchi^2/dX = -2 * (xi - (X+Xp*zi))* wxi = 0
+	// dchi^2/dY = -2 * (yi - (Y+Yp*zi))* wyi = 0
+	// dchi^2/dXp = -2 * (xi - (X+Xp*zi))*zi * wxi = 0
+	// dchi^2/dYp = -2 * (yi - (Y+Yp*zi))*zi * wyi = 0
+
+	for(int j = 0; j<4; j++){
+		B[j] = 0;
+		for(int k = 0; k<4; k++){
+			A[j*4+k] = 0;
+			Ainv[j*4+k] = 0;
+		}
+	}
+	
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", A[j*4+k]);
+		}printf("\n");
+	}printf("\n");
+	
+	for( int i=0; i<n_points; i++ ){
+		B[0] += x_weights[i]*x_points[i];
+		B[1] += y_weights[i]*y_points[i];
+		B[2] += x_weights[i]*x_points[i]*z_points[i];
+		B[3] += y_weights[i]*y_points[i]*z_points[i];
+		
+		// first index: row; second index: col;
+		// (consistent with what is used in the matrix inversion routine) 
+		A[0*4+0] += x_weights[i];
+		A[0*4+1] += 0.0;
+		A[0*4+2] += x_weights[i]*z_points[i];
+		A[0*4+3] += 0.0;
+
+		A[1*4+0] += 0.0;
+		A[1*4+1] += y_weights[i];
+		A[1*4+2] += 0.0;
+		A[1*4+3] += y_weights[i]*z_points[i];
+
+		A[2*4+0] += x_weights[i]*z_points[i];
+    		A[2*4+1] += 0.0;
+		A[2*4+2] += x_weights[i]*z_points[i]*z_points[i];
+		A[2*4+3] += 0.0;
+
+    		A[3*4+0] += 0.0;
+    		A[3*4+1] += y_weights[i]*z_points[i];
+    		A[3*4+2] += 0.0;
+    		A[3*4+3] += y_weights[i]*z_points[i]*z_points[i];
+
+		printf("pt %d: x: %1.6f +- %1.6f, y: %1.6f +- %1.6f, z = %1.6f\n", i, x_points[i], x_weights[i], y_points[i], y_weights[i], z_points[i]);
+    	}
+	
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", A[j*4+k]);
+		}printf("\n");
+	}printf("\n");
+	
+	matinv_4x4_matrix_per_thread(A, Ainv);
+	
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", Ainv[j*4+k]);
+		}printf("\n");
+	}printf("\n");
+	
+	//printf("\n");
+	//REAL  I_test[16];
+	//for(int j = 0; j<4; j++){//row
+        //        for(int k = 0; k<4; k++){//column
+	//		I_test[j*4+k] = 0.0;
+	//		for(int l = 0; l<4; l++){
+	//			I_test[j*4+k]+= A[j*4+l]*Ainv[l*4+k];
+	//		}
+	//		printf("%1.6f ,", I_test[j*4+k]);
+	//	}printf("\n");
+	//}printf("\n");
+	
+	for(int j = 0; j<4; j++){//row
+		output_parameters[j] = 0.0;
+		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
+		for(int k = 0; k<4; k++){//column
+			output_parameters[j]+= Ainv[j*4+k]*B[k];
+		}
+	}
+	
+	chi2 = 0;
+	for( int i=0; i<n_points; i++ ){
+		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[2])*(output_parameters[0]+z_points[i]*output_parameters[2])
+		+y_weights[i]*(output_parameters[1]+z_points[i]*output_parameters[3])*(output_parameters[1]+z_points[i]*output_parameters[3]);
+	}
+	
+}
