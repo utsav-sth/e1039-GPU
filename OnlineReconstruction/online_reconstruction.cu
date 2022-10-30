@@ -231,9 +231,9 @@ class gPlane {
       float p1x_w1;
       float p1y_w1;
       float p1z_w1;
-      float deltapx;
-      float deltapy;
-      float deltapz;
+      float deltapx_w1;
+      float deltapy_w1;
+      float deltapz_w1;
       float dp1x;
       float dp1y;
       float dp1z;
@@ -1250,6 +1250,8 @@ int main(int argn, char * argv[]) {
   	string buffer;
 	int ipl, nelem;
 	double z, spacing, xoffset, scalex, x0, costheta, scaley, y0, sintheta, resolution, deltaW_;
+	double p1x, p1y, p1z, deltapx, deltapy, deltapz;
+	double dp1x, dp1y, dp1z, ddeltapx, ddeltapy, ddeltapz;
  	while ( getline(in_geom, buffer) ) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
@@ -1275,18 +1277,18 @@ int main(int argn, char * argv[]) {
 		iss >> deltaW_;
 		plane[ipl-1].deltaW_[0] = deltaW_;
 	      }
-	      gPlane[ipl-1].p1x = p1x;
-	      gPlane[ipl-1].p1y = p1y;
-	      gPlane[ipl-1].p1z = p1z;
-	      gPlane[ipl-1].deltapx = deltapx;
-	      gPlane[ipl-1].deltapy = deltapy;
-	      gPlane[ipl-1].deltapz = deltapz;
-	      gPlane[ipl-1].dp1x = dp1x;
-	      gPlane[ipl-1].dp1y = dp1y;
-	      gPlane[ipl-1].dp1z = dp1z;
-	      gPlane[ipl-1].ddeltapx = dp2x;
-	      gPlane[ipl-1].ddeltapy = dp2y;
-	      gPlane[ipl-1].ddeltapz = dp2z;
+	      plane[ipl-1].p1x_w1 = p1x;
+	      plane[ipl-1].p1y_w1 = p1y;
+	      plane[ipl-1].p1z_w1 = p1z;
+	      plane[ipl-1].deltapx_w1 = deltapx;
+	      plane[ipl-1].deltapy_w1 = deltapy;
+	      plane[ipl-1].deltapz_w1 = deltapz;
+	      plane[ipl-1].dp1x = dp1x;
+	      plane[ipl-1].dp1y = dp1y;
+	      plane[ipl-1].dp1z = dp1z;
+	      plane[ipl-1].ddeltapx = ddeltapx;
+	      plane[ipl-1].ddeltapy = ddeltapy;
+	      plane[ipl-1].ddeltapz = ddeltapz;
 	      ipl++;
 	}
 	
