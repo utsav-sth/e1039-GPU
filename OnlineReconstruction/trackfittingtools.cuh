@@ -286,6 +286,8 @@ __device__ void track_residual_minimizer(size_t const n_points,
 	REAL Den2, Den;
 	
 	for( int i=0; i<n_points; i++ ){
+	     	//printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
+	
 	     	Den2 = deltapx[i]*deltapx[i] + deltapy[i]*deltapy[i] -2 * deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3];
 	     	Den = sqrtf(Den2);
 		B[0] += (driftdist[i]*deltapy[i]*Den + deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapy[i]*p1y[i])/(resolutions[i]*resolutions[i]*Den2);

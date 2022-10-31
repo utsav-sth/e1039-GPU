@@ -1,4 +1,4 @@
-#    z_plane   N_elem Spacing   x_offset  scalex  x_0     costheta    scaley    y_0     sintheta   p1x p1y p1z deltapx deltapy deltapz dp1x dp1y dp1z   deltaW 
+#    z_plane   N_elem Spacing   x_offset  scalex  x_0     costheta    scaley    y_0     sintheta    resolution    p1x p1y p1z deltapx deltapy deltapz dp1x dp1y dp1z   deltaW 
 ## chambers
 1    594.582    201    0.635    0.159    101.6    -0.794    0.971457    121.92        2.689    0.237214    0.0876108    -51.2162 -58.006 595.013 -29.6627 121.478 0.131015 0.654514 -0.00358501 -0.00497447    -0.0414671
 2    595.218    201    0.635    -0.159    101.6    -0.794    0.971457    121.92        2.689    0.237214    0.0876108    -51.5017 -57.9936 595.651 -29.6627 121.478 0.131015 0.654514 -0.00358501 -0.00497447    0.0021114
