@@ -286,31 +286,44 @@ __device__ void track_residual_minimizer(size_t const n_points,
 	REAL Den2, Den;
 	
 	for( int i=0; i<n_points; i++ ){
-	     	//printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
-	
-	     	Den2 = deltapx[i]*deltapx[i] + deltapy[i]*deltapy[i] -2 * deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3];
+	//	printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
+		
+	     	Den2 = deltapy[i]*deltapy[i] + output_parameters[2]*output_parameters[2]*(deltapy[i]*deltapy[i]+deltapz[i]*deltapz[i]) 
+		     + deltapx[i]*deltapx[i] + output_parameters[3]*output_parameters[3]*(deltapx[i]*deltapx[i]+deltapz[i]*deltapz[i]) 
+		     - 2 * ( deltapx[i]*deltapz[i]*output_parameters[2] + deltapy[i]*deltapz[i]*output_parameters[3] + deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3]);
 	     	Den = sqrtf(Den2);
+		
 		B[0] += (driftdist[i]*deltapy[i]*Den + deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapy[i]*p1y[i])/(resolutions[i]*resolutions[i]*Den2);
 		B[1] += (-driftdist[i]*deltapx[i]*Den - deltapx[i]*deltapy[i]*p1x[i] + deltapx[i]*deltapx[i]*p1y[i])/(resolutions[i]*resolutions[i]*Den2);
 		B[2] += (driftdist[i]*deltapy[i]*p1z[i]*Den + deltapy[i]*deltapy[i]*p1x[i]*p1z[i] - deltapx[i]*deltapy[i]*p1x[i]*p1y[i])/(resolutions[i]*resolutions[i]*Den2);
 		B[3] += (-driftdist[i]*deltapx[i]*p1z[i]*Den - deltapx[i]*deltapy[i]*p1x[i]*p1z[i] + deltapx[i]*deltapx[i]*p1y[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
 		
+		A[0*4+0] += (deltapy[i]*deltapy[i] - 2*deltapy[i]*deltapz[i]*output_parameters[3] + deltapz[i]*deltapz[i]*output_parameters[3]*output_parameters[3])/(resolutions[i]*resolutions[i]*Den2);
+		A[0*4+1] += (-deltapx[i]*deltapy[i] + deltapy[i]*deltapz[i]*output_parameters[2] + deltapx[i]*deltapz[i]*output_parameters[3] - deltapz[i]*deltapz[i]*output_parameters[2]*output_parameters[3] )/(resolutions[i]*resolutions[i]*Den2);
+		A[0*4+2] += (-deltapy[i]*deltapz[i]*p1y[i] + deltapy[i]*deltapy[i]*p1z[i] + (deltapz[i]*deltapz[i]*p1y[i]-deltapy[i]*deltapz[i]*p1z[i])*output_parameters[3])/(resolutions[i]*resolutions[i]*Den2);
+		A[1*4+3] += (driftdist[i]*deltapz[i]*Den +2*deltapy[i]*deltapz[i]*p1x[i] - deltapx[i]*deltapz[i]*p1y[i] - deltapx[i]*deltapy[i]*p1z[i] - (deltapz[i]*deltapz[i]*p1x[i]-deltapx[i]*deltapz[i]*p1z[i])*output_parameters[3])/(resolutions[i]*resolutions[i]*Den2);
+				
+		A[1*4+0] += (-deltapx[i]*deltapy[i] + deltapy[i]*deltapz[i]*output_parameters[2] + deltapx[i]*deltapz[i]*output_parameters[3] - deltapz[i]*deltapz[i]*output_parameters[2]*output_parameters[3] )/(resolutions[i]*resolutions[i]*Den2);
+		A[1*4+1] += (deltapx[i]*deltapy[i] - 2*deltapx[i]*deltapz[i]*output_parameters[2] + deltapz[i]*deltapz[i]*output_parameters[2]*output_parameters[2])/(resolutions[i]*resolutions[i]*Den2);
+		A[1*4+2] += (-driftdist[i]*deltapx[i]*p1z[i]*Den - deltapy[i]*deltapz[i]*p1z[i] + 2*deltapx[i]*deltapz[i]*p1y[i] - deltapx[i]*deltapy[i]*p1z[i] + (- deltapz[i]*deltapz[i]*p1y[i] + deltapy[i]*deltapz[i]*p1z[i])*output_parameters[2] + (deltapz[i]*deltapz[i]*p1x[i] + deltapx[i]*deltapz[i]*p1z[i])*output_parameters[3])/(resolutions[i]*resolutions[i]*Den2);
+		A[1*4+3] += (- deltapx[i]*deltapz[i]*p1x[i] + 2*deltapx[i]*deltapx[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
+			
 		// first index: row; second index: col;
 		// (consistent with what is used in the matrix inversion routine) 
-		A[0*4+0] += deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[0*4+1] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[0*4+2] += p1z[i]*deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[0*4+3] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[0*4+0] += deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[0*4+1] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[0*4+2] += p1z[i]*deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[0*4+3] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 
-		A[1*4+0] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[1*4+1] += deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[1*4+2] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-		A[1*4+3] += p1z[i]*deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[1*4+0] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[1*4+1] += deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[1*4+2] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
+		//A[1*4+3] += p1z[i]*deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
 
 		A[2*4+0] += ( deltapy[i]*deltapy[i]*p1z[i] + driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*output_parameters[3]/Den )/(resolutions[i]*resolutions[i]*Den2);
     		A[2*4+1] += ( -deltapx[i]*deltapy[i]*p1z[i] - driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[3]/Den )/(resolutions[i]*resolutions[i]*Den2);
 		A[2*4+2] += ( p1z[i]*p1z[i]*deltapy[i]*deltapy[i] + driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*output_parameters[3]/Den )/(resolutions[i]*resolutions[i]*Den2);
-		A[2*4+3] += ( -p1z[i]*p1z[i]*deltapx[i]*deltapy[i] - driftdist[i]*( deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] + deltapx[i]*deltapx[i]*deltapy[i]*p1y[i] + deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[3] )/Den )/(resolutions[i]*resolutions[i]*Den2);
+		A[2*4+3] += ( -p1z[i]*p1z[i]*deltapx[i]*deltapy[i] - driftdist[i]*( deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapx[i]*deltapy[i]*p1y[i] + deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[3] )/Den )/(resolutions[i]*resolutions[i]*Den2);
 
     		A[3*4+0] += ( -deltapx[i]*deltapy[i]*p1z[i] + driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*output_parameters[2]/Den )/(resolutions[i]*resolutions[i]*Den2);
     		A[3*4+1] += ( deltapx[i]*deltapy[i]*p1z[i] - driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[2]/Den )/(resolutions[i]*resolutions[i]*Den2);

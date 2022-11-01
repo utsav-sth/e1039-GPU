@@ -881,6 +881,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				int npts = 0;
 				int nxhits = 0, nuhits = 0, nvhits = 0;
 				if(hitpairs_x[i].first>=0){
+				//	if(ic[index].EventID==0)printf("x first hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_x[i].first ].detectorID, ic[index].AllHits[ hitpairs_x[i].first ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_x[i].first ].driftDistance;
@@ -895,6 +896,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nxhits++;
 				}
 				if(hitpairs_x[i].second>=0){
+				//	if(ic[index].EventID==0)printf("x second hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_x[i].second ].detectorID, ic[index].AllHits[ hitpairs_x[i].second ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_x[i].second ].driftDistance;
@@ -909,6 +911,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nxhits++;
 				}
 				if(hitpairs_u[j].first>=0){
+				//	if(ic[index].EventID==0)printf("u first hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_u[j].first ].detectorID, ic[index].AllHits[ hitpairs_u[j].first ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_u[j].first ].driftDistance;
@@ -923,6 +926,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nuhits++;
 				}
 				if(hitpairs_u[j].second>=0){
+				//	if(ic[index].EventID==0)printf("u second hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_u[j].second ].detectorID, ic[index].AllHits[ hitpairs_u[j].second ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_u[j].second ].driftDistance;
@@ -937,6 +941,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nuhits++;
 				}
 				if(hitpairs_v[k].first>=0){
+				//	if(ic[index].EventID==0)printf("v first hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_v[k].first ].detectorID, ic[index].AllHits[ hitpairs_v[k].first ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_v[k].first ].driftDistance;
@@ -951,6 +956,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nvhits++;
 				}
 				if(hitpairs_v[k].second>=0){
+				//	if(ic[index].EventID==0)printf("v second hit plane = %d, elem %d\n", ic[index].AllHits[ hitpairs_v[k].second ].detectorID, ic[index].AllHits[ hitpairs_v[k].second ].elementID);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ hitpairs_v[k].second ].driftDistance;
