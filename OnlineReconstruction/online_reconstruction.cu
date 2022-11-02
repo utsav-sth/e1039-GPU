@@ -710,17 +710,48 @@ __global__ void gkernel_eR(gEvent* ic) {
 }
 
 // function to match a tracklet to a hodoscope hit
-__device__ int match_tracklet_to_hodo(gTracklet *tkl, int stID, gEvent* ic, gPlane* planes)
+__device__ int match_tracklet_to_hodo(gTracklet tkl, int stID, gEvent* ic, gPlane* planes)
 {
-	
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	int masked = 0;//false
+	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
+	int hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 42}, {39, 42}};// range of planes to look for hits
+	REAL fudgefac[5] = {0.25f, 0.25f, 0.2f, 0.15f, 0.15f};
 	// define the region in which we are supposed to have hits:
 	
+	REAL xhodo, yhodo, xmin, xmax, ymin, ymax;
 	
 	// loop on the hits and select hodoscope hits corresponding to the station
-	
-	
+	for(int i = 0; i<ic[index].nAH; i++){
+		//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
+		if(hodoplanerange[stID][0]>ic[index].AllHits[i].detectorID || hodoplanerange[stID][1]<ic[index].AllHits[i].detectorID)continue;
+		
+		//calculate the track position at the hodoscope plane z
+		xhodo = planes[ic[index].AllHits[i].detectorID-1].z*tkl.tx+tkl.x0;
+		yhodo = planes[ic[index].AllHits[i].detectorID-1].z*tkl.ty+tkl.y0;
+		
+		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
+		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
+		if(planes[ic[index].AllHits[i].detectorID-1].costheta>0.99){
+			xmin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID-1].spacing*(0.5f+fudgefac[stID])-planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
+			xmax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID-1].spacing*(0.5f+fudgefac[stID])+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
+			ymax = 0.5f*planes[ic[index].AllHits[i].detectorID-1].scaley+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
+			ymin = -ymax;
+		}else{
+			xmax = 0.5f*planes[ic[index].AllHits[i].detectorID-1].scalex+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
+			xmin = -xmax;
+			ymin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID-1].spacing-planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
+			ymax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID-1].spacing+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
+		}
+
+		//fudge = planes[ic[index].AllHits[i].detectorID-1].spacing*fudgefac[stID];
+		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
+			masked++;
+		}
+		
+	}
 	// 
-	return 0;
+	return masked>0;
 }
 
 
@@ -729,8 +760,8 @@ __device__ int match_tracklet_to_hodo(gTracklet *tkl, int stID, gEvent* ic, gPla
 // (not by the main function), so I can make it a "device" function. 
 __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int stID, int projID){
 	   //can't see those from outside... so be it...
-	   double spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
-	   double detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
+	   REAL spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
+	   int detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
 
 	   int npairs = 0;
 	   
@@ -800,6 +831,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   	   
 	   return npairs;
 }
+
 
 
 // tracklet in station builder: 
@@ -991,6 +1023,9 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
 				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
 				
+				if(match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))
+				continue;
+
 				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
 					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
 					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
