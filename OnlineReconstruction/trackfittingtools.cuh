@@ -1,5 +1,13 @@
 #include "operations.h"
 
+const double TX_MAX = 0.15;
+const double TY_MAX = 0.1;
+const double X0_MAX = 150;
+const double Y0_MAX = 50;
+const double INVP_MAX = 0.2;
+const double INVP_MIN = 0.01;
+
+
 __device__ void matinv_2x2_matrix_per_thread (const REAL *A, REAL *Ainv)
 {
     const int blkNum = blockIdx.y * gridDim.x + blockIdx.x;
@@ -350,6 +358,7 @@ __device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
 }
 
 
+/*
 __device__ void prefit_straight_tracks_parameters(size_t const n_points,
 						  REAL* driftdist, REAL* resolutions,
 						  REAL* p1x, REAL* p1y, REAL* p1z,
@@ -444,6 +453,64 @@ __device__ void prefit_straight_tracks_parameters(size_t const n_points,
 	printf("tx = %1.6f +- %1.6f; ty = %1.6f +- %1.6f; \n", output_parameters[2], output_parameters_errors[2], output_parameters[3], output_parameters_errors[3]);
 	
 }
+*/
+
+//This function allows to calculate the chi2 for a set of given parameters
+__device__ REAL chisquare(size_t const n_points, 
+			  REAL* driftdist, REAL* resolutions, 
+			  REAL* p1x, REAL* p1y, REAL* p1z, 
+			  REAL* deltapx, REAL* deltapy, REAL* deltapz, 
+			  REAL* output_parameters)
+{
+	REAL dca, chi2 = 0;
+	for( int i=0; i<n_points; i++ ){
+		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / ( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
+		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
+	}
+	return chi2;
+}
+
+
+// This function gets a first estimate of the parameters, by calculating the chi^2 for ( {-X0_MAX, 0, X0_MAX}, {-Y0_MAX, 0, Y0_MAX}, {-TX_MAX, 0, YX_MAX}, {-TY_MAX, 0, TY_MAX} ) 
+// and keep the best chi^2 for those conditions... That is very rough, but hopefully good enough.
+__device__ void get_track_initial_parameters(size_t const n_points,
+					     REAL* driftdist, REAL* resolutions,
+					     REAL* p1x, REAL* p1y, REAL* p1z,
+					     REAL* deltapx, REAL* deltapy, REAL* deltapz,
+					     REAL* output_parameters)
+{
+	REAL chi2min = 10000000.0f;
+	REAL chi2;
+	int i_min, j_min, k_min, l_min;//, m_min;
+	for(int i = 0; i<4; i++){
+		output_parameters[0] = X0_MAX*(i*2-3)/3.f;
+	printf("%1.1f \n", output_parameters[0]);
+		for(int j = 0; j<4; j++){
+			output_parameters[1] = Y0_MAX*(j*2-3)/3.f;
+			for(int k = 0; k<4; k++){
+				output_parameters[2] = TX_MAX*(k*2-3)/3.f;
+				for(int l = 0; l<4; l++){
+					//for(int m = 0; m<4; m++){}
+					output_parameters[3] = TY_MAX*(l*2-3)/3.f;
+					chi2 = chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters);
+					if(chi2<chi2min){
+						chi2min = chi2;
+						i_min = i;
+						j_min = j;
+						k_min = k;
+						l_min = l;
+					}
+				}
+			}
+		}
+	}
+	//printf("%1.6f \n", chi2min);
+
+	output_parameters[0] = X0_MAX*(i_min*2-3)/3.f;
+	output_parameters[1] = Y0_MAX*(j_min*2-3)/3.f;
+	output_parameters[2] = TX_MAX*(k_min*2-3)/3.f;
+	output_parameters[3] = TY_MAX*(l_min*2-3)/3.f;
+}
 
 
 
@@ -475,12 +542,12 @@ __device__ void straight_track_residual_minimizer(size_t const n_points,
 	//	prefit_straight_tracks_parameters(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, A, Ainv, B, output_parameters, output_parameters_errors, chi2);
 	//}
 	
-	printf("x0 %1.6f, y0 %1.6f, tx %1.6f, ty %1.6f\n", output_parameters[0], output_parameters[1], output_parameters[2], output_parameters[3]);
+	//printf("x0 %1.6f, y0 %1.6f, tx %1.6f, ty %1.6f\n", output_parameters[0], output_parameters[1], output_parameters[2], output_parameters[3]);
 	
 	REAL Den2, Den;
 	
 	for( int i=0; i<n_points; i++ ){
-		printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
+		//printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
 		
 	     	Den2 = deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2 * ( deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3]);
 	     	//Den2 = deltapy[i]*deltapy[i] + output_parameters[2]*output_parameters[2]*(deltapy[i]*deltapy[i]+deltapz[i]*deltapz[i]) 
@@ -503,42 +570,77 @@ __device__ void straight_track_residual_minimizer(size_t const n_points,
 		//A[1*4+1] += (deltapx[i]*deltapy[i] - 2*deltapx[i]*deltapz[i]*output_parameters[2] + deltapz[i]*deltapz[i]*output_parameters[2]*output_parameters[2])/(resolutions[i]*resolutions[i]*Den2);
 		//A[1*4+2] += (-driftdist[i]*deltapx[i]*p1z[i]*Den - deltapy[i]*deltapz[i]*p1z[i] + 2*deltapx[i]*deltapz[i]*p1y[i] - deltapx[i]*deltapy[i]*p1z[i] + (- deltapz[i]*deltapz[i]*p1y[i] + deltapy[i]*deltapz[i]*p1z[i])*output_parameters[2] + (deltapz[i]*deltapz[i]*p1x[i] + deltapx[i]*deltapz[i]*p1z[i])*output_parameters[3])/(resolutions[i]*resolutions[i]*Den2);
 		//A[1*4+3] += (- deltapx[i]*deltapz[i]*p1x[i] + 2*deltapx[i]*deltapx[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
-			
+		
 		// first index: row; second index: col;
 		// (consistent with what is used in the matrix inversion routine) 
 		A[0*4+0] += deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[0*4+1] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[0*4+2] += p1z[i]*deltapy[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[0*4+3] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
-
+		
 		A[1*4+0] += -deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[1*4+1] += deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[1*4+2] += -p1z[i]*deltapx[i]*deltapy[i]/(resolutions[i]*resolutions[i]*Den2);
 		A[1*4+3] += p1z[i]*deltapx[i]*deltapx[i]/(resolutions[i]*resolutions[i]*Den2);
 		
-		A[2*4+0] += deltapy[i]*deltapy[i]*p1z[i];
-		A[2*4+1] += -deltapx[i]*deltapy[i]*p1z[i];
-		A[2*4+2] += deltapy[i]*deltapy[i]*p1z[i]*p1z[i]/(resolutions[i]*resolutions[i]*Den2);
+		// bilinear terms for dchi2/dt(x, y)  
+		// +driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]-deltapx[i]*p1y[i])/Den2 //x0 t(y, x)
+		// -driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapx[i]*deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2 //y0 t(y, x)
+		// +driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]/Den - 2*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2 //tx t(y, x)
+		// -driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]/Den + 2*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2 //ty t(y, x)
+		// trilinear terms
+		// +deltapx[i]*deltapy[i]*deltapy[i]*deltapy[i]/Den2 //x0^2 t(y, x)
+		// +deltapx[i]*deltapx[i]*deltapx[i]*deltapy[i]/Den2 //y0^2 t(y, x)
+		// +deltapx[i]*deltapy[i]*deltapy[i]*deltapy[i]*p1z[i]*p1z[i]/Den2  // tx^2 t(y, x)
+		// +deltapx[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]*p1z[i]/Den2  // ty^2 t(y, x)
+		// -2*deltapx[i]*deltapy[i]*deltapy[i]*deltapy[i]/Den2 //x0 y0 t(y, x)
+		// +2*deltapx[i]*deltapy[i]*deltapy[i]*deltapy[i]*p1z[i]/Den2 //x0 tx t(y, x)
+		// -2*deltapx[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]/Den2 //x0 ty t(y, x)
+		// +2*deltapx[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]/Den2 //y0 tx t(y, x)
+		// -2*deltapx[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]/Den2 //y0 ty t(y, x)
+		// -2*deltapx[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*p1z[i]/Den2 //tx ty t(y, x)
+			
+		A[2*4+0] += (deltapy[i]*deltapy[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
+		A[2*4+1] += (-deltapx[i]*deltapy[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
+		A[2*4+2] += (deltapy[i]*deltapy[i]*p1z[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
 		A[2*4+3] += (deltapx[i]*deltapy[i]*p1z[i]*p1z[i] + driftdist[i]*(deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapx[i]*deltapy[i]*p1y[i])/Den -
-			     deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]*p1x[i] - deltapx[i]*deltapx[i]*p1y[i]*p1y[i] + 2*deltapx[i]*deltapy[i]*p1x[i]*p1y[i] )/Den2 )/(resolutions[i]*resolutions[i]*Den2);
-		
-		A[2*4+0] += -deltapx[i]*deltapy[i]*p1z[i];
-		A[2*4+1] += deltapx[i]*deltapx[i]*p1z[i];
+			     deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]*p1x[i] - deltapx[i]*deltapx[i]*p1y[i]*p1y[i] + 2*deltapx[i]*deltapy[i]*p1x[i]*p1y[i])/Den2
+//			     +output_parameters[0]*(+driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]-deltapx[i]*p1y[i])/Den2)
+//			     +output_parameters[1]*(-driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapx[i]*deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2) 
+//			     +output_parameters[2]*(+driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]/Den - 2*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2)
+//			     +output_parameters[3]*(-driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]/Den + 2*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2)
+			     )/(resolutions[i]*resolutions[i]*Den2);  
+				
+		A[2*4+0] += (-deltapx[i]*deltapy[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
+		A[2*4+1] += (deltapx[i]*deltapx[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
 		A[3*4+2] += (-deltapx[i]*deltapy[i]*p1z[i]*p1z[i] + driftdist[i]*(deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapx[i]*deltapy[i]*p1y[i])/Den -
-			     deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]*p1x[i] - deltapx[i]*deltapx[i]*p1y[i]*p1y[i] + 2*deltapx[i]*deltapy[i]*p1x[i]*p1y[i] )/Den2 )/(resolutions[i]*resolutions[i]*Den2);
-		A[3*4+3] += -deltapx[i]*deltapx[i]*p1z[i]*p1z[i]/(resolutions[i]*resolutions[i]*Den2);
-
-		//A[2*4+2] += ( p1z[i]*p1z[i]*deltapy[i]*deltapy[i] + driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*output_parameters[3]/Den )/(resolutions[i]*resolutions[i]*Den2);
-		//A[2*4+3] += ( -p1z[i]*p1z[i]*deltapx[i]*deltapy[i] - driftdist[i]*( deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapx[i]*deltapy[i]*p1y[i] + deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[3] )/Den )/(resolutions[i]*resolutions[i]*Den2);
-
-    		//A[3*4+0] += ( -deltapx[i]*deltapy[i]*p1z[i] + driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*output_parameters[2]/Den )/(resolutions[i]*resolutions[i]*Den2);
-    		//A[3*4+1] += ( deltapx[i]*deltapy[i]*p1z[i] - driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*output_parameters[2]/Den )/(resolutions[i]*resolutions[i]*Den2);
-    		//A[3*4+2] += ( -p1z[i]*p1z[i]*deltapx[i]*deltapy[i] - driftdist[i]*( deltapx[i]*deltapy[i]*deltapy[i]*p1x[i] - deltapx[i]*deltapx[i]*deltapy[i]*p1y[i] - deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*output_parameters[2] )/Den  )/(resolutions[i]*resolutions[i]*Den2);
-    		//A[3*4+3] += ( p1z[i]*p1z[i]*deltapy[i]*deltapy[i] - driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]*output_parameters[2]/Den )/(resolutions[i]*resolutions[i]*Den2);
+			     deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]*p1x[i] - deltapx[i]*deltapx[i]*p1y[i]*p1y[i] + 2*deltapx[i]*deltapy[i]*p1x[i]*p1y[i] )/Den2 
+//			     +output_parameters[0]*(+driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapy[i]*deltapy[i]*p1x[i]-deltapx[i]*p1y[i])/Den2) 
+//			     +output_parameters[1]*(-driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]/Den - 2*deltapx[i]*deltapy[i]*(deltapx[i]*deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2) 
+//			     +output_parameters[2]*(+driftdist[i]*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]/Den - 2*deltapx[i]*deltapy[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2)
+//			     +output_parameters[3]*(-driftdist[i]*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]/Den + 2*deltapx[i]*deltapx[i]*deltapy[i]*p1z[i]*(deltapx[i]*p1y[i]-deltapy[i]*p1x[i])/Den2)
+			     )/(resolutions[i]*resolutions[i]*Den2);
+			     
+		
+		A[3*4+3] += (-deltapx[i]*deltapx[i]*p1z[i]*p1z[i])/(resolutions[i]*resolutions[i]*Den2);
 	}
 	
 	matinv_4x4_matrix_per_thread(A, Ainv);
-	
+
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", A[j*4+k]);
+		}printf("\n");
+	}printf("\n");
+
+	printf("\n");
+	for(int j = 0; j<4; j++){//row
+                for(int k = 0; k<4; k++){//column
+			printf("%1.6f ,", Ainv[j*4+k]);
+		}printf("\n");
+	}printf("\n");
+
 	for(int j = 0; j<4; j++){//row
 		output_parameters[j] = 0.0;
 		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
@@ -547,12 +649,9 @@ __device__ void straight_track_residual_minimizer(size_t const n_points,
 		}
 	}
 	
-	chi2 = 0;
-	REAL dca;
-	for( int i=0; i<n_points; i++ ){
-		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / ( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
-		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
-	}
+	//calculate chi2;
+	chi2 = chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters);
+	
 }
 
 
@@ -574,12 +673,12 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 		}
 	}
 	
-	printf("\n");
-	for(int j = 0; j<4; j++){//row
-                for(int k = 0; k<4; k++){//column
-			printf("%1.6f ,", A[j*4+k]);
-		}printf("\n");
-	}printf("\n");
+	//printf("\n");
+	//for(int j = 0; j<4; j++){//row
+        //        for(int k = 0; k<4; k++){//column
+	//		printf("%1.6f ,", A[j*4+k]);
+	//	}printf("\n");
+	//}printf("\n");
 	
 	for( int i=0; i<n_points; i++ ){
 		B[0] += x_weights[i]*x_points[i];
@@ -612,21 +711,21 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 		printf("pt %d: x: %1.6f +- %1.6f, y: %1.6f +- %1.6f, z = %1.6f\n", i, x_points[i], x_weights[i], y_points[i], y_weights[i], z_points[i]);
     	}
 	
-	printf("\n");
-	for(int j = 0; j<4; j++){//row
-                for(int k = 0; k<4; k++){//column
-			printf("%1.6f ,", A[j*4+k]);
-		}printf("\n");
-	}printf("\n");
+	//printf("\n");
+	//for(int j = 0; j<4; j++){//row
+        //        for(int k = 0; k<4; k++){//column
+	//		printf("%1.6f ,", A[j*4+k]);
+	//	}printf("\n");
+	//}printf("\n");
 	
 	matinv_4x4_matrix_per_thread(A, Ainv);
 	
-	printf("\n");
-	for(int j = 0; j<4; j++){//row
-                for(int k = 0; k<4; k++){//column
-			printf("%1.6f ,", Ainv[j*4+k]);
-		}printf("\n");
-	}printf("\n");
+	//printf("\n");
+	//for(int j = 0; j<4; j++){//row
+        //        for(int k = 0; k<4; k++){//column
+	//		printf("%1.6f ,", Ainv[j*4+k]);
+	//	}printf("\n");
+	//}printf("\n");
 	
 	//printf("\n");
 	//REAL  I_test[16];
@@ -653,5 +752,5 @@ __device__ void linear_regression_3D(size_t const n_points, REAL *x_points, REAL
 		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[2])*(output_parameters[0]+z_points[i]*output_parameters[2])
 		+y_weights[i]*(output_parameters[1]+z_points[i]*output_parameters[3])*(output_parameters[1]+z_points[i]*output_parameters[3]);
 	}
-	
+
 }
