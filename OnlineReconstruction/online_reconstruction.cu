@@ -41,7 +41,7 @@
 //#include "LoadInput.h"
 #include "OROutput.h"
 //#include "device_fit_interface.cuh"
-//#include "trackfittingtools.cuh"
+#include "trackfittingtools.cuh"
 #include "tracknumericalminimizer.cuh"
 
 #include "SQEvent_v1.h"
@@ -242,7 +242,7 @@ public:
 	int nAH;
 	int nTracklets;
 	gTracklet AllTracklets[TrackletSizeMax];
-	short nTKL_stID[7];
+	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
 };
 
 //geometry carrier
@@ -585,6 +585,7 @@ __device__ int match_tracklet_to_hodo(gTracklet tkl, int stID, gEvent* ic, gPlan
 // I assume it will only be called by the tracklet builder
 // (not by the main function), so I can make it a "device" function. 
 __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int stID, int projID){
+	   //TODO: fix memory management: there's a lot of stuff declared here (though it's probably destroyed after so it *might* be fine)
 	   //can't see those from outside... so be it...
 	   REAL spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
 	   int detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
@@ -737,7 +738,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				//if(ic[index].EventID<20)printf("evt %d: vmin = %1.6f <? vpos = %1.6f <? vmax = %1.6f\n", ic[index].EventID, vmin, vpos, vmax);
 				if(vpos<vmin || vpos>vmax)continue;
 
-				oc[index].AllTracklets[n_tkl].stationID = stID+1;
+				oc[index].AllTracklets[n_tkl].stationID = stID;
 				nhits_tkl = 0;
 				npts = 0;
 
@@ -749,11 +750,11 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					
 					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_x[i].first ].pos; // costheta = 1.
 					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].spacing*0.5f; // costheta = 1.
-					//fitarrays[index].y_array[npts] = 0.0; // sintheta = 0.
+					//fitarrays[index].y_array[npts] = 0.; // sintheta = 0.
 					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].scaley*0.5f; // sintheta = 0.
 					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].z;
 					
-					fitarrays[index].drift_dist[npts] = ic[index].AllHits[ oc[index].hitpairs_x[i].first ].driftDistance;
+					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_x[i].first ].driftDistance;
 					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
 					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
 					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
@@ -776,7 +777,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].scaley*0.5f; // sintheta = 0.
 					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].z;
 
-					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ oc[index].hitpairs_x[i].second ].driftDistance;
+					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_x[i].second ].driftDistance;
 					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].spacing/3.4641f;//.resolution;
 					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
 					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
@@ -799,7 +800,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].sintheta);
 					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].z;
 					
-					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ oc[index].hitpairs_u[j].first ].driftDistance;
+					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_u[j].first ].driftDistance;
 					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
 					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
 					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
@@ -822,7 +823,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].sintheta);
 					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].z;
 					
-					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ oc[index].hitpairs_u[j].second ].driftDistance;
+					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_u[j].second ].driftDistance;
 					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].spacing/3.4641f;//.resolution;
 					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
 					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
@@ -845,7 +846,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].sintheta);
 					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].z;
 					
-					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ oc[index].hitpairs_v[k].first ].driftDistance;
+					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_v[k].first ].driftDistance;
 					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
 					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
 					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
@@ -963,13 +964,118 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	//printf("%d ", n_tkl);
 	oc[index].nTracklets = n_tkl;
-	
+	oc[index].nTKL_stID[stID]++;
 }
 
+
+// kernel to combine tracklets into back partial tracks
 __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitarrays, gPlane* planes, gFitParams* fitparams){
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	
-	for(int i = 0; )
+	//for the time being, declare in function;
+	short dets_x[6] = {15, 16, 21, 22, 27, 28};	
+	REAL x_pos[4];
+	REAL z_pos[4];
+	REAL tx, x0, sum, det, sz, sx, szz, sxx, sxz;
+	short nhits;
+	//tracklets in station 2 (D2, stID 3-1)
+	int n_tkl = oc[index].nTracklets;
+	int nhits_2 = 0, nhits_3 = 0;
+	
+	for(int i = 0; i<oc[index].nTKL_stID[2]; i++){
+		nhits = 0;
+		if(oc[index].AllTracklets[i].hits[i].detectorID==dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[1])
+		{
+			x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
+			z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
+			nhits++;
+		}
+		
+		//tracklets in station 3  (D3p, stID 4-1, D3m, stID 5-1)
+		for(int j = oc[index].nTKL_stID[2]; j<oc[index].nTKL_stID[2]+oc[index].nTKL_stID[3]+oc[index].nTKL_stID[4]; j++){
+			if(oc[index].AllTracklets[i].hits[i].detectorID==dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[3] ||
+			   oc[index].AllTracklets[i].hits[i].detectorID==dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[5])
+			{
+				x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
+				z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
+				nhits++;
+				
+				chi2_simplefit(nhits, z_pos, x_pos, tx, x0, sum, det, sz, sz, szz, sxx, sxz);
+				if(fabs(x0)>X0_MAX || fabs(tx)>TX_MAX)continue;
+				
+				//TODO: add in here prop matching
+				//
+				
+				//Add tracklets: first, get number of hits in each
+				nhits_2 = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits;
+				nhits_3 = oc[index].AllTracklets[j].nXHits+oc[index].AllTracklets[j].nUHits+oc[index].AllTracklets[j].nVHits;
+				
+				oc[index].AllTracklets[n_tkl].nXHits = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[j].nXHits;
+				oc[index].AllTracklets[n_tkl].nUHits = oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[j].nUHits;
+				oc[index].AllTracklets[n_tkl].nVHits = oc[index].AllTracklets[i].nVHits+oc[index].AllTracklets[j].nVHits;
+				
+				//add in the new tracklet the hits from the two existing tracklets;
+				//also fill the fit arrays
+				for(int k = 0; k<nhits_2; k++){
+					oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[i].hits[k];
+					oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[i].hitsign[k];
+					
+					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
+					fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
+					fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
+					fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+				}
+					
+				for(int k = nhits_2; k<nhits_2+nhits_3; k++){
+					oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[j].hits[k-nhits_2];
+					oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[j].hitsign[k-nhits_2];
+
+					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
+					fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+					fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
+					fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
+					fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+				}
+					
+				//then fit:
+				// do a rough estimation of the starting fit parameters by just doing the average of the two:
+				fitarrays[index].output_parameters[0] = (oc[index].AllTracklets[i].x0+oc[index].AllTracklets[j].x0)*0.5f;
+				fitarrays[index].output_parameters[1] = (oc[index].AllTracklets[i].y0+oc[index].AllTracklets[j].y0)*0.5f;
+				fitarrays[index].output_parameters[2] = (oc[index].AllTracklets[i].tx+oc[index].AllTracklets[j].tx)*0.5f;
+				fitarrays[index].output_parameters[3] = (oc[index].AllTracklets[i].ty+oc[index].AllTracklets[j].ty)*0.5f;
+				
+				for(int n = 0; n<4; n++){
+					fitarrays[index].output_parameters_errors[n] = 0;
+					fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
+				}
+				
+				//if(ic[index].EventID==0)
+				minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
+				
+				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
+				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
+				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
+				oc[index].AllTracklets[n_tkl].ty = fitarrays[index].output_parameters[3];
+				oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters_errors[0];
+				oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters_errors[1];
+				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters_errors[2];
+				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
+				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
+								
+				
+				n_tkl++;
+			}
+		}
+	}
+	
+	oc[index].nTracklets = n_tkl;
 	
 }
 
