@@ -28,7 +28,7 @@ __device__ void _calc_curve_values(
 
 // call: 3, 13, ...
 __device__ void _check_fit_improvement(
-    int iteration_failed,
+    int& iteration_failed,
     REAL const chi_square,
     REAL const prev_chi_square,
     int const finished)
@@ -141,17 +141,19 @@ __device__ void _modify_step_widths(
 }
 
 //call: 7 solve_equation_systems_gj()
-//TODO: add:
-__device__ void cuda_gaussjordan(
+__device__ void _gaussjordan(
     REAL * delta,
     REAL const * beta,
     REAL const * alpha,
-    int const * skip_calculation,
-    int * singular,
+    int const skip_calculation,
+    int& singular,
+    REAL* calculation_matrix,
+    REAL* abs_row,
+    int* abs_row_index,
     std::size_t const n_equations,
     std::size_t const n_equations_pow2)
 {
-    extern __shared__ REAL extern_array[];     //shared memory between threads of a single block, 
+    //extern __shared__ REAL extern_array[];     //shared memory between threads of a single block, // no need for our use...
     //used for storing the calculation_matrix, the 
     //abs_row vector, and the abs_row_index vector
 
@@ -171,26 +173,27 @@ __device__ void cuda_gaussjordan(
     // the column and row indicated by the x and y index of the thread.  Each 
     // solution is calculated within one block, and the solution index is the 
     // block index x value.
+    
+    int const col_index = threadIdx.y;                  //column index in the calculation_matrix
+    int const row_index = threadIdx.z;                  //row index in the calculation_matrix
 
-    int const col_index = threadIdx.x;                  //column index in the calculation_matrix
-    int const row_index = threadIdx.y;                  //row index in the calculation_matrix
-    int const solution_index = blockIdx.x;
+    int const n_col = blockDim.y;                       //number of columns in calculation matrix (=threads.x)
+    int const n_row = blockDim.z;                       //number of rows in calculation matrix (=threads.y)
+    int const alpha_size = blockDim.z * blockDim.z;     //number of entries in alpha matrix for one solution (NxN)
 
-    int const n_col = blockDim.x;                       //number of columns in calculation matrix (=threads.x)
-    int const n_row = blockDim.y;                       //number of rows in calculation matrix (=threads.y)
-    int const alpha_size = blockDim.y * blockDim.y;     //number of entries in alpha matrix for one solution (NxN)
-
-    if (skip_calculation[solution_index])
+    if (skip_calculation)
         return;
 
     REAL p;                                            //local variable used in pivot calculation
+    
+    // we do not want to share memory between blocks in our case, so we have to have them as input;
+    
+    //REAL * calculation_matrix = extern_array;                          //point to the shared memory
 
-    REAL * calculation_matrix = extern_array;                          //point to the shared memory
-
-    REAL * abs_row = extern_array + n_equations * (n_equations + 1);     //abs_row is located after the calculation_matrix
+    //REAL * abs_row = extern_array + n_equations * (n_equations + 1);     //abs_row is located after the calculation_matrix
     //within the shared memory
 
-    int * abs_row_index = (int *)(abs_row + n_equations_pow2);            //abs_row_index is located after abs_row
+    //int * abs_row_index = (int *)(abs_row + n_equations_pow2);            //abs_row_index is located after abs_row
     //
     //note that although the shared memory is defined as
     //REAL, we are storing data of type int in this
@@ -199,7 +202,7 @@ __device__ void cuda_gaussjordan(
     //initialize the singular vector
     if (col_index == 0 && row_index == 0)
     {
-        singular[solution_index] = 0;
+        singular = 0;
     }
 
     //initialize abs_row and abs_row_index, using only the threads on the diagonal
@@ -211,13 +214,13 @@ __device__ void cuda_gaussjordan(
 
     //initialize the calculation_matrix (alpha and beta, concatenated, for one solution)
     if (col_index != n_equations)
-        calculation_matrix[row_index*n_col + col_index] = alpha[solution_index * alpha_size + row_index * n_equations + col_index];
+        calculation_matrix[row_index*n_col + col_index] = alpha[row_index * n_equations + col_index];
     else
-        calculation_matrix[row_index*n_col + col_index] = beta[solution_index * n_equations + row_index];
+        calculation_matrix[row_index*n_col + col_index] = beta[row_index];
 
     //wait for thread synchronization
 
-    __syncthreads();
+    //__syncthreads();
 
     //start of main outer loop over the rows of the calculation matrix
 
@@ -249,14 +252,14 @@ __device__ void cuda_gaussjordan(
             }
         }
 
-        __syncthreads();
+        //__syncthreads();
 
         //singularity check - if all values in the row are zero, no solution exists
         if (row_index == current_row && col_index != n_equations)
         {
             if (abs_row[abs_row_index[0]] == 0.0)
             {
-                singular[solution_index] = 1;
+                singular = 1;
             }
         }
 
@@ -267,7 +270,7 @@ __device__ void cuda_gaussjordan(
                 = calculation_matrix[row_index * n_col + col_index] / calculation_matrix[row_index * n_col + abs_row_index[0]];
         }
 
-        __syncthreads();
+        //__syncthreads();
 
         //The value of the largest element of the current row was found, and then current
         //row was divided by this value such that the largest value of the current row 
@@ -281,13 +284,13 @@ __device__ void cuda_gaussjordan(
         //to be subtracted and let each thread store this value in the scalar variable p.
 
         p = calculation_matrix[current_row * n_col + col_index] * calculation_matrix[row_index * n_col + abs_row_index[0]];
-        __syncthreads();
+        //__syncthreads();
 
         if (row_index != current_row)
         {
             calculation_matrix[row_index * n_col + col_index] = calculation_matrix[row_index * n_col + col_index] - p;
         }
-        __syncthreads();
+        //__syncthreads();
 
     }
 
@@ -313,9 +316,9 @@ __device__ void cuda_gaussjordan(
     //stored in beta upon completetion.
 
     if (col_index != n_equations && calculation_matrix[row_index * n_col + col_index] == 1)
-        delta[n_row * solution_index + col_index] = calculation_matrix[row_index * n_col + n_equations];
+        delta[col_index] = calculation_matrix[row_index * n_col + n_equations];
 
-    __syncthreads();
+    //__syncthreads();
 }
 
 
@@ -324,13 +327,13 @@ __device__ void cuda_gaussjordan(
 __device__ void _update_state_after_solving(
     int const cublas_info,
     int const finished,
-    int states)
+    int state)
 {
     if (finished)
         return;
 
     if (cublas_info!= 0)
-        states = SINGULAR_HESSIAN;
+        state = SINGULAR_HESSIAN;
 }
 
 
@@ -355,24 +358,17 @@ __device__ void _update_parameters(
     
 }
 
-//call: 10
-__device__ void project_parameter_to_box(REAL & parameter, REAL const lower_bound, REAL const upper_bound, int const constraint_type)
+//call: 0, 10, ...
+__device__ void project_parameter_to_box(
+	   	int const n_parameters,
+	   	REAL* parameters, 
+		REAL* const lower_bounds, 
+		REAL* const upper_bounds)
 {
-    switch (constraint_type)
-    {
-    case ConstraintType::LOWER:
-        parameter = max(parameter, lower_bound);
-        break;
-    case ConstraintType::UPPER:
-        parameter = min(parameter, upper_bound);
-        break;
-    case ConstraintType::LOWER_UPPER:
-        parameter = max(parameter, lower_bound);
-        parameter = min(parameter, upper_bound);
-        break;
-    default:
-        break;
-    }
+	for(int i = 0; i< n_parameters; i++){
+		if(parameters[i]<lower_bounds[i])parameters[i]=lower_bounds[i];
+		if(parameters[i]>upper_bounds[i])parameters[i]=upper_bounds[i];
+	}
 }
 
 
@@ -380,9 +376,9 @@ __device__ void project_parameter_to_box(REAL & parameter, REAL const lower_boun
 __device__ void _check_for_convergence(
     int finished,
     REAL const tolerance,
-    int states,
-    REAL const chi_squares,
-    REAL const prev_chi_squares,
+    int state,
+    REAL const chi_square,
+    REAL const prev_chi_square,
     int const iteration,
     int const max_n_iterations)
 {
@@ -392,8 +388,8 @@ __device__ void _check_for_convergence(
     }
 
     int const fit_found
-        = abs(chi_squares - prev_chi_squares)
-        < tolerance * max(1., chi_squares);
+        = abs(chi_square - prev_chi_square)
+        < tolerance * max(1., chi_square);
 
     int const max_n_iterations_reached = iteration == max_n_iterations - 1;
 
@@ -403,7 +399,7 @@ __device__ void _check_for_convergence(
     }
     else if (max_n_iterations_reached)
     {
-        states = MAX_ITERATION;
+        state = MAX_ITERATION;
     }
 }
 
@@ -412,10 +408,9 @@ __device__ void _evaluate_iteration(
     int& n_iterations,
     int& finished,
     int const iteration,
-    int const states,
-    int const n_fits)
+    int const state)
 {
-    if (states != CONVERGED)
+    if (state != CONVERGED)
     {
         finished = 1;
     }

@@ -40,9 +40,9 @@
 //#include "LoadInput.h"
 #include "OROutput.h"
 //#include "trackfittingtools.cuh"
-//#include "tracknumericalminimizer.cuh"
+#include "tracknumericalminimizer.cuh"
 //#include "cuda_fit_device_funcs.cuh"
-#include "gpufit_core_funcs.cuh"
+//#include "gpufit_core_funcs.cuh"
 
 #include "SQEvent_v1.h"
 #include "SQHit_v1.h"
@@ -159,7 +159,6 @@ class gFitParams {
 public:
       int max_iterations;
       short nparam;
-      float lambda;//scale factor
       
       float parameter_limits_min[5];
       float parameter_limits_max[5];
@@ -167,42 +166,64 @@ public:
       float tolerance;
 };
 
+
+
+
 class gFitArrays {
 public:
       int npoints;
-      //float x_array[nDetectors];// x position arrays
-      //float y_array[nDetectors];// y position arrays
-      //float z_array[nDetectors];// z position arrays
-      //float dx_array[nDetectors];// x position uncertainty
-      //float dy_array[nDetectors];// x position uncertainty
-
-      float drift_dist[nDetectors]; // hit drift distance
-      float resolution[nDetectors]; // detector resolution
+      float drift_dist[nChamberPlanes]; // hit drift distance
+      float resolution[nChamberPlanes]; // detector resolution
       
-      float p1x[nDetectors];// x bottom end point of the wire hit 
-      float p1y[nDetectors];// y bottom end point of the wire hit 
-      float p1z[nDetectors];// z bottom end point of the wire hit 
+      float p1x[nChamberPlanes];// x bottom end point of the wire hit 
+      float p1y[nChamberPlanes];// y bottom end point of the wire hit 
+      float p1z[nChamberPlanes];// z bottom end point of the wire hit 
       
-      float deltapx[nDetectors];// x distance between bottom and top end points of the wire hit 
-      float deltapy[nDetectors];// y distance between bottom and top end points of the wire hit 
-      float deltapz[nDetectors];// z distance between bottom and top end points of the wire hit 
+      float deltapx[nChamberPlanes];// x distance between bottom and top end points of the wire hit 
+      float deltapy[nChamberPlanes];// y distance between bottom and top end points of the wire hit 
+      float deltapz[nChamberPlanes];// z distance between bottom and top end points of the wire hit 
       
       float prev_parameters[5];
       float output_parameters[5];
-      float output_parameters_steps[5];
       float output_parameters_errors[5];
       float chi2prev;
       float chi2;
 
-      float derivatives[5];
-      float doublederivatives[5];
-      //float gradients[5];
-      //float hessians[25];
+      float values[nChamberPlanes];
+      float derivatives[5*nChamberPlanes];
+      float gradients[5*nChamberPlanes];
+      float hessians[25];
       
-      float A[25];// matrix: max size 5x5, but we can use this unique array for all possible sizes
-      float Ainv[25];// matrix
-      float B[5];// input vector
+      float scaling_vector[5];
+      float deltas[5];
+      
+      float lambda;//scale factor
+      
+      float calc_matrix[25];
+      float abs_row[25];
+      int abs_row_index[25];
+
+      int n_iter;
+      int iter_failed;
+      int finished;
+      int state;
+      int skip;
+      int singular;
+      
+      //float x_array[nChamberPlanes];// x position arrays
+      //float y_array[nChamberPlanes];// y position arrays
+      //float z_array[nChamberPlanes];// z position arrays
+      //float dx_array[nChamberPlanes];// x position uncertainty
+      //float dy_array[nChamberPlanes];// x position uncertainty
+
+      //float A[25];// matrix: max size 5x5, but we can use this unique array for all possible sizes
+      //float Ainv[25];// matrix
+      //float B[5];// input vector
+
+      //float output_parameters_steps[5];
+      //float doublederivatives[5];
 };
+
 
 
 class gEvent {
@@ -380,7 +401,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 			}
 		}
 		// declustering of hits in DCs (from CPU code, I understand this one better)
-		// if there are hits in the same plane and hitting two neighboring wires, they both give redundant information: 
+		// if there are hits in the same plane and hitting to neighboring wires, they both give redundant information: 
 		if(ic[index].AllHits[iAH[index]].detectorID <= nChamberPlanes) {
 			//if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size[index]);
 //			printf("Decluster...\n");
@@ -663,7 +684,10 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 
 // tracklet in station builder: 
 __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitarrays, int stID, gPlane* planes, gFitParams* fitparams) {
+	//int blockId = blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z;
+	//int index = threadIdx.x + blockId * blockDim.x;
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
 	stID--;
 	oc[index].EventID = ic[index].EventID;
 	oc[index].nAH = ic[index].nAH;
@@ -705,8 +729,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	int nhits_tkl = 0;
 	int npts = 0;
 
-	REAL dca = 0;
-	REAL fixedpoint[3] = {0, 0, 0};
+	//REAL dca = 0;
+	//REAL fixedpoint[3] = {0, 0, 0};
 		
 	//X-U combinations first
 	for(int i = 0; i< nx; i++){
@@ -886,22 +910,48 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				if(npts<4)continue;
 				if(oc[index].AllTracklets[n_tkl].nXHits<1 || oc[index].AllTracklets[n_tkl].nUHits<1 || oc[index].AllTracklets[n_tkl].nVHits<1)continue;
 				
+				fitarrays[index].output_parameters[0] = 0.;
+				fitarrays[index].output_parameters[1] = 0.;
+				fitarrays[index].output_parameters[2] = 0.;
+				fitarrays[index].output_parameters[3] = 0.;
+				fitarrays[index].lambda = 0.001f;
+
+				dim3 threads(1, 1, 1);
+    				dim3 blocks(1, 1, 1);
+
+    				threads.x = fitparams[0].nparam + 1;
+    				threads.y = fitparams[0].nparam;
+								
 				//include fit here:
+				//gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
+				gpufit_algorithm_fitter(fitparams[0].max_iterations,
+										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
+										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
+										fitparams[0].tolerance, fitparams[0].nparam,
+										fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
+										fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
+										fitarrays[index].chi2, fitarrays[index].chi2prev,
+										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
+										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
+										fitarrays[index].deltas, fitarrays[index].lambda,
+										fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
+										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+										
+				/*
 				//if(ic[index].EventID==0){
 				//straight_track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
 				
-				for(int n = 0; n<4; n++){
-					fitarrays[index].output_parameters[n] = 0;
-					fitarrays[index].output_parameters_errors[n] = 0;
-					fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
-				}
+				//for(int n = 0; n<4; n++){
+				//	fitarrays[index].output_parameters[n] = 0;
+				//	fitarrays[index].output_parameters_errors[n] = 0;
+				//	fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
+				//}
 				
 				//if(ic[index].EventID==0)
 				//fixedpoint_straighttrack_chi2minimizer(fitparams[0].max_iterations, fitparams[0].tolerance,
 				//					fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, 
-				//					npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-				//					fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-				//					fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, 
 				//					fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
 				//					fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
 				//					fitarrays[index].prev_parameters, 
@@ -909,6 +959,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				//					fixedpoint, fitarrays[index].chi2, fitarrays[index].chi2prev, dca);
 
 				//minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
+				*/
 				
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
@@ -1020,8 +1071,8 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 	//tracklets in station 2 (D2, stID 3-1)
 	int n_tkl = oc[index].nTracklets;
 	int nhits_2 = 0, nhits_3 = 0;
-	REAL dca;
-	REAL fixedpoint[3] = {0, 0, 0};
+	//REAL dca;
+	//REAL fixedpoint[3] = {0, 0, 0};
 
 	for(int i = 0; i<oc[index].nTKL_stID[2]; i++){
 		nhits = 0;
@@ -1106,11 +1157,35 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[1] = (oc[index].AllTracklets[i].y0+oc[index].AllTracklets[j].y0)*0.5f;
 				fitarrays[index].output_parameters[2] = (oc[index].AllTracklets[i].tx+oc[index].AllTracklets[j].tx)*0.5f;
 				fitarrays[index].output_parameters[3] = (oc[index].AllTracklets[i].ty+oc[index].AllTracklets[j].ty)*0.5f;
+				fitarrays[index].lambda = 0.001f;
 				
-				for(int n = 0; n<4; n++){
-					fitarrays[index].output_parameters_errors[n] = 0;
-					fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
-				}
+				dim3 threads(1, 1, 1);
+    				dim3 blocks(1, 1, 1);
+
+    				threads.x = fitparams[0].nparam + 1;
+    				threads.y = fitparams[0].nparam;
+				
+				//include fit here:
+				//gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
+				gpufit_algorithm_fitter(fitparams[0].max_iterations,
+										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
+										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
+										fitparams[0].tolerance, fitparams[0].nparam,
+										fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
+										fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
+										fitarrays[index].chi2, fitarrays[index].chi2prev,
+										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
+										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
+										fitarrays[index].deltas, fitarrays[index].lambda,
+										fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
+										nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+				
+				//for(int n = 0; n<4; n++){
+				//	fitarrays[index].output_parameters_errors[n] = 0;
+				//	//fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
+				//}
 				
 				//if(ic[index].EventID==0)
 				//minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
@@ -1282,10 +1357,6 @@ int main(int argn, char * argv[]) {
 	fitparams[1].nparam = 4;
 	fitparams[2].nparam = 5;
 	
-	fitparams[0].lambda = 0.5;
-	fitparams[1].lambda = 1.;
-	fitparams[2].lambda = 1.;
-		
 	fitparams[0].tolerance = 0.001;
 	fitparams[1].tolerance = 0.001;
 	fitparams[2].tolerance = 0.001;
@@ -1533,6 +1604,20 @@ int main(int argn, char * argv[]) {
 	auto start_tkl2 = std::chrono::system_clock::now();
 	// I first want to see if indeed we can reuse the "gEvent" pointer
 	int stID = 3;// to make explicit that we are requiring station 3
+
+	//lemme try something...
+    	//dim3  threads(1, 1, 1);
+    	//dim3  blocks(1, 1, 1);
+	
+	//threads.y = 5;
+    	//threads.z = 4;
+    	//threads.x = int(THREADS_PER_BLOCK/threads.y/threads.z);
+
+	//blocks.x = int(EstnEvtMax/threads.x)+1;
+	//blocks.y = 1;
+	
+	//gkernel_TrackletinStation<<<blocks, threads>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+	
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	auto end_tkl2 = std::chrono::system_clock::now();
 	

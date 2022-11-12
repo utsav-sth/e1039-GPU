@@ -2,7 +2,7 @@ ROOTCFLAGS = $(shell root-config --cflags)
 ROOTLIBS   = $(shell root-config --libs)
 
 CXX = nvcc
-CXXFLAGS = -g --cudart=static -ccbin g++
+CXXFLAGS = -g --cudart=static -ccbin g++ -rdc=true
 DEFS = -DUSE_CUBLAS
 LD = $(CXX)
 LDFLAGS = 

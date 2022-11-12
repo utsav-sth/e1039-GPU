@@ -1,4 +1,5 @@
-#include "trackfittingtools.cuh"
+//#include "trackfittingtools.cuh"
+#include "gpufit_core_funcs.cuh"
 
 // numerical minimizer for the GPU tracks
 // miminimzes chi^2 = sum (drift_dist - dca)^2/sigma^2
@@ -202,4 +203,164 @@ __device__ void fixedpoint_straighttrack_chi2minimizer(size_t const max_iteratio
 		}
 	}
 	
+}
+
+
+//device
+//global???? // as is, I might not have the choice, since I need to "reconfigure" the thread/block for the gauss_jordan_method
+__device__ void gpufit_algorithm_fitter(int const max_n_iterations, 
+					// status indices
+					int& n_iterations, int& iteration_failed, int& finished, 
+					int& state, int& skip, int& singular, 
+					// fit configuration parameters
+					REAL const tolerance,
+					int const n_parameters,
+					REAL* const lower_bounds, REAL* const upper_bounds,
+					// variables to optimize
+					REAL* parameters, REAL* prev_parameters, 
+					REAL& chi_square, REAL& prev_chi_square, 
+					REAL* values, REAL* derivatives, REAL* gradients, 
+					REAL* hessians, REAL* scaling_vector, 
+					REAL* deltas, REAL& lambda,
+					REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
+					// exp data arrays 
+					int const n_points,
+					REAL* const driftdist, REAL* const resolutions,
+					REAL* const p1x, REAL* const p1y, REAL* const p1z,
+					REAL* const deltapx, REAL* const deltapy, REAL* const deltapz)
+{
+	// call: 0, 10, ...
+	project_parameter_to_box(n_parameters,
+				 parameters,
+				 lower_bounds, 
+				 upper_bounds);
+
+	// call: 1, 11, ...
+ 	_calc_curve_values(parameters, 
+			   n_points,
+			   n_parameters,
+			   finished,
+			   values, derivatives,
+			   driftdist, resolutions,
+			   p1x, p1y, p1z,
+			   deltapx, deltapy, deltapz,
+			   chi_square);
+	// call: 3, 13, ...
+	_check_fit_improvement(iteration_failed,
+			       chi_square,
+   			       prev_chi_square,
+			       finished);
+	// call: 4, 14, ...
+	_calculate_gradients(gradients,
+			     values,
+			     derivatives,
+			     driftdist, resolutions,
+			     n_points,
+			     n_parameters,
+			     finished,
+			     skip);
+	//call: 5, 15, ...
+	_calculate_hessians(hessians,
+			    values,
+			    derivatives,
+			    n_parameters,
+			    n_points,
+			    resolutions,
+			    skip,
+			    finished);
+	
+	for(int n = 0; n<max_n_iterations; n++){
+		//call: 6, 19,...
+		_modify_step_widths(hessians,
+				    lambda,
+				    scaling_vector,
+				    n_parameters,
+				    iteration_failed,
+				    finished);
+				    
+		//call: 7, 20, ... // beware with this one it is the only place where one can't trivially get rid of the thread info
+		_gaussjordan(deltas,
+				gradients,
+				hessians,
+				finished,
+				singular,
+				calc_matrix, 
+				abs_row,
+				abs_row_index,
+				n_parameters,
+				n_parameters*n_parameters);
+		//call: 8, 21, ...
+		_update_state_after_solving(singular,
+					    finished,
+					    state);
+		//call: 9, 22, ...
+		_update_parameters(
+			parameters,
+			prev_parameters,
+			deltas,
+			n_parameters,
+			finished);
+
+		// call: 0, 10, ...
+		project_parameter_to_box(n_parameters,
+				parameters,
+				lower_bounds, 
+				upper_bounds);
+
+		// call: 1, 11, ...
+		_calc_curve_values(parameters, 
+			   n_points,
+			   n_parameters,
+			   finished,
+			   values, derivatives,
+			   driftdist, resolutions,
+			   p1x, p1y, p1z,
+			   deltapx, deltapy, deltapz,
+			   chi_square);
+		// call: 3, 13, ...
+		_check_fit_improvement(iteration_failed,
+			       chi_square,
+   			       prev_chi_square,
+			       finished);
+		// call: 4, 14, ...
+		_calculate_gradients(gradients,
+			     values,
+			     derivatives,
+			     driftdist, resolutions,
+			     n_points,
+			     n_parameters,
+			     finished,
+			     skip);
+		//call: 5, 15, ...
+		_calculate_hessians(hessians,
+			    values,
+			    derivatives,
+			    n_parameters,
+			    n_points,
+			    resolutions,
+			    skip,
+			    finished);
+		//call: 16, ...
+		_check_for_convergence(finished,
+			tolerance,
+    			state,
+    			chi_square,
+    			prev_chi_square,
+    			n,
+    			max_n_iterations);
+		//call: 17
+		_evaluate_iteration(n_iterations,
+				finished,
+    				n,
+    				state);
+		// call: 18
+		_prepare_next_iteration(lambda,
+			chi_square,
+			prev_chi_square,
+			parameters,
+			prev_parameters,
+			n_parameters);
+
+	}
+
 }
