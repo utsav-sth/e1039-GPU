@@ -550,7 +550,7 @@ __device__ void calc_val_derivatives(size_t const n_points,
 				     REAL* const driftdist, REAL* const resolutions,
 				     REAL* const p1x, REAL* const p1y, REAL* const p1z,
 				     REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-				     size_t const nparam, REAL* output_parameters, 
+				     size_t const nparam, REAL* const output_parameters, 
 				     REAL* values, REAL* derivatives, REAL& chi2)
 {
 	REAL Den2, Den;
