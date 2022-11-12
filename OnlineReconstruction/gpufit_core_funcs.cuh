@@ -7,7 +7,7 @@ __device__ void _calc_curve_values(
     REAL* const parameters,
     int const n_points,
     int const n_parameters,
-    int const finished,
+    short const finished,
     REAL* values,
     REAL* derivatives,
     //data input array
@@ -28,10 +28,10 @@ __device__ void _calc_curve_values(
 
 // call: 3, 13, ...
 __device__ void _check_fit_improvement(
-    int& iteration_failed,
+    short& iteration_failed,
     REAL const chi_square,
     REAL const prev_chi_square,
-    int const finished)
+    short const finished)
 {
     bool const prev_chi_square_initialized = prev_chi_square != 0.;
     bool const chi_square_decreased = (chi_square < prev_chi_square);
@@ -54,8 +54,8 @@ __device__ void _calculate_gradients(
     REAL* const driftdist, REAL* const resolutions,
     int const n_points,
     int const n_parameters,
-    int const finished,
-    int const skip)
+    short const finished,
+    short const skip)
 {
 
     if (finished || skip)
@@ -83,8 +83,8 @@ __device__ void _calculate_hessians(
     int const n_parameters,
     int const n_points,
     REAL* const resolutions,
-    int const skip,
-    int const finished)
+    short const skip,
+    short const finished)
 {
     if (finished || skip)
     {
@@ -108,8 +108,8 @@ __device__ void _modify_step_widths(
     REAL const lambda,
     REAL * scaling_vector,
     unsigned int const n_parameters,
-    int const iteration_failed,
-    int const finished)
+    short const iteration_failed,
+    short const finished)
 {
     for(int parameter_index = 0; parameter_index<n_parameters; parameter_index++){
 
@@ -141,19 +141,19 @@ __device__ void _modify_step_widths(
 }
 
 //call: 7 solve_equation_systems_gj()
-__device__ void _gaussjordan(
+__global__ void _gaussjordan(
     REAL * delta,
     REAL const * beta,
     REAL const * alpha,
-    int const skip_calculation,
-    int& singular,
-    REAL* calculation_matrix,
-    REAL* abs_row,
-    int* abs_row_index,
+    short const skip_calculation,
+    short& singular,
+    //REAL* calculation_matrix,
+    //REAL* abs_row,
+    //int* abs_row_index,
     std::size_t const n_equations,
     std::size_t const n_equations_pow2)
 {
-    //extern __shared__ REAL extern_array[];     //shared memory between threads of a single block, // no need for our use...
+    extern __shared__ REAL extern_array[];     //shared memory between threads of a single block, 
     //used for storing the calculation_matrix, the 
     //abs_row vector, and the abs_row_index vector
 
@@ -173,27 +173,26 @@ __device__ void _gaussjordan(
     // the column and row indicated by the x and y index of the thread.  Each 
     // solution is calculated within one block, and the solution index is the 
     // block index x value.
-    
-    int const col_index = threadIdx.y;                  //column index in the calculation_matrix
-    int const row_index = threadIdx.z;                  //row index in the calculation_matrix
 
-    int const n_col = blockDim.y;                       //number of columns in calculation matrix (=threads.x)
-    int const n_row = blockDim.z;                       //number of rows in calculation matrix (=threads.y)
-    int const alpha_size = blockDim.z * blockDim.z;     //number of entries in alpha matrix for one solution (NxN)
+    int const col_index = threadIdx.x;                  //column index in the calculation_matrix
+    int const row_index = threadIdx.y;                  //row index in the calculation_matrix
+    int const solution_index = blockIdx.x;
+
+    int const n_col = blockDim.x;                       //number of columns in calculation matrix (=threads.x)
+    int const n_row = blockDim.y;                       //number of rows in calculation matrix (=threads.y)
+    int const alpha_size = blockDim.y * blockDim.y;     //number of entries in alpha matrix for one solution (NxN)
 
     if (skip_calculation)
         return;
 
     REAL p;                                            //local variable used in pivot calculation
-    
-    // we do not want to share memory between blocks in our case, so we have to have them as input;
-    
-    //REAL * calculation_matrix = extern_array;                          //point to the shared memory
 
-    //REAL * abs_row = extern_array + n_equations * (n_equations + 1);     //abs_row is located after the calculation_matrix
+    REAL * calculation_matrix = extern_array;                          //point to the shared memory
+
+    REAL * abs_row = extern_array + n_equations * (n_equations + 1);     //abs_row is located after the calculation_matrix
     //within the shared memory
 
-    //int * abs_row_index = (int *)(abs_row + n_equations_pow2);            //abs_row_index is located after abs_row
+    int * abs_row_index = (int *)(abs_row + n_equations_pow2);            //abs_row_index is located after abs_row
     //
     //note that although the shared memory is defined as
     //REAL, we are storing data of type int in this
@@ -214,13 +213,13 @@ __device__ void _gaussjordan(
 
     //initialize the calculation_matrix (alpha and beta, concatenated, for one solution)
     if (col_index != n_equations)
-        calculation_matrix[row_index*n_col + col_index] = alpha[row_index * n_equations + col_index];
+        calculation_matrix[row_index*n_col + col_index] = alpha[solution_index * alpha_size + row_index * n_equations + col_index];
     else
-        calculation_matrix[row_index*n_col + col_index] = beta[row_index];
+        calculation_matrix[row_index*n_col + col_index] = beta[solution_index * n_equations + row_index];
 
     //wait for thread synchronization
 
-    //__syncthreads();
+    __syncthreads();
 
     //start of main outer loop over the rows of the calculation matrix
 
@@ -252,7 +251,7 @@ __device__ void _gaussjordan(
             }
         }
 
-        //__syncthreads();
+        __syncthreads();
 
         //singularity check - if all values in the row are zero, no solution exists
         if (row_index == current_row && col_index != n_equations)
@@ -270,7 +269,7 @@ __device__ void _gaussjordan(
                 = calculation_matrix[row_index * n_col + col_index] / calculation_matrix[row_index * n_col + abs_row_index[0]];
         }
 
-        //__syncthreads();
+        __syncthreads();
 
         //The value of the largest element of the current row was found, and then current
         //row was divided by this value such that the largest value of the current row 
@@ -284,13 +283,13 @@ __device__ void _gaussjordan(
         //to be subtracted and let each thread store this value in the scalar variable p.
 
         p = calculation_matrix[current_row * n_col + col_index] * calculation_matrix[row_index * n_col + abs_row_index[0]];
-        //__syncthreads();
+        __syncthreads();
 
         if (row_index != current_row)
         {
             calculation_matrix[row_index * n_col + col_index] = calculation_matrix[row_index * n_col + col_index] - p;
         }
-        //__syncthreads();
+        __syncthreads();
 
     }
 
@@ -316,18 +315,18 @@ __device__ void _gaussjordan(
     //stored in beta upon completetion.
 
     if (col_index != n_equations && calculation_matrix[row_index * n_col + col_index] == 1)
-        delta[col_index] = calculation_matrix[row_index * n_col + n_equations];
+        delta[n_row * solution_index + col_index] = calculation_matrix[row_index * n_col + n_equations];
 
-    //__syncthreads();
+    __syncthreads();
 }
 
 
 
 //call: 8
 __device__ void _update_state_after_solving(
-    int const cublas_info,
-    int const finished,
-    int state)
+    short const cublas_info,
+    short const finished,
+    short& state)
 {
     if (finished)
         return;
@@ -343,7 +342,7 @@ __device__ void _update_parameters(
     REAL * prev_parameters,
     REAL const * deltas,
     int const n_parameters,
-    int const finished)
+    short const finished)
 {
     for(int parameter_index = 0; parameter_index<n_parameters; parameter_index++){
         prev_parameters[parameter_index] = parameters[parameter_index];
@@ -374,9 +373,9 @@ __device__ void project_parameter_to_box(
 
 //call: 16
 __device__ void _check_for_convergence(
-    int finished,
+    short& finished,
     REAL const tolerance,
-    int state,
+    short& state,
     REAL const chi_square,
     REAL const prev_chi_square,
     int const iteration,
@@ -406,9 +405,9 @@ __device__ void _check_for_convergence(
 //call: 17
 __device__ void _evaluate_iteration(
     int& n_iterations,
-    int& finished,
+    short& finished,
     int const iteration,
-    int const state)
+    short const state)
 {
     if (state != CONVERGED)
     {

@@ -563,13 +563,13 @@ __device__ void calc_val_derivatives(size_t const n_points,
 	     	Den = sqrtf(Den2);
 		
 		//dchi2/dx0:
-		derivatives[0*n_points] = -deltapy[i]/Den;
+		derivatives[0*n_points+i] = -deltapy[i]/Den;
 		//dchi2/dy0:
-		derivatives[1*n_points] = deltapx[i]/Den;
+		derivatives[1*n_points+i] = deltapx[i]/Den;
 		//dchi2/dtx:
-		derivatives[2*n_points] = -deltapy[i]*p1z[i]/Den+values[i]*output_parameters[3]*deltapx[i]*deltapy[i]/Den2;
+		derivatives[2*n_points+i] = -deltapy[i]*p1z[i]/Den+values[i]*output_parameters[3]*deltapx[i]*deltapy[i]/Den2;
 		//dchi2/dty:
-		derivatives[3*n_points] = deltapx[i]*p1z[i]/Den+values[i]*output_parameters[2]*deltapx[i]*deltapy[i]/Den2;
+		derivatives[3*n_points+i] = deltapx[i]*p1z[i]/Den+values[i]*output_parameters[2]*deltapx[i]*deltapy[i]/Den2;
 	}
 }
 
@@ -581,7 +581,7 @@ __device__ void calc_gradients(size_t const n_points,
 {
 	for(int i = 0; i<n_points; i++){
 		for(int j = 0; j< n_parameters; j++){
-			gradients[j*n_points] = derivatives[j*n_points]*(0.0-values[i])*resolutions[i];
+			gradients[j*n_points+i] = derivatives[j*n_points+i]*(0.0-values[i])*resolutions[i];
 		}
 	}
 }

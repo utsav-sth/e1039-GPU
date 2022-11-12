@@ -199,16 +199,16 @@ public:
       
       float lambda;//scale factor
       
-      float calc_matrix[25];
-      float abs_row[25];
-      int abs_row_index[25];
+      //float calc_matrix[25];
+      //float abs_row[25];
+      //int abs_row_index[25];
 
       int n_iter;
-      int iter_failed;
-      int finished;
-      int state;
-      int skip;
-      int singular;
+      short iter_failed;
+      short finished;
+      short state;
+      short skip;
+      short singular;
       
       //float x_array[nChamberPlanes];// x position arrays
       //float y_array[nChamberPlanes];// y position arrays
@@ -259,9 +259,14 @@ public:
 	thrust::pair<int, int> hitpairs_x[100];
 	thrust::pair<int, int> hitpairs_u[100];
 	thrust::pair<int, int> hitpairs_v[100];
+	int hitidx1[100];
+	int hitidx2[100];
+	short hitflag1[100];
+	short hitflag2[100];
 	int EventID;
 	int nAH;
 	int nTracklets;
+	//really tempted to replace tracklet array with array of IDs
 	gTracklet AllTracklets[TrackletSizeMax];
 	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
 };
@@ -295,6 +300,10 @@ class gPlane {
       float dp1x;
       float dp1y;
       float dp1z;
+      float spacingplane[28];
+      short detsuperid[7][3];
+      short dets_x[6];
+
 };
 
 // Hit comparison
@@ -605,31 +614,23 @@ __device__ int match_tracklet_to_hodo(gTracklet tkl, int stID, gEvent* ic, gPlan
 // function to make the hit pairs in station;
 // I assume it will only be called by the tracklet builder
 // (not by the main function), so I can make it a "device" function. 
-__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int stID, int projID){
+__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, int stID, int projID, gPlane* planes){
 	   //TODO: fix memory management: there's a lot of stuff declared here (though it's probably destroyed after so it *might* be fine)
-	   //can't see those from outside... so be it...
-	   REAL spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
-	   int detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
-
 	   int npairs = 0;
 	   
 	   // I think we assume that by default we want to know where we are
 	   int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	   //declaring arrays for the hit lists
-	   int hitidx1[100]; 
-	   int hitidx2[100];
-	   int hitflag1[100]; 
-	   int hitflag2[100];
 	   for(int i = 0; i<100; i++){
 	   	   hitidx1[i] = hitidx2[i] = 0;
 		   hitflag1[i] = hitflag2[i] = 0;
 	   }
 
 	   //building the lists of hits for each detector plane
-	   int detid1 = detsuperid[stID][projID]*2;
-	   int detid2 = detsuperid[stID][projID]*2-1;
-	   int superdetid = detsuperid[stID][projID];
+	   int detid1 = planes[0].detsuperid[stID][projID]*2;
+	   int detid2 = planes[0].detsuperid[stID][projID]*2-1;
+	   int superdetid = planes[0].detsuperid[stID][projID];
 	   int hitctr1 = 0, hitctr2 = 0;
 	   for(int i = 0; i<ic[index].nAH; i++){
 	   	  if(ic[index].AllHits[i].detectorID==detid1){
@@ -644,7 +645,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 
 	   // pair the hits by position:
 	   // if one hit on e.g. x and one hit on x' are closer than
-	   // the "spacing" defined for the plane, then the hits can be paired together.
+	   // the "spacing" defined for the planes, then the hits can be paired together.
 	   int idx1 = -1;
 	   int idx2 = -1;
 	   for(int i = 0; i<hitctr1; i++){
@@ -652,7 +653,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 		   idx2 = -1;
 	   	   for(int j = 0; j<hitctr2; j++){
 		   	   idx2++;
-			   if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > spacingplane[superdetid] ){
+			   if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > planes[0].spacingplane[superdetid] ){
 			       continue;
 			   }
 			   	   
@@ -709,12 +710,12 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	//thrust::pair<int, int> hitpairs_u[100];
 	//thrust::pair<int, int> hitpairs_v[100];
 
-	int nx = make_hitpairs_in_station(ic, oc[index].hitpairs_x, stID, 0);
-	int nu = make_hitpairs_in_station(ic, oc[index].hitpairs_u, stID, 1);
-	int nv = make_hitpairs_in_station(ic, oc[index].hitpairs_v, stID, 2);
+	int nx = make_hitpairs_in_station(ic, oc[index].hitpairs_x, oc[index].hitidx1, oc[index].hitidx2, oc[index].hitflag1, oc[index].hitflag2, stID, 0, planes);
+	int nu = make_hitpairs_in_station(ic, oc[index].hitpairs_u, oc[index].hitidx1, oc[index].hitidx2, oc[index].hitflag1, oc[index].hitflag2, stID, 1, planes);
+	int nv = make_hitpairs_in_station(ic, oc[index].hitpairs_v, oc[index].hitidx1, oc[index].hitidx2, oc[index].hitflag1, oc[index].hitflag2, stID, 2, planes);
 	
-	int uidx = stID==0? stID*6 : stID*6+4;
-	int vidx = stID==0? stID*6+4 : stID*6;
+	short uidx = stID==0? stID*6 : stID*6+4;
+	short vidx = stID==0? stID*6+4 : stID*6;
 	
 	bool print = false;
 	//if(0<=ic[index].EventID && ic[index].EventID<20){
@@ -915,15 +916,9 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[2] = 0.;
 				fitarrays[index].output_parameters[3] = 0.;
 				fitarrays[index].lambda = 0.001f;
-
-				dim3 threads(1, 1, 1);
-    				dim3 blocks(1, 1, 1);
-
-    				threads.x = fitparams[0].nparam + 1;
-    				threads.y = fitparams[0].nparam;
-								
-				//include fit here:
-				//gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
+				
+				/*
+				if(ic[index].EventID==0){
 				gpufit_algorithm_fitter(fitparams[0].max_iterations,
 										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
@@ -934,11 +929,11 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
 										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
 										fitarrays[index].deltas, fitarrays[index].lambda,
-										fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
+										//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
 										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-										
+				}*/						
 				/*
 				//if(ic[index].EventID==0){
 				//straight_track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
@@ -991,6 +986,41 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 		}
 	}
 
+	//just for a test!!!
+				
+	fitarrays[index].output_parameters[0] = 0.;
+	fitarrays[index].output_parameters[1] = 0.;
+	fitarrays[index].output_parameters[2] = 0.;
+	fitarrays[index].output_parameters[3] = 0.;
+	fitarrays[index].lambda = 0.001f;
+	fitarrays[index].chi2prev = 0.;
+
+	//include fit here:
+	if(ic[index].EventID==0)
+	gpufit_algorithm_fitter(fitparams[0].max_iterations,
+							fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
+							fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
+							fitparams[0].tolerance, fitparams[0].nparam,
+							fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
+							fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
+							fitarrays[index].chi2, fitarrays[index].chi2prev,
+							fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
+							fitarrays[index].hessians, fitarrays[index].scaling_vector, 
+							fitarrays[index].deltas, fitarrays[index].lambda,
+							//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
+							npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+							fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+							fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+	if(ic[index].EventID<20){
+	printf("evt %d: %d %d %d\n", ic[index].EventID, fitarrays[index].n_iter, fitarrays[index].finished, fitarrays[index].state);
+	printf("evt %d: track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
+	ic[index].EventID,
+	fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
+	fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
+	fitarrays[index].output_parameters[2], fitarrays[index].output_parameters_errors[2], 
+	fitarrays[index].output_parameters[3], fitarrays[index].output_parameters_errors[3], 
+	fitarrays[index].chi2);
+	}
 	/*
 	//just for a test!!!
 	if(ic[index].EventID==0){
@@ -1061,7 +1091,6 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	
 	//for the time being, declare in function;
-	short dets_x[6] = {15, 16, 21, 22, 27, 28};
 	REAL x_pos[4];
 	REAL z_pos[4];
 	REAL tx, x0, sum, det, sz, sx, szz, sxx, sxz;
@@ -1076,7 +1105,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 
 	for(int i = 0; i<oc[index].nTKL_stID[2]; i++){
 		nhits = 0;
-		if(oc[index].AllTracklets[i].hits[i].detectorID==dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[1])
+		if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[1])
 		{
 			x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
 			z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
@@ -1085,8 +1114,8 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 		
 		//tracklets in station 3  (D3p, stID 4-1, D3m, stID 5-1)
 		for(int j = oc[index].nTKL_stID[2]; j<oc[index].nTKL_stID[2]+oc[index].nTKL_stID[3]+oc[index].nTKL_stID[4]; j++){
-			if(oc[index].AllTracklets[i].hits[i].detectorID==dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[3] ||
-			   oc[index].AllTracklets[i].hits[i].detectorID==dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==dets_x[5])
+			if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[3] ||
+			   oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[5])
 			{
 				x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
 				z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
@@ -1159,6 +1188,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[3] = (oc[index].AllTracklets[i].ty+oc[index].AllTracklets[j].ty)*0.5f;
 				fitarrays[index].lambda = 0.001f;
 				
+				/*
 				dim3 threads(1, 1, 1);
     				dim3 blocks(1, 1, 1);
 
@@ -1166,8 +1196,8 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
     				threads.y = fitparams[0].nparam;
 				
 				//include fit here:
-				//gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
-				gpufit_algorithm_fitter(fitparams[0].max_iterations,
+				gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
+				//gpufit_algorithm_fitter(fitparams[0].max_iterations,
 										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
 										fitparams[0].tolerance, fitparams[0].nparam,
@@ -1181,7 +1211,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 										nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				
+				*/
 				//for(int n = 0; n<4; n++){
 				//	fitarrays[index].output_parameters_errors[n] = 0;
 				//	//fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
@@ -1251,6 +1281,11 @@ int main(int argn, char * argv[]) {
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes];
+
+	REAL spacingplane_[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
+	short detsuperid_[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
+	short dets_x_[6] = {15, 16, 21, 22, 27, 28};
+	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
 	int ipl, nelem;
@@ -1318,6 +1353,15 @@ int main(int argn, char * argv[]) {
 	//std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
 	double wire_position[54][400];//Let's keep this: simpler, more robust
 	for(int i = 0; i < nChamberPlanes; ++i){
+		for(int j = 0; j<28; j++){
+			plane[i].spacingplane[j] = spacingplane_[j];
+			if(j<6)plane[i].dets_x[j] = dets_x_[j];
+			if(j<7){
+				for(int k = 0; k<3; k++){
+					plane[i].detsuperid[j][k] = detsuperid_[j][k];
+				}
+			}
+		}
 		//cout << plane[i].nelem << endl;
       		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
@@ -1326,6 +1370,15 @@ int main(int argn, char * argv[]) {
 		}
 	}
 	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
+		for(int j = 0; j<28; j++){
+			plane[i].spacingplane[j] = spacingplane_[j];
+			if(j<6)plane[i].dets_x[j] = dets_x_[j];
+			if(j<7){
+				for(int k = 0; k<3; k++){
+					plane[i].detsuperid[j][k] = detsuperid_[j][k];
+				}
+			}
+		}
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
@@ -1334,6 +1387,15 @@ int main(int argn, char * argv[]) {
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
+		for(int j = 0; j<28; j++){
+			plane[i].spacingplane[j] = spacingplane_[j];
+			if(j<6)plane[i].dets_x[j] = dets_x_[j];
+			if(j<7){
+				for(int k = 0; k<3; k++){
+					plane[i].detsuperid[j][k] = detsuperid_[j][k];
+				}
+			}
+		}
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		int moduleID = 8 - int((j - 1)/8);
@@ -1623,9 +1685,9 @@ int main(int argn, char * argv[]) {
 	
 	auto start_tkl3 = std::chrono::system_clock::now();
 	stID = 4;
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+	//gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	stID = 5;
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+	//gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	//cout << endl;
 	// check status of device and synchronize again;
 	auto end_tkl3 = std::chrono::system_clock::now();
@@ -1633,7 +1695,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gkernel_BackPartialTracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, device_gPlane, device_gFitParams);
+	//gkernel_BackPartialTracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, device_gPlane, device_gFitParams);
 	
 	
 	clock_t cp5 = clock();

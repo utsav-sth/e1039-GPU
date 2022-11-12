@@ -206,12 +206,12 @@ __device__ void fixedpoint_straighttrack_chi2minimizer(size_t const max_iteratio
 }
 
 
-//device
-//global???? // as is, I might not have the choice, since I need to "reconfigure" the thread/block for the gauss_jordan_method
+//device?
+//global? // as is, I might not have the choice, since I need to "reconfigure" the thread/block for the gauss_jordan_method
 __device__ void gpufit_algorithm_fitter(int const max_n_iterations, 
 					// status indices
-					int& n_iterations, int& iteration_failed, int& finished, 
-					int& state, int& skip, int& singular, 
+					int& n_iterations, short& iteration_failed, short& finished, 
+					short& state, short& skip, short& singular, 
 					// fit configuration parameters
 					REAL const tolerance,
 					int const n_parameters,
@@ -222,7 +222,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 					REAL* values, REAL* derivatives, REAL* gradients, 
 					REAL* hessians, REAL* scaling_vector, 
 					REAL* deltas, REAL& lambda,
-					REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
+//					REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
 					// exp data arrays 
 					int const n_points,
 					REAL* const driftdist, REAL* const resolutions,
@@ -250,6 +250,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			       chi_square,
    			       prev_chi_square,
 			       finished);
+			       printf("%d ?\n", iteration_failed);
 	// call: 4, 14, ...
 	_calculate_gradients(gradients,
 			     values,
@@ -270,6 +271,8 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			    finished);
 	
 	for(int n = 0; n<max_n_iterations; n++){
+	printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
+//printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, derivatives[0], gradients[0], parameters[0]);
 		//call: 6, 19,...
 		_modify_step_widths(hessians,
 				    lambda,
@@ -277,18 +280,30 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 				    n_parameters,
 				    iteration_failed,
 				    finished);
-				    
-		//call: 7, 20, ... // beware with this one it is the only place where one can't trivially get rid of the thread info
-		_gaussjordan(deltas,
+		//call: 7, 20, ... 
+		// configure first
+		dim3  threads(1, 1, 1);
+		dim3  blocks(1, 1, 1);
+
+		threads.x = n_parameters + 1;
+		threads.y = n_parameters;
+		blocks.x = 1;
+		int nparam_pow2 = 1;
+		for(int i = 0; i<n_parameters; i++){
+			nparam_pow2*=2;
+		}
+		int const shared_size = sizeof(REAL) * ((threads.x * threads.y) + nparam_pow2 + nparam_pow2);
+		
+		_gaussjordan<<<blocks, threads, shared_size>>>(deltas,
 				gradients,
 				hessians,
 				finished,
 				singular,
-				calc_matrix, 
-				abs_row,
-				abs_row_index,
+				//calc_matrix, 
+				//abs_row,
+				//abs_row_index,
 				n_parameters,
-				n_parameters*n_parameters);
+				nparam_pow2);
 		//call: 8, 21, ...
 		_update_state_after_solving(singular,
 					    finished,
@@ -300,7 +315,6 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			deltas,
 			n_parameters,
 			finished);
-
 		// call: 0, 10, ...
 		project_parameter_to_box(n_parameters,
 				parameters,
@@ -322,6 +336,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			       chi_square,
    			       prev_chi_square,
 			       finished);
+		       printf("%d ?\n", iteration_failed);
 		// call: 4, 14, ...
 		_calculate_gradients(gradients,
 			     values,
@@ -360,7 +375,9 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			parameters,
 			prev_parameters,
 			n_parameters);
+	printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
 
 	}
+	//printf("%d, %1.6f \n", n_iterations, chi_square);
 
 }
