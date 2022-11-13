@@ -396,3 +396,215 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 	//printf("%d, %1.6f \n", n_iterations, chi_square);
 
 }
+
+
+__device__ void gpufit_corr_algorithm_fitter(int const max_n_iterations, 
+					// status indices
+					int& n_iterations, short& iteration_failed, short& finished, 
+					short& state, short& skip, short& singular, 
+					// fit configuration parameters
+					REAL const tolerance,
+					int const n_parameters, int const n_total_parameters,
+					REAL* const lower_bounds, REAL* const upper_bounds,
+					// variables to optimize
+					REAL* parameters, REAL* prev_parameters, 
+					REAL& chi_square, REAL& prev_chi_square, 
+					REAL* values, REAL* derivatives, REAL* gradients, 
+					REAL* hessians, REAL* scaling_vector, 
+					REAL* deltas, REAL& lambda,
+					REAL* Ainv,
+					//REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
+					// exp data arrays 
+					REAL* fixedpoint,
+					int const n_points,
+					REAL* const driftdist, REAL* const resolutions,
+					REAL* const p1x, REAL* const p1y, REAL* const p1z,
+					REAL* const deltapx, REAL* const deltapy, REAL* const deltapz)
+{
+	// call: 0, 10, ...
+	project_parameter_to_box_fixedpoint(n_total_parameters,
+				 parameters,
+				 fixedpoint,
+				 lower_bounds, 
+				 upper_bounds);
+
+	// call: 1, 11, ...
+ 	_calc_curve_corr_values(parameters, 
+			   n_points,
+			   n_parameters,
+			   finished,
+			   values, derivatives,
+			   fixedpoint,
+			   driftdist, resolutions,
+			   p1x, p1y, p1z,
+			   deltapx, deltapy, deltapz,
+			   chi_square);
+	// call: 3, 13, ...
+	_check_fit_improvement(iteration_failed,
+			       chi_square,
+   			       prev_chi_square,
+			       finished);
+	//		       printf("%d ?\n", iteration_failed);
+	// call: 4, 14, ...
+	_calculate_gradients(gradients,
+			     values,
+			     derivatives,
+			     driftdist, resolutions,
+			     n_points,
+			     n_parameters,
+			     finished,
+			     skip);
+	//printf("%d %1.4f %1.4f %1.4f %1.4f \n", finished, derivatives[0], gradients[0], parameters[0], chi_square);
+	//call: 5, 15, ...
+	_calculate_hessians(hessians,
+			    values,
+			    derivatives,
+			    n_parameters,
+			    n_points,
+			    resolutions,
+			    skip,
+			    finished);
+	
+	for(int n = 0; n<max_n_iterations; n++){
+	//printf("%d %d, x0 = %1.4f, chi2 %1.4f, prev_chi2 = %1.4f \n", n, finished, parameters[0], chi_square, prev_chi_square);
+	//printf("%d %d, derivative[0,0] %1.8f, gradients[0] %1.4f, x0 = %1.4f \n", n, finished, derivatives[0*6], gradients[0], parameters[0]);
+	//printf("%d %d, derivative[1,0] %1.8f, gradients[1] %1.4f, y0 = %1.4f \n", n, finished, derivatives[1*6], gradients[1], parameters[1]);
+	//printf("%d %d, derivative[2,0] %1.8f, gradients[2] %1.4f, tx = %1.4f \n", n, finished, derivatives[2*6], gradients[2], parameters[2]);
+	//printf("%d %d, derivative[3,0] %1.8f, gradients[3] %1.4f, ty = %1.4f \n", n, finished, derivatives[3*6], gradients[3], parameters[3]);
+		//call: 6, 19,...
+		_modify_step_widths(hessians,
+				    lambda,
+				    scaling_vector,
+				    n_parameters,
+				    iteration_failed,
+				    finished);
+
+		//need a lighter matrix inversion!
+		solve_equations_systems(n_parameters,
+					hessians, gradients,
+					Ainv, deltas,
+					skip);		
+		/*
+		//call: 7, 20, ... 
+		// configure first
+		dim3  threads(1, 1, 1);
+		dim3  blocks(1, 1, 1);
+
+		threads.x = n_parameters + 1;
+		threads.y = n_parameters;
+		blocks.x = 1;
+		int nparam_pow2 = 1;
+		for(int i = 0; i<n_parameters; i++){
+			nparam_pow2*=2;
+		}
+		int const shared_size = sizeof(REAL) * ((threads.x * threads.y) + nparam_pow2 + nparam_pow2);
+		
+		_gaussjordan<<<blocks, threads, shared_size>>>(deltas,
+				gradients,
+				hessians,
+				finished,
+				singular,
+				//calc_matrix, 
+				//abs_row,
+				//abs_row_index,
+				n_parameters,
+				nparam_pow2);
+		*/
+		//call: 8, 21, ...
+	//printf("%d %d, deltas[0] = %1.4f, deltas[1] = %1.4f, deltas[2] =  %1.4f, deltas[3] = %1.4f\n", n, finished, deltas[0], deltas[1], deltas[2], deltas[3]);
+
+		_update_state_after_solving(singular,
+					    finished,
+					    state);
+		//call: 9, 22, ...
+		_update_corr_parameters(
+			parameters,
+			prev_parameters,
+			fixedpoint,
+			deltas,
+			n_parameters,
+			n_total_parameters,
+			finished);
+		// call: 0, 10, ...
+		project_parameter_to_box_fixedpoint(n_total_parameters,
+				parameters,
+				fixedpoint,
+				lower_bounds, 
+				upper_bounds);
+
+		// call: 1, 11, ...
+		_calc_curve_corr_values(parameters, 
+			   n_points,
+			   n_parameters,
+			   finished,
+			   values, derivatives,
+			   fixedpoint,
+			   driftdist, resolutions,
+			   p1x, p1y, p1z,
+			   deltapx, deltapy, deltapz,
+			   chi_square);
+		// call: 3, 13, ...
+		_check_fit_improvement(iteration_failed,
+			       chi_square,
+   			       prev_chi_square,
+			       finished);
+		//       printf("%d ?\n", iteration_failed);
+		// call: 4, 14, ...
+		_calculate_gradients(gradients,
+			     values,
+			     derivatives,
+			     driftdist, resolutions,
+			     n_points,
+			     n_parameters,
+			     finished,
+			     skip);
+		//call: 5, 15, ...
+		_calculate_hessians(hessians,
+			    values,
+			    derivatives,
+			    n_parameters,
+			    n_points,
+			    resolutions,
+			    skip,
+			    finished);
+		//call: 16, ...
+		_check_for_convergence(finished,
+			tolerance,
+    			state,
+    			chi_square,
+    			prev_chi_square,
+    			n,
+    			max_n_iterations);
+		//call: 17
+		_evaluate_iteration(n_iterations,
+				finished,
+    				n,
+    				state);
+		// call: 18
+		_prepare_next_iteration(lambda,
+			chi_square,
+			prev_chi_square,
+			parameters,
+			prev_parameters,
+			n_parameters);
+	//printf("%d %d, x0 = %1.4f, prev_chi2 = %1.4f, chi2 = %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
+
+	}
+	//printf("%d, %1.6f \n", n_iterations, chi_square);
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

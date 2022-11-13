@@ -730,7 +730,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	int nhits_tkl = 0;
 	int npts = 0;
 
-	//REAL dca = 0;
 	REAL fixedpoint[3] = {0, 0, 0};
 		
 	//X-U combinations first
@@ -926,7 +925,26 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].lambda = 0.01f;
 				fitarrays[index].chi2prev = 1.e20;
 				
-				if(ic[index].EventID==0){
+				/*
+				gpufit_corr_algorithm_fitter(fitparams[0].max_iterations,
+										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
+										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
+										fitparams[0].tolerance, 2, fitparams[0].nparam,
+										fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
+										fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
+										fitarrays[index].chi2, fitarrays[index].chi2prev,
+										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients, 
+										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
+										fitarrays[index].deltas, fitarrays[index].lambda,
+										fitarrays[index].Ainv,
+										//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
+										fixedpoint,
+										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+				*/
+
+				//if(ic[index].EventID==0){
 				gpufit_algorithm_fitter(fitparams[0].max_iterations,
 										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
@@ -942,8 +960,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				}
-				
+				//}
 				/*
 				//if(ic[index].EventID==0){
 				//straight_track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
@@ -983,8 +1000,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
 					oc[index].AllTracklets[n_tkl].chisq);
 
-				if(!match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))
-				continue;
+				//if(!match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))
+				//continue;
 
 				
 				if(n_tkl>TrackletSizeMax){
@@ -992,6 +1009,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					//printf("evt %d: n_tkl = %d > %d\n", oc[index].EventID, n_tkl, TrackletSizeMax);
 				}
 				n_tkl++;
+				oc[index].nTKL_stID[stID]++;
+
 			}
 		}
 	}
@@ -1086,7 +1105,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	//printf("%d ", n_tkl);
 	oc[index].nTracklets = n_tkl;
-	oc[index].nTKL_stID[stID]++;
 }
 
 //
@@ -1102,164 +1120,154 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 // kernel to combine tracklets into back partial tracks
 __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitarrays, gPlane* planes, gFitParams* fitparams){
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	
+	short stID = 5;
 	//for the time being, declare in function;
 	REAL x_pos[4];
 	REAL z_pos[4];
-	REAL tx, x0, sum, det, sz, sx, szz, sxx, sxz;
+	REAL a, b, sum, det, sx, sy, sxx, syy, sxy;
 	short nprop, iprop;
 	REAL xExp;
-	short nhits;
-	//tracklets in station 2 (D2, stID 3-1)
+	short nhits_X2, nhits_X3;
 	int n_tkl = oc[index].nTracklets;
 	int nhits_2 = 0, nhits_3 = 0;
-	//REAL dca;
-	//REAL fixedpoint[3] = {0, 0, 0};
+	
+	REAL fixedpoint[3] = {0, 0, 0};
 
-	for(int i = 0; i<oc[index].nTKL_stID[2]; i++){
-		nhits = 0;
-		if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[1])
-		{
-			x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
-			z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
-			nhits++;
+	//tracklets in station 3  (D3p, stID 4-1, D3m, stID 5-1)
+	for(int i = oc[index].nTKL_stID[2]; i<oc[index].nTKL_stID[2]+oc[index].nTKL_stID[3]+oc[index].nTKL_stID[4]; i++){
+		nhits_2 = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits;
+		nhits_X2 = 0;
+		for(int k = 0; k<nhits_2; k++){
+			if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[1])
+			{
+				x_pos[nhits_X2] = oc[index].AllTracklets[i].hits[k].pos;
+				z_pos[nhits_X2] = planes[oc[index].AllTracklets[i].hits[k].detectorID].z;
+				nhits_X2++;
+			}
 		}
 		
-		//tracklets in station 3  (D3p, stID 4-1, D3m, stID 5-1)
-		for(int j = oc[index].nTKL_stID[2]; j<oc[index].nTKL_stID[2]+oc[index].nTKL_stID[3]+oc[index].nTKL_stID[4]; j++){
-			if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[3] ||
-			   oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[5])
-			{
-				x_pos[nhits] = oc[index].AllTracklets[i].hits[i].pos;
-				z_pos[nhits] = planes[oc[index].AllTracklets[i].hits[i].detectorID].z;
-				nhits++;
-				
-				chi2_simplefit(nhits, z_pos, x_pos, tx, x0, sum, det, sz, sx, szz, sxx, sxz);
-				if(fabs(x0)>X0_MAX || fabs(tx)>TX_MAX)continue;
-				
-				//TODO: add in here prop matching
-				nprop = 0;
-				for(short ip = 0; ip<4; ip++){
-					iprop = 48+ip;
-					xExp = tx*planes[iprop-1].z+x0;
-					//loop on hits to find prop
-					for(int k = 0; k<ic[index].nAH; k++){
-						if(ic[index].AllHits[k].detectorID==iprop){
-							if(fabs(ic[index].AllHits[k].pos-xExp)<5.08f){
-								nprop++;
-								break;
-							}
+		//tracklets in station 2 (D2, stID 3-1)
+		for(int j = 0; j<oc[index].nTKL_stID[2]; j++){
+			nhits_3 = oc[index].AllTracklets[j].nXHits+oc[index].AllTracklets[j].nUHits+oc[index].AllTracklets[j].nVHits;
+			nhits_X3 = nhits_X2;
+			for(int k = 0; k<nhits_3; k++){
+				if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[3] ||
+			   	oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[5])
+				{
+					x_pos[nhits_X3] = oc[index].AllTracklets[i].hits[k].pos;
+					z_pos[nhits_X3] = planes[oc[index].AllTracklets[i].hits[k].detectorID].z;
+					nhits_X3++;
+				}		
+			}
+			
+			chi2_simplefit(nhits_X2+nhits_X3, z_pos, x_pos, a, b, sum, det, sx, sy, sxx, syy, sxy);
+			if(fabs(a)>X0_MAX || fabs(b)>TX_MAX)continue;
+			//prop matching
+			nprop = 0;
+			for(short ip = 0; ip<4; ip++){
+				iprop = 48+ip;
+				xExp = a*planes[iprop-1].z+b;
+				//loop on hits to find prop
+				for(int k = 0; k<ic[index].nAH; k++){
+					if(ic[index].AllHits[k].detectorID==iprop){
+						if(fabs(ic[index].AllHits[k].pos-xExp)<5.08f){
+							nprop++;
+							break;
 						}
 					}
-					if(nprop>0)break;
 				}
-				if(nprop==0)continue;
-
-				//Add tracklets: first, get number of hits in each
-				nhits_2 = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits;
-				nhits_3 = oc[index].AllTracklets[j].nXHits+oc[index].AllTracklets[j].nUHits+oc[index].AllTracklets[j].nVHits;
-				
-				oc[index].AllTracklets[n_tkl].nXHits = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[j].nXHits;
-				oc[index].AllTracklets[n_tkl].nUHits = oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[j].nUHits;
-				oc[index].AllTracklets[n_tkl].nVHits = oc[index].AllTracklets[i].nVHits+oc[index].AllTracklets[j].nVHits;
-				
-				//add in the new tracklet the hits from the two existing tracklets;
-				//also fill the fit arrays
-				for(int k = 0; k<nhits_2; k++){
-					oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[i].hits[k];
-					oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[i].hitsign[k];
-					
-					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
-					fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
-				}
-					
-				for(int k = nhits_2; k<nhits_2+nhits_3; k++){
-					oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[j].hits[k-nhits_2];
-					oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[j].hitsign[k-nhits_2];
-
-					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
-					fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-					fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
-				}
-					
-				//then fit:
-				// do a rough estimation of the starting fit parameters by just doing the average of the two:
-				fitarrays[index].output_parameters[0] = (oc[index].AllTracklets[i].x0+oc[index].AllTracklets[j].x0)*0.5f;
-				fitarrays[index].output_parameters[1] = (oc[index].AllTracklets[i].y0+oc[index].AllTracklets[j].y0)*0.5f;
-				fitarrays[index].output_parameters[2] = (oc[index].AllTracklets[i].tx+oc[index].AllTracklets[j].tx)*0.5f;
-				fitarrays[index].output_parameters[3] = (oc[index].AllTracklets[i].ty+oc[index].AllTracklets[j].ty)*0.5f;
-				fitarrays[index].lambda = 0.001f;
-				
-				/*
-				dim3 threads(1, 1, 1);
-    				dim3 blocks(1, 1, 1);
-
-    				threads.x = fitparams[0].nparam + 1;
-    				threads.y = fitparams[0].nparam;
-				
-				//include fit here:
-				gpufit_algorithm_fitter<<<threads,blocks>>>(fitparams[0].max_iterations,
-				//gpufit_algorithm_fitter(fitparams[0].max_iterations,
-										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
-										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
-										fitparams[0].tolerance, fitparams[0].nparam,
-										fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
-										fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
-										fitarrays[index].chi2, fitarrays[index].chi2prev,
-										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
-										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
-										fitarrays[index].deltas, fitarrays[index].lambda,
-										fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
-										nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				*/
-				//for(int n = 0; n<4; n++){
-				//	fitarrays[index].output_parameters_errors[n] = 0;
-				//	//fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
-				//}
-				
-				//if(ic[index].EventID==0)
-				//minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
-				
-				//fixedpoint_straighttrack_chi2minimizer(fitparams[0].max_iterations, fitparams[0].tolerance,
-				//					fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, 
-				//					nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-				//					fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-				//					fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, 
-				//					fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
-				//					fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
-				//					fitarrays[index].prev_parameters, 
-				//					fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, 
-				//					fixedpoint, fitarrays[index].chi2, fitarrays[index].chi2prev, dca);
-				
-				if(fitarrays[index].chi2>9000){
-					continue;
-				}
-				
-				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
-				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
-				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
-				oc[index].AllTracklets[n_tkl].ty = fitarrays[index].output_parameters[3];
-				oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters_errors[0];
-				oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters_errors[1];
-				oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters_errors[2];
-				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
-				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
-				
-				n_tkl++;
+				if(nprop>0)break;
 			}
+			if(nprop==0)continue;
+				
+			//Add tracklets: first, get number of hits in each
+			oc[index].AllTracklets[n_tkl].stationID = stID;
+			oc[index].AllTracklets[n_tkl].nXHits = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[j].nXHits;
+			oc[index].AllTracklets[n_tkl].nUHits = oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[j].nUHits;
+			oc[index].AllTracklets[n_tkl].nVHits = oc[index].AllTracklets[i].nVHits+oc[index].AllTracklets[j].nVHits;
+			
+			//add in the new tracklet the hits from the two existing tracklets;
+			//also fill the fit arrays
+			for(int k = 0; k<nhits_2; k++){
+				oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[i].hits[k];
+				oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[i].hitsign[k];
+				
+				fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
+				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
+				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
+				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
+				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+			}
+				
+			for(int k = nhits_2; k<nhits_2+nhits_3; k++){
+				oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[j].hits[k-nhits_2];
+				oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[j].hitsign[k-nhits_2];
+					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
+				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
+				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
+				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
+				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+			}
+			
+			//then fit:
+				
+			get_straighttrack_fixedpoint(nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+							fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+							fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
+							fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
+							fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
+							fixedpoint, fitarrays[index].chi2);
+			
+			fitarrays[index].output_parameters[0] = b;
+			fitarrays[index].output_parameters[2] = a;
+			
+			// do a rough estimation of the starting fit
+			//fitarrays[index].output_parameters[0] = (oc[index].AllTracklets[i].x0+oc[index].AllTracklets[j].x0)*0.5f;
+			//fitarrays[index].output_parameters[1] = (oc[index].AllTracklets[i].y0+oc[index].AllTracklets[j].y0)*0.5f;
+			//fitarrays[index].output_parameters[2] = (oc[index].AllTracklets[i].tx+oc[index].AllTracklets[j].tx)*0.5f;
+			//fitarrays[index].output_parameters[3] = (oc[index].AllTracklets[i].ty+oc[index].AllTracklets[j].ty)*0.5f;
+			fitarrays[index].lambda = 0.01f;
+			fitarrays[index].chi2prev = 1.e20;
+			
+			//include fit here:
+			gpufit_algorithm_fitter(fitparams[0].max_iterations,
+								fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
+								fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
+								fitparams[0].tolerance, fitparams[0].nparam,
+								fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
+								fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
+								fitarrays[index].chi2, fitarrays[index].chi2prev,
+								fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
+								fitarrays[index].hessians, fitarrays[index].scaling_vector, 
+								fitarrays[index].deltas, fitarrays[index].lambda,
+								fitarrays[index].Ainv, 
+								nhits_2+nhits_3, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+			
+			
+			//if(fitarrays[index].chi2>9000){
+			//	continue;
+			//}
+			
+			oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
+			oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
+			oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
+			oc[index].AllTracklets[n_tkl].ty = fitarrays[index].output_parameters[3];
+			oc[index].AllTracklets[n_tkl].err_x0 = fitarrays[index].output_parameters_errors[0];
+			oc[index].AllTracklets[n_tkl].err_y0 = fitarrays[index].output_parameters_errors[1];
+			oc[index].AllTracklets[n_tkl].err_tx = fitarrays[index].output_parameters_errors[2];
+			oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
+			oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
+			
+			n_tkl++;
+			oc[index].nTKL_stID[stID]++;
 		}
 	}
 	
@@ -1695,12 +1703,19 @@ int main(int argn, char * argv[]) {
 	
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	auto end_tkl2 = std::chrono::system_clock::now();
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 	
 	auto start_tkl3 = std::chrono::system_clock::now();
 	stID = 4;
-	//gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
 	stID = 5;
-	//gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
+	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	//cout << endl;
 	// check status of device and synchronize again;
 	auto end_tkl3 = std::chrono::system_clock::now();
@@ -1708,8 +1723,10 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	//gkernel_BackPartialTracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, device_gPlane, device_gFitParams);
+	gkernel_BackPartialTracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, device_gPlane, device_gFitParams);
 	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 	
 	clock_t cp5 = clock();
 	// data transfer from device to host
@@ -1783,6 +1800,7 @@ int main(int argn, char * argv[]) {
 			if(isnan(host_output_TKL[n].AllTracklets[k].y0))host_output_TKL[n].AllTracklets[k].y0 = -100;
 			if(isnan(host_output_TKL[n].AllTracklets[k].tx))host_output_TKL[n].AllTracklets[k].tx = -0.2;
 			if(isnan(host_output_TKL[n].AllTracklets[k].ty))host_output_TKL[n].AllTracklets[k].ty = -0.2;
+			if(host_output_TKL[n].AllTracklets[k].stationID>4)cout << host_output_TKL[n].AllTracklets[k].stationID << endl;
 			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << endl;
 		}
 		

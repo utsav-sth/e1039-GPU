@@ -348,30 +348,30 @@ __device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
     //}
 }
 
-__device__ void chi2_simplefit(size_t const n_points, REAL* const z_array, REAL* const x_array, REAL& tx, REAL& x0, REAL sum, REAL det, REAL sz, REAL sx, REAL szz, REAL sxx, REAL szx)
+__device__ void chi2_simplefit(size_t const n_points, REAL* const x_array, REAL* const y_array, REAL& a, REAL& b, REAL sum, REAL det, REAL sx, REAL sy, REAL sxx, REAL syy, REAL sxy)
 {
 	sx = 0;
-	sz = 0;
-	szz = 0;
-	szx = 0;
+	sy = 0;
 	sxx = 0;
+	syy = 0;
+	sxy = 0;
 	
 	for(int i = 0; i<n_points; i++){
 		sum+=1.;
-		sz+=z_array[i];
 		sx+=x_array[i];
-		szz+=z_array[i]*z_array[i];
+		sy+=y_array[i];
 		sxx+=x_array[i]*x_array[i];
-		szx+=x_array[i]*z_array[i];
+		syy+=y_array[i]*y_array[i];
+		sxy+=x_array[i]*y_array[i];
 	}
-	det = sum*szz - sz*sz; 	
+	det = sum*sxx - sx*sx; 	
 	if(fabs(det)<1.e-20){
-		tx = 0.;
-		x0 = 0.;
+		a = 0.;
+		b = 0.;
 		return;
 	}
-	tx = (sum*szx - sz*sx)/det;
-	x0 = (sum*sxx - szx*sx)/det;
+	a = (sum*sxy - sx*sy)/det;
+	b = (sy*sxx - sxy*sx)/det;
 
 }
 
@@ -573,6 +573,31 @@ __device__ void calc_val_derivatives(size_t const n_points,
 		derivatives[2*n_points+i] = -2*values[i]*(deltapy[i]*p1z[i]/Den-dca*output_parameters[3]*deltapx[i]*deltapy[i]/Den2);
 		//dchi2/dty:
 		derivatives[3*n_points+i] = +2*values[i]*(deltapx[i]*p1z[i]/Den-dca*output_parameters[2]*deltapx[i]*deltapy[i]/Den2);
+	}
+}
+
+__device__ void calc_corr_val_derivatives(REAL* fixedpoint,
+	   				size_t const n_points,
+					REAL* const driftdist, REAL* const resolutions,
+					REAL* const p1x, REAL* const p1y, REAL* const p1z,
+					REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
+					size_t const nparam, REAL* const output_parameters, 
+					REAL* values, REAL* derivatives, REAL& chi2)
+{
+	REAL Den2, Den, dca;
+	chi2 = 0;
+	for(int i = 0; i<n_points; i++){
+		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
+		values[i] = (driftdist[i] - dca) * (driftdist[i] - dca) / resolutions[i] / resolutions[i];
+		chi2+= values[i];
+
+	     	Den2 = deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2 * ( deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3]);
+	     	Den = sqrtf(Den2);
+		
+		//dchi2/dtx:
+		derivatives[0*n_points+i] = -2*values[i]*( (deltapy[i]*p1z[i]/Den-dca*output_parameters[3]*deltapx[i]*deltapy[i]/Den2) - fixedpoint[2]*deltapy[i]/Den );
+		//dchi2/dty:
+		derivatives[1*n_points+i] = +2*values[i]*( (deltapx[i]*p1z[i]/Den-dca*output_parameters[2]*deltapx[i]*deltapy[i]/Den2) - fixedpoint[2]*deltapx[i]/Den );
 	}
 }
 

@@ -23,6 +23,27 @@ __device__ void _calc_curve_values(
         
 }
 
+__device__ void _calc_curve_corr_values(
+    REAL* const parameters,
+    int const n_points,
+    int const n_parameters,
+    short const finished,
+    REAL* values,
+    REAL* derivatives,
+    //data input array
+    REAL* fixedpoint,
+    REAL* const driftdist, REAL* const resolutions,
+    REAL* const p1x, REAL* const p1y, REAL* const p1z,
+    REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
+    REAL& chi2)
+{
+    if (finished)
+        return;
+	
+    calc_corr_val_derivatives(fixedpoint, n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, n_parameters, parameters, values, derivatives, chi2);
+        
+}
+
 // call: 2, 12, ... chi2 (merged with 1)
 
 
@@ -382,6 +403,32 @@ __device__ void _update_parameters(
     
 }
 
+__device__ void _update_corr_parameters(
+    REAL * parameters,
+    REAL * prev_parameters,
+    REAL* fixedpoint,
+    REAL const * deltas,
+    int const n_parameters,
+    int const n_total_parameters,
+    short const finished)
+{
+    if (finished)
+    {
+	return;
+    }
+
+    for(int parameter_index = 0; parameter_index<n_total_parameters; parameter_index++){
+        prev_parameters[parameter_index] = parameters[parameter_index];
+	
+    	//if()parameters[parameter_index] += deltas[parameter_index];
+    }
+    parameters[2]+= deltas[0];
+    parameters[3]+= deltas[1];
+    parameters[0]+= -deltas[0]*fixedpoint[2];
+    parameters[1]+= -deltas[1]*fixedpoint[2];
+    
+}
+
 //call: 0, 10, ...
 __device__ void project_parameter_to_box(
 	   	int const n_parameters,
@@ -392,6 +439,36 @@ __device__ void project_parameter_to_box(
 	for(int i = 0; i< n_parameters; i++){
 		if(parameters[i]<lower_bounds[i])parameters[i]=lower_bounds[i];
 		if(parameters[i]>upper_bounds[i])parameters[i]=upper_bounds[i];
+	}
+}
+
+__device__ void project_parameter_to_box_fixedpoint(
+	   	int const n_parameters,
+	   	REAL* parameters, 
+		REAL* fixedpoint,
+		REAL* const lower_bounds, 
+		REAL* const upper_bounds)
+{
+	for(int i = 0; i< n_parameters; i++){
+		if(i<2){
+			if(parameters[i]<lower_bounds[i]){
+				parameters[2+i]=parameters[2+i]-(parameters[i]-lower_bounds[i])/fixedpoint[2];
+				parameters[i]=lower_bounds[i];
+			}
+			if(parameters[i]>upper_bounds[i]){
+				parameters[2+i]=parameters[2+i]-(parameters[i]-upper_bounds[i])/fixedpoint[2];
+				parameters[i]=upper_bounds[i];
+			}
+		}else{
+			if(parameters[i]<lower_bounds[i]){
+				parameters[i-2]=parameters[i-2]-(parameters[i]-lower_bounds[i])*fixedpoint[2];
+				parameters[i]=lower_bounds[i];
+			}
+			if(parameters[i]>upper_bounds[i]){
+				parameters[i-2]=parameters[i-2]-(parameters[i]-upper_bounds[i])*fixedpoint[2];
+				parameters[i]=upper_bounds[i];
+			}
+		}
 	}
 }
 
