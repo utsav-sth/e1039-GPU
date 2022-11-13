@@ -379,8 +379,9 @@ __device__ void chi2_straight(size_t const n_points,
                               REAL* const driftdist, REAL* const resolutions,
                               REAL* const p1x, REAL* const p1y, REAL* const p1z,
                               REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			      REAL* output_parameters, REAL& chi2, REAL dca)
+			      REAL* output_parameters, REAL& chi2)
 {
+	REAL dca;
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 		//printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
@@ -397,8 +398,9 @@ __device__ void chi2_global(size_t const n_points,
                             REAL* const driftdist, REAL* const resolutions,
                             REAL* const p1x, REAL* const p1y, REAL* const p1z,
                             REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    REAL* output_parameters, REAL& chi2, REAL dca)
+			    REAL* output_parameters, REAL& chi2)
 {
+	REAL dca;
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 	     	//this is the simplified expression of the chi2 where we neglect deltapz
@@ -412,10 +414,10 @@ __device__ void chisquare(size_t const n_points,
                             REAL* const driftdist, REAL* const resolutions,
                             REAL* const p1x, REAL* const p1y, REAL* const p1z,
                             REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    size_t const nparam, REAL* output_parameters, REAL& chi2, REAL dca)
+			    size_t const nparam, REAL* output_parameters, REAL& chi2)
 {
-	if(nparam==4)chi2_straight(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2, dca);
-	if(nparam==5)chi2_global(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2, dca);
+	if(nparam==4)chi2_straight(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2);
+	if(nparam==5)chi2_global(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2);
 }
 
 __device__ void chi2_straight_res(size_t const n_points, 
@@ -468,17 +470,17 @@ __device__ void calc_derivatives_num(size_t const n_points,
 				     REAL& chi2, REAL &chi2prev, REAL dca)
 {
 	//calculation of chi2 at the nominal x, 
-	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev, dca);
+	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev);
 	
 	for(int i = 0; i<nparam; i++)
 	{
 		//lambda scales the existing step
 		output_parameters[i]+=output_parameters_steps[i]*lambda;
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		derivatives[i] = (chi2-chi2prev)/(output_parameters_steps[i]*lambda);   // (chi2(X+dX)-chi2(X))/dX
 		
 		//output_parameters[i]-=2*output_parameters_steps[i]*lambda;
-		//chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		//chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		//doublederivatives[i] = ((chi2prev-chi2)/(output_parameters_steps[i]*lambda)-derivatives[i])/output_parameters_steps[i]*lambda;
 		output_parameters[i]-=output_parameters_steps[i]*lambda;
 		
@@ -489,7 +491,7 @@ __device__ void calc_derivatives_num(size_t const n_points,
 		}
 		
 		output_parameters[i]+=output_parameters_steps[i];
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		//if at longer range the chi2 is higher, we shrink the step by a factor 2
 		if(chi2-chi2prev>0){
 			output_parameters_steps[i]*=0.5f;
@@ -510,14 +512,14 @@ __device__ void calc_corr_derivatives_num(size_t const n_points,
 					  REAL* derivatives, 
 					  REAL& chi2, REAL &chi2prev, REAL dca)
 {
-	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev, dca);
+	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev);
 	
 	for(int i = 0; i<2; i++)
 	{
 		//lambda scales the existing step
 		output_parameters[i]+=output_parameters_steps[i]*lambda;
 		output_parameters[i+2]+=output_parameters_steps[i+2]*lambda;
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		derivatives[i] = (chi2-chi2prev)/(fabs(output_parameters_steps[i])*lambda);   // (chi2(X+dX)-chi2(X))/dX
 		output_parameters[i]-=output_parameters_steps[i]*lambda;
 		output_parameters[i+2]-=output_parameters_steps[i+2]*lambda;
@@ -534,7 +536,7 @@ __device__ void calc_corr_derivatives_num(size_t const n_points,
 
 		output_parameters[i]+=output_parameters_steps[i];
 		output_parameters[i+2]+=output_parameters_steps[i+2];
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		//if at longer range the chi2 is higher, we shrink the step by a factor 2
 		if(chi2-chi2prev>0){
 			output_parameters_steps[i]*=0.5f;
@@ -553,23 +555,24 @@ __device__ void calc_val_derivatives(size_t const n_points,
 				     size_t const nparam, REAL* const output_parameters, 
 				     REAL* values, REAL* derivatives, REAL& chi2)
 {
-	REAL Den2, Den;
+	REAL Den2, Den, dca;
 	chi2 = 0;
 	for(int i = 0; i<n_points; i++){
-		values[i] = driftdist[i] - ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
-		chi2+= ( values[i] ) * ( values[i] ) / resolutions[i] / resolutions[i];
+		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
+		values[i] = (driftdist[i] - dca) * (driftdist[i] - dca) / resolutions[i] / resolutions[i];
+		chi2+= values[i];
 
 	     	Den2 = deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2 * ( deltapx[i]*deltapy[i]*output_parameters[2]*output_parameters[3]);
 	     	Den = sqrtf(Den2);
 		
 		//dchi2/dx0:
-		derivatives[0*n_points+i] = -deltapy[i]/Den;
+		derivatives[0*n_points+i] = -2*values[i]*deltapy[i]/Den;
 		//dchi2/dy0:
-		derivatives[1*n_points+i] = deltapx[i]/Den;
+		derivatives[1*n_points+i] = +2*values[i]*deltapx[i]/Den;
 		//dchi2/dtx:
-		derivatives[2*n_points+i] = -deltapy[i]*p1z[i]/Den+values[i]*output_parameters[3]*deltapx[i]*deltapy[i]/Den2;
+		derivatives[2*n_points+i] = -2*values[i]*(deltapy[i]*p1z[i]/Den-dca*output_parameters[3]*deltapx[i]*deltapy[i]/Den2);
 		//dchi2/dty:
-		derivatives[3*n_points+i] = deltapx[i]*p1z[i]/Den+values[i]*output_parameters[2]*deltapx[i]*deltapy[i]/Den2;
+		derivatives[3*n_points+i] = +2*values[i]*(deltapx[i]*p1z[i]/Den-dca*output_parameters[2]*deltapx[i]*deltapy[i]/Den2);
 	}
 }
 
@@ -611,7 +614,7 @@ __device__ void get_straighttrack_fixedpoint(size_t const n_points,
 					     REAL* deltapx, REAL* deltapy, REAL* deltapz,
 					     REAL *A, REAL* Ainv, REAL* B,
 					     REAL* output_parameters, REAL* output_parameters_errors, 
-					     REAL* fixed_point, REAL& chi2, REAL dca)
+					     REAL* fixed_point, REAL& chi2)
 {
 	REAL Den2, Den;
 	// slopes are set to ZERO on purpose
@@ -641,6 +644,6 @@ __device__ void get_straighttrack_fixedpoint(size_t const n_points,
 		}
 		fixed_point[j] = output_parameters[j];
 	}
-	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, 4, output_parameters, chi2, dca);
+	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, 4, output_parameters, chi2);
 }
 

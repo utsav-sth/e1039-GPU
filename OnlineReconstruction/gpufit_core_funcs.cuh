@@ -62,10 +62,10 @@ __device__ void _calculate_gradients(
     {
         return;
     }
-
-    for(int i = 0; i<n_points; i++){
-	for(int j = 0; j< n_parameters; j++){
-		gradients[j*n_points] = derivatives[j*n_points]*(0.0-values[i])*resolutions[i];
+    for(int j = 0; j< n_parameters; j++){
+    	    gradients[j] = 0;
+    	    for(int i = 0; i<n_points; i++){
+		gradients[j]+= derivatives[j*n_points]*(0.0-values[i])/resolutions[i]/resolutions[i];
 	}
     }
 //    calc_gradients(n_points, 
@@ -95,7 +95,7 @@ __device__ void _calculate_hessians(
     	//j: row; k: col; 
 	for(int j = 0; j< n_parameters; j++){
 		for(int k = 0; k<n_parameters; k++){
-               		hessians[j*n_parameters+k]+= derivatives[j*n_points]*derivatives[k*n_points]*resolutions[i];
+               		hessians[j*n_parameters+k]+= derivatives[j*n_points]*derivatives[k*n_points]/resolutions[i]/resolutions[i];
 		}
 	}
     }
@@ -137,6 +137,31 @@ __device__ void _modify_step_widths(
     	//    scaling_vector[parameter_index] = hessian[diagonal_index];
 
     	hessians[diagonal_index] += scaling_vector[parameter_index] * lambda;
+    }
+}
+
+//call: 7 
+__device__ void solve_equations_systems(std::size_t const n_param,
+	  				REAL* A, REAL* const B, //A: hessians; B: gradients; 
+					REAL* Ainv, REAL* output,     //output: deltas;
+					short const skip_calculation)
+{
+    if (skip_calculation)
+        return;
+
+    for(int j = 0; j<n_param; j++){
+            for(int k = 0; k<n_param; k++){
+                    Ainv[j*n_param+k] = 0;
+            }
+    }
+
+    matinv_4x4_matrix_per_thread(A, Ainv);
+    
+    for(int j = 0; j<n_param; j++){
+    	    output[j] = 0;
+            for(int k = 0; k<n_param; k++){
+                    output[j]+= Ainv[j*n_param+k]*B[k];
+            }
     }
 }
 

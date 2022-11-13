@@ -191,7 +191,7 @@ public:
 
       float values[nChamberPlanes];
       float derivatives[5*nChamberPlanes];
-      float gradients[5*nChamberPlanes];
+      float gradients[5];
       float hessians[25];
       
       float scaling_vector[5];
@@ -216,9 +216,9 @@ public:
       //float dx_array[nChamberPlanes];// x position uncertainty
       //float dy_array[nChamberPlanes];// x position uncertainty
 
-      //float A[25];// matrix: max size 5x5, but we can use this unique array for all possible sizes
-      //float Ainv[25];// matrix
-      //float B[5];// input vector
+      float A[25];// matrix: max size 5x5, but we can use this unique array for all possible sizes
+      float Ainv[25];// matrix
+      float B[5];// input vector
 
       //float output_parameters_steps[5];
       //float doublederivatives[5];
@@ -731,7 +731,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	int npts = 0;
 
 	//REAL dca = 0;
-	//REAL fixedpoint[3] = {0, 0, 0};
+	REAL fixedpoint[3] = {0, 0, 0};
 		
 	//X-U combinations first
 	for(int i = 0; i< nx; i++){
@@ -915,9 +915,17 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[1] = 0.;
 				fitarrays[index].output_parameters[2] = 0.;
 				fitarrays[index].output_parameters[3] = 0.;
-				fitarrays[index].lambda = 0.001f;
+
+				get_straighttrack_fixedpoint(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
+								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
+								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
+								fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
+								fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
+								fixedpoint, fitarrays[index].chi2);
+
+				fitarrays[index].lambda = 0.01f;
+				fitarrays[index].chi2prev = 1.e20;
 				
-				/*
 				if(ic[index].EventID==0){
 				gpufit_algorithm_fitter(fitparams[0].max_iterations,
 										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
@@ -929,11 +937,13 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
 										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
 										fitarrays[index].deltas, fitarrays[index].lambda,
+										fitarrays[index].Ainv,
 										//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
 										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				}*/						
+				}
+				
 				/*
 				//if(ic[index].EventID==0){
 				//straight_track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
@@ -985,15 +995,15 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 			}
 		}
 	}
-
+	/*
 	//just for a test!!!
 				
 	fitarrays[index].output_parameters[0] = 0.;
 	fitarrays[index].output_parameters[1] = 0.;
 	fitarrays[index].output_parameters[2] = 0.;
 	fitarrays[index].output_parameters[3] = 0.;
-	fitarrays[index].lambda = 0.001f;
-	fitarrays[index].chi2prev = 0.;
+	fitarrays[index].lambda = 0.01f;
+	fitarrays[index].chi2prev = 1.e20;
 
 	//include fit here:
 	if(ic[index].EventID==0)
@@ -1007,10 +1017,12 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 							fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
 							fitarrays[index].hessians, fitarrays[index].scaling_vector, 
 							fitarrays[index].deltas, fitarrays[index].lambda,
+							fitarrays[index].Ainv,
 							//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
 							npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 							fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 							fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
+
 	if(ic[index].EventID<20){
 	printf("evt %d: %d %d %d\n", ic[index].EventID, fitarrays[index].n_iter, fitarrays[index].finished, fitarrays[index].state);
 	printf("evt %d: track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
@@ -1021,6 +1033,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	fitarrays[index].output_parameters[3], fitarrays[index].output_parameters_errors[3], 
 	fitarrays[index].chi2);
 	}
+	*/
 	/*
 	//just for a test!!!
 	if(ic[index].EventID==0){

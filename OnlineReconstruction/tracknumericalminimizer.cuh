@@ -43,7 +43,7 @@ __device__ void minimize_chi2(size_t const max_iterations, REAL const tolerance,
 		}
 		
 		//calculate chi2 with new parameters:
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		//printf("before chi2 checks %d  %1.4f  %1.4f \n", n, chi2, chi2prev);
 
 		// "win condition": the delta chi2 is smaller than the allowed tolerance
@@ -101,7 +101,7 @@ __device__ void brute_force_search_area(REAL* const parameter_limits_min, REAL* 
 			
 			if(output_parameters[3]<parameter_limits_min[3]||output_parameters[3]>parameter_limits_max[3])continue;
 			
-			chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, 4, output_parameters, chi2, dca);
+			chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, 4, output_parameters, chi2);
 			if(chi2<chi2min){
 				chi2min = chi2;
 				i_min = i;
@@ -142,7 +142,7 @@ __device__ void fixedpoint_straighttrack_chi2minimizer(size_t const max_iteratio
 				     deltapx, deltapy, deltapz,
 				     A, Ainv, B,
 				     output_parameters, output_parameters_errors, 
-				     fixed_point, chi2, dca);
+				     fixed_point, chi2);
 
 	// correlate the steps with each other:
 	output_parameters_steps[0] = fixed_point[0]-output_parameters_steps[2]*fixed_point[2];
@@ -193,7 +193,7 @@ __device__ void fixedpoint_straighttrack_chi2minimizer(size_t const max_iteratio
 		}
 		
 		//calculate chi2 with new parameters:
-		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2, dca);
+		chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2);
 		
 		// "win condition": the delta chi2 is smaller than the allowed tolerance
 		if(fabs(chi2prev-chi2)<tolerance){
@@ -222,7 +222,8 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 					REAL* values, REAL* derivatives, REAL* gradients, 
 					REAL* hessians, REAL* scaling_vector, 
 					REAL* deltas, REAL& lambda,
-//					REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
+					REAL* Ainv,
+					//REAL* calc_matrix, REAL* abs_row, int* abs_row_index,
 					// exp data arrays 
 					int const n_points,
 					REAL* const driftdist, REAL* const resolutions,
@@ -250,7 +251,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			       chi_square,
    			       prev_chi_square,
 			       finished);
-			       printf("%d ?\n", iteration_failed);
+	//		       printf("%d ?\n", iteration_failed);
 	// call: 4, 14, ...
 	_calculate_gradients(gradients,
 			     values,
@@ -260,6 +261,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			     n_parameters,
 			     finished,
 			     skip);
+	//printf("%d %1.4f %1.4f %1.4f %1.4f \n", finished, derivatives[0], gradients[0], parameters[0], chi_square);
 	//call: 5, 15, ...
 	_calculate_hessians(hessians,
 			    values,
@@ -271,8 +273,11 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			    finished);
 	
 	for(int n = 0; n<max_n_iterations; n++){
-	printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
-//printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, derivatives[0], gradients[0], parameters[0]);
+	//printf("%d %d, x0 = %1.4f, chi2 %1.4f, prev_chi2 = %1.4f \n", n, finished, parameters[0], chi_square, prev_chi_square);
+	//printf("%d %d, derivative[0,0] %1.8f, gradients[0] %1.4f, x0 = %1.4f \n", n, finished, derivatives[0*6], gradients[0], parameters[0]);
+	//printf("%d %d, derivative[1,0] %1.8f, gradients[1] %1.4f, y0 = %1.4f \n", n, finished, derivatives[1*6], gradients[1], parameters[1]);
+	//printf("%d %d, derivative[2,0] %1.8f, gradients[2] %1.4f, tx = %1.4f \n", n, finished, derivatives[2*6], gradients[2], parameters[2]);
+	//printf("%d %d, derivative[3,0] %1.8f, gradients[3] %1.4f, ty = %1.4f \n", n, finished, derivatives[3*6], gradients[3], parameters[3]);
 		//call: 6, 19,...
 		_modify_step_widths(hessians,
 				    lambda,
@@ -280,6 +285,13 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 				    n_parameters,
 				    iteration_failed,
 				    finished);
+
+		//need a lighter matrix inversion!
+		solve_equations_systems(n_parameters,
+					hessians, gradients,
+					Ainv, deltas,
+					skip);		
+		/*
 		//call: 7, 20, ... 
 		// configure first
 		dim3  threads(1, 1, 1);
@@ -304,7 +316,10 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 				//abs_row_index,
 				n_parameters,
 				nparam_pow2);
+		*/
 		//call: 8, 21, ...
+	//printf("%d %d, deltas[0] = %1.4f, deltas[1] = %1.4f, deltas[2] =  %1.4f, deltas[3] = %1.4f\n", n, finished, deltas[0], deltas[1], deltas[2], deltas[3]);
+
 		_update_state_after_solving(singular,
 					    finished,
 					    state);
@@ -336,7 +351,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			       chi_square,
    			       prev_chi_square,
 			       finished);
-		       printf("%d ?\n", iteration_failed);
+		//       printf("%d ?\n", iteration_failed);
 		// call: 4, 14, ...
 		_calculate_gradients(gradients,
 			     values,
@@ -375,7 +390,7 @@ __device__ void gpufit_algorithm_fitter(int const max_n_iterations,
 			parameters,
 			prev_parameters,
 			n_parameters);
-	printf("%d %d %1.4f %1.4f %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
+	//printf("%d %d, x0 = %1.4f, prev_chi2 = %1.4f, chi2 = %1.4f \n", n, finished, parameters[0], prev_chi_square, chi_square);
 
 	}
 	//printf("%d, %1.6f \n", n_iterations, chi_square);
