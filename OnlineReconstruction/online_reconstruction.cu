@@ -910,6 +910,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				if(npts<4)continue;
 				if(oc[index].AllTracklets[n_tkl].nXHits<1 || oc[index].AllTracklets[n_tkl].nUHits<1 || oc[index].AllTracklets[n_tkl].nVHits<1)continue;
 				
+
 				fitarrays[index].output_parameters[0] = 0.;
 				fitarrays[index].output_parameters[1] = 0.;
 				fitarrays[index].output_parameters[2] = 0.;
@@ -925,26 +926,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].lambda = 0.01f;
 				fitarrays[index].chi2prev = 1.e20;
 				
-				/*
-				gpufit_corr_algorithm_fitter(fitparams[0].max_iterations,
-										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
-										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
-										fitparams[0].tolerance, 2, fitparams[0].nparam,
-										fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
-										fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
-										fitarrays[index].chi2, fitarrays[index].chi2prev,
-										fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients, 
-										fitarrays[index].hessians, fitarrays[index].scaling_vector, 
-										fitarrays[index].deltas, fitarrays[index].lambda,
-										fitarrays[index].Ainv,
-										//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
-										fixedpoint,
-										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				*/
-
-				//if(ic[index].EventID==0){
 				gpufit_algorithm_fitter(fitparams[0].max_iterations,
 										fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 										fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
@@ -960,28 +941,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				//}
-				/*
-				//if(ic[index].EventID==0){
-				//straight_track_residual_minimizer(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2);
-				
-				//for(int n = 0; n<4; n++){
-				//	fitarrays[index].output_parameters[n] = 0;
-				//	fitarrays[index].output_parameters_errors[n] = 0;
-				//	fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
-				//}
-				
-				//if(ic[index].EventID==0)
-				//fixedpoint_straighttrack_chi2minimizer(fitparams[0].max_iterations, fitparams[0].tolerance,
-				//					fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, 
-				//					fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
-				//					fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
-				//					fitarrays[index].prev_parameters, 
-				//					fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, 
-				//					fixedpoint, fitarrays[index].chi2, fitarrays[index].chi2prev, dca);
-
-				//minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, npts, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
-				*/
 				
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
@@ -993,15 +952,16 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
 				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
 				
+				/*
 				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
 					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
 					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
 					oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].err_tx, 
 					oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
 					oc[index].AllTracklets[n_tkl].chisq);
+				*/
 
-				//if(!match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))
-				//continue;
+				if(!match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))continue;
 
 				
 				if(n_tkl>TrackletSizeMax){
@@ -1014,93 +974,6 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 			}
 		}
 	}
-	/*
-	//just for a test!!!
-				
-	fitarrays[index].output_parameters[0] = 0.;
-	fitarrays[index].output_parameters[1] = 0.;
-	fitarrays[index].output_parameters[2] = 0.;
-	fitarrays[index].output_parameters[3] = 0.;
-	fitarrays[index].lambda = 0.01f;
-	fitarrays[index].chi2prev = 1.e20;
-
-	//include fit here:
-	if(ic[index].EventID==0)
-	gpufit_algorithm_fitter(fitparams[0].max_iterations,
-							fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
-							fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
-							fitparams[0].tolerance, fitparams[0].nparam,
-							fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max,  
-							fitarrays[index].output_parameters, fitarrays[index].prev_parameters, 
-							fitarrays[index].chi2, fitarrays[index].chi2prev,
-							fitarrays[index].values, fitarrays[index].derivatives, fitarrays[index].gradients,
-							fitarrays[index].hessians, fitarrays[index].scaling_vector, 
-							fitarrays[index].deltas, fitarrays[index].lambda,
-							fitarrays[index].Ainv,
-							//fitarrays[index].calc_matrix, fitarrays[index].abs_row, fitarrays[index].abs_row_index,
-							npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-							fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-							fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-
-	if(ic[index].EventID<20){
-	printf("evt %d: %d %d %d\n", ic[index].EventID, fitarrays[index].n_iter, fitarrays[index].finished, fitarrays[index].state);
-	printf("evt %d: track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
-	ic[index].EventID,
-	fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
-	fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
-	fitarrays[index].output_parameters[2], fitarrays[index].output_parameters_errors[2], 
-	fitarrays[index].output_parameters[3], fitarrays[index].output_parameters_errors[3], 
-	fitarrays[index].chi2);
-	}
-	*/
-	/*
-	//just for a test!!!
-	if(ic[index].EventID==0){
-	for(int n = 0; n<4; n++){
-		fitarrays[index].output_parameters[n] = 0;
-		fitarrays[index].output_parameters_errors[n] = 0;
-		fitarrays[index].output_parameters_steps[n] = (fitparams[0].parameter_limits_max[n]-fitparams[n].parameter_limits_min[n])*0.1f;
-	}
-	printf("\n");
-	
-	REAL dca;
-	REAL fixedpoint[3] = {0, 0, 0};
-	fixedpoint_straighttrack_chi2minimizer(fitparams[0].max_iterations, fitparams[0].tolerance,
-	fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, 
-	6, fitarrays[index].drift_dist, fitarrays[index].resolution, 
-	fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
-	fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, 
-	fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
-	4, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
-	fitarrays[index].prev_parameters, 
-	fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, 
-	fixedpoint, fitarrays[index].chi2, fitarrays[index].chi2prev, dca);
-
-	//minimize_chi2(fitparams[0].max_iterations, fitparams[0].tolerance, fitparams[0].parameter_limits_min, fitparams[0].parameter_limits_max, 6, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitparams[0].nparam, fitarrays[index].output_parameters, fitarrays[index].prev_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].output_parameters_steps, fitparams[0].lambda, fitarrays[index].derivatives, fitarrays[index].doublederivatives, fitarrays[index].chi2, fitarrays[index].chi2prev);
-		
-	if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
-	fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
-	fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
-	fitarrays[index].output_parameters[2], fitarrays[index].output_parameters_errors[2], 
-	fitarrays[index].output_parameters[3], fitarrays[index].output_parameters_errors[3], 
-	fitarrays[index].chi2);
-
-
-	fitarrays[index].output_parameters[0] = +94.92;
-	fitarrays[index].output_parameters[1] = -50.00;
-	fitarrays[index].output_parameters[2] = -0.14992;
-	fitarrays[index].output_parameters[3] = +0.074924;
-	REAL dca;
-	chi2_straight(6, fitarrays[index].drift_dist, fitarrays[index].resolution, fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz, fitarrays[index].output_parameters, fitarrays[index].chi2, dca);
-	
-	if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
-	fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
-	fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
-	fitarrays[index].output_parameters[2], fitarrays[index].output_parameters_errors[2], 
-	fitarrays[index].output_parameters[3], fitarrays[index].output_parameters_errors[3], 
-	fitarrays[index].chi2);
-	}
-	*/
 	
 	//if(print)printf("evt %d number of tracklets %d\n", oc[index].EventID, n_tkl);
 	//printf("%d ", n_tkl);
@@ -1138,7 +1011,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 		nhits_2 = oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits;
 		nhits_X2 = 0;
 		for(int k = 0; k<nhits_2; k++){
-			if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[0] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[1])
+			if(oc[index].AllTracklets[i].hits[k].detectorID==planes[0].dets_x[0] || oc[index].AllTracklets[i].hits[k].detectorID==planes[0].dets_x[1])
 			{
 				x_pos[nhits_X2] = oc[index].AllTracklets[i].hits[k].pos;
 				z_pos[nhits_X2] = planes[oc[index].AllTracklets[i].hits[k].detectorID].z;
@@ -1148,16 +1021,18 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 		
 		//tracklets in station 2 (D2, stID 3-1)
 		for(int j = 0; j<oc[index].nTKL_stID[2]; j++){
+			if(fabs(oc[index].AllTracklets[i].tx - oc[index].AllTracklets[j].tx) > TX_MAX || fabs(oc[index].AllTracklets[i].ty - oc[index].AllTracklets[i].ty) > TY_MAX)continue;
+			
 			nhits_3 = oc[index].AllTracklets[j].nXHits+oc[index].AllTracklets[j].nUHits+oc[index].AllTracklets[j].nVHits;
 			nhits_X3 = nhits_X2;
 			for(int k = 0; k<nhits_3; k++){
-				if(oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[2] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[3] ||
-			   	oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[4] || oc[index].AllTracklets[i].hits[i].detectorID==planes[0].dets_x[5])
+				if(oc[index].AllTracklets[j].hits[k].detectorID==planes[0].dets_x[2] || oc[index].AllTracklets[j].hits[k].detectorID==planes[0].dets_x[3] ||
+			   	oc[index].AllTracklets[j].hits[k].detectorID==planes[0].dets_x[4] || oc[index].AllTracklets[j].hits[k].detectorID==planes[0].dets_x[5])
 				{
 					x_pos[nhits_X3] = oc[index].AllTracklets[i].hits[k].pos;
 					z_pos[nhits_X3] = planes[oc[index].AllTracklets[i].hits[k].detectorID].z;
 					nhits_X3++;
-				}		
+				}
 			}
 			
 			chi2_simplefit(nhits_X2+nhits_X3, z_pos, x_pos, a, b, sum, det, sx, sy, sxx, syy, sxy);
@@ -1236,6 +1111,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 			fitarrays[index].chi2prev = 1.e20;
 			
 			//include fit here:
+
 			gpufit_algorithm_fitter(fitparams[0].max_iterations,
 								fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 								fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
@@ -1251,10 +1127,9 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
 			
+			/**/
 			
-			//if(fitarrays[index].chi2>9000){
-			//	continue;
-			//}
+			if(fitarrays[index].chi2>9000)continue;
 			
 			oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 			oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
@@ -1800,7 +1675,6 @@ int main(int argn, char * argv[]) {
 			if(isnan(host_output_TKL[n].AllTracklets[k].y0))host_output_TKL[n].AllTracklets[k].y0 = -100;
 			if(isnan(host_output_TKL[n].AllTracklets[k].tx))host_output_TKL[n].AllTracklets[k].tx = -0.2;
 			if(isnan(host_output_TKL[n].AllTracklets[k].ty))host_output_TKL[n].AllTracklets[k].ty = -0.2;
-			if(host_output_TKL[n].AllTracklets[k].stationID>4)cout << host_output_TKL[n].AllTracklets[k].stationID << endl;
 			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << endl;
 		}
 		
