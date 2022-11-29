@@ -810,17 +810,96 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 
 
 
-__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gSW* oc, gFitArrays* fitarrays, gPlane* planes)
+__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, gPlane* planes)
 {
         int index = threadIdx.x + blockIdx.x * blockDim.x;
+
+	//for the time being, declare in function;
+	REAL x_pos[4];
+	REAL z_pos[4];
+	REAL a, b, sum, det, sx, sy, sxx, syy, sxy;
+	short nprop, iprop;
+	REAL xExp;
+	short nhits_X1, nhits_X2;
+
         // 1- get X pairs in st2, st3:
+	int nx1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 0, planes);
+	int nu1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 1, planes);
+	int nv1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 2, planes);
 	
+	int nx2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 0, planes);
+	int nu2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 1, planes);
+	int nv2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 2, planes);
+		
 	
-        // 2- calculate slope between the hit X pairs (i.e. XZ tracking): already implemented, may need additional tests (0.5 day);
+        // 2- loop on X hit pairs; calculate slope between the hit X pairs (i.e. XZ tracking):
+
+	
+	for(int i = 0; i<nx1; i++){
+		nhits_X1 = 0;
+		if(straighttrackbuilder[index].hitpairs_x1[i].first>=0){
+			x_pos[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].pos;
+			z_pos[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].z;
+			nhits_X1++;
+		}
+		if(straighttrackbuilder[index].hitpairs_x1[i].second>=0){
+			x_pos[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].pos;
+			z_pos[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].z;
+			nhits_X1++;
+		}
+				
+		for(int j = 0; j<nx2; j++){
+			nhits_X2 = nhits_X1;
+			if(straighttrackbuilder[index].hitpairs_x2[i].first>=0){
+				x_pos[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
+				z_pos[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].z;
+				nhits_X2++;
+			}
+			if(straighttrackbuilder[index].hitpairs_x2[i].second>=0){
+				x_pos[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
+				z_pos[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].z;
+				nhits_X2++;
+			}
+			
+			//don't we want something with at least the errors???
+			
+			chi2_simplefit(nhits_X1+nhits_X2, z_pos, x_pos, a, b, sum, det, sx, sy, sxx, syy, sxy);
+			if(fabs(a)>X0_MAX || fabs(b)>TX_MAX)continue;
+			//prop matching
+			nprop = 0;
+			for(short ip = 0; ip<4; ip++){
+				iprop = 48+ip;
+				xExp = a*planes[iprop-1].z+b;
+				//loop on hits to find prop
+				for(int k = 0; k<ic[index].nAH; k++){
+					if(ic[index].AllHits[k].detectorID==iprop){
+						if(fabs(ic[index].AllHits[k].pos-xExp)<5.08f){
+							nprop++;
+							break;
+						}
+					}
+				}
+				if(nprop>0)break;
+			}
+			if(nprop==0)continue;
+
+			
+		}
+	
+	}
+
         // 3- get U, V pairs compatible with the X pair in each station: already implemented, tested;
+
+
         // 4- U, V pairs also have to be compatible with the X pair slope => this last point needs more thought, and will probably need adjustments (2-3 days to implement and test);
+
+
         // 5- calculate Y from U, V hits (0.5-1 day to implement and test);
+
+
         // 6- fit the X-Y slope (0.5-1 day to implement and test);
+
+
         // 7- combine the XZ and XY track and combine hodoscope matching (already implemented, needs test: 1-1.5 day)
 
 }

@@ -186,7 +186,52 @@ public:
 	int EventID;
 	int nAH;
 	int nTracklets;
-	//really tempted to replace tracklet array with array of IDs
+	gTracklet AllTracklets[TrackletSizeMax];
+	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
+};
+
+class gStraightTrackBuilder{
+public:
+	//pairs in station 1
+	thrust::pair<int, int> hitpairs_x1[100];
+	thrust::pair<int, int> hitpairs_u1[100];
+	thrust::pair<int, int> hitpairs_v1[100];
+	//pairs in station 2
+	thrust::pair<int, int> hitpairs_x2[100];
+	thrust::pair<int, int> hitpairs_u2[100];
+	thrust::pair<int, int> hitpairs_v2[100];
+	int hitidx1[100];
+	int hitidx2[100];
+	short hitflag1[100];
+	short hitflag2[100];
+};
+
+class gStraightFitArrays {
+public:
+      int npoints;
+      float drift_dist[nChamberPlanes]; // hit drift distance
+      float resolution[nChamberPlanes]; // detector resolution
+      
+      float chi2_xz;
+      float chi2_xy;
+      float chi2;
+
+      float x_array[nChamberPlanes];// x position arrays
+      float y_array[nChamberPlanes];// y position arrays
+      float z_array[nChamberPlanes];// z position arrays
+      float dx_array[nChamberPlanes];// x position uncertainty
+      float dy_array[nChamberPlanes];// x position uncertainty
+      
+      float A[4];// matrix: max size 5x5, but we can use this unique array for all possible sizes
+      float Ainv[16];// matrix
+      float B[4];// input vector
+};
+
+class gOutputEvent {
+public:
+	int EventID;
+	int nAH;
+	int nTracklets;
 	gTracklet AllTracklets[TrackletSizeMax];
 	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
 };
