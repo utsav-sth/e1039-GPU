@@ -770,7 +770,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				npts = 0;
 
 				if(oc[index].hitpairs_x[i].first>=0){
-					if(ic[index].EventID==0)printf("x first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("x first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -793,7 +793,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_x[i].second>=0){
-					if(ic[index].EventID==0)printf("x second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("x second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -816,7 +816,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_u[j].first>=0){
-					if(ic[index].EventID==0)printf("u first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("u first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_u[j].first ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -839,7 +839,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_u[j].second>=0){
-					if(ic[index].EventID==0)printf("u second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("u second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -862,7 +862,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_v[k].first>=0){
-					if(ic[index].EventID==0)printf("v first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("v first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -885,7 +885,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_v[k].second>=0){
-					if(ic[index].EventID==0)printf("v second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].p1z_w1);
+					//if(ic[index].EventID==0)printf("v second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
@@ -915,13 +915,27 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[1] = 0.;
 				fitarrays[index].output_parameters[2] = 0.;
 				fitarrays[index].output_parameters[3] = 0.;
-
+				
+				if(ic[index].EventID==0){
+					for(int i = 0; i<npts; i++){
+						printf("%1.6f %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f \n",
+						fitarrays[index].drift_dist[i], fitarrays[index].resolution[i], 
+						fitarrays[index].p1x[i], fitarrays[index].p1y[i], fitarrays[index].p1z[i], 
+						fitarrays[index].deltapx[i], fitarrays[index].deltapy[i], fitarrays[index].deltapz[i]);
+					}printf("\n");
+				}
+				
 				get_straighttrack_fixedpoint(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
 								fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B,
 								fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, 
 								fixedpoint, fitarrays[index].chi2);
+
+				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f; chi2 = %1.6f\n", 
+								fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0],
+								fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1],
+								fitarrays[index].chi2);
 
 				fitarrays[index].lambda = 0.01f;
 				fitarrays[index].chi2prev = 1.e20;
@@ -952,14 +966,14 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].err_ty = fitarrays[index].output_parameters_errors[3];
 				oc[index].AllTracklets[n_tkl].chisq = fitarrays[index].chi2;
 				
-				/*
+				
 				if(ic[index].EventID==0)printf("track: x0 = %1.6f +- %1.6f, y0 = %1.6f +- %1.6f, tx = %1.6f +- %1.6f, ty = %1.6f +- %1.6f; chi2 = %1.6f\n", 
 					oc[index].AllTracklets[n_tkl].x0, oc[index].AllTracklets[n_tkl].err_x0, 
 					oc[index].AllTracklets[n_tkl].y0, oc[index].AllTracklets[n_tkl].err_y0, 
 					oc[index].AllTracklets[n_tkl].tx, oc[index].AllTracklets[n_tkl].err_tx, 
 					oc[index].AllTracklets[n_tkl].ty, oc[index].AllTracklets[n_tkl].err_ty,
 					oc[index].AllTracklets[n_tkl].chisq);
-				*/
+				/**/
 
 				if(!match_tracklet_to_hodo(oc[index].AllTracklets[n_tkl], stID, ic, planes))continue;
 
@@ -1148,6 +1162,21 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 	
 	oc[index].nTracklets = n_tkl;
 	
+}
+
+
+//This is the function 
+__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gSW* oc, gFitArrays* fitarrays, gPlane* planes)
+{
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	// 1- get X pairs in st2, st3: 
+	// 2- calculate slope between the hit X pairs (i.e. XZ tracking): already implemented, may need additional tests (0.5 day);
+	// 3- get U, V pairs compatible with the X pair in each station: already implemented, tested; 
+	// 4- U, V pairs also have to be compatible with the X pair slope => this last point needs more thought, and will probably need adjustments (2-3 days to implement and test);
+	// 5- calculate Y from U, V hits (0.5-1 day to implement and test);
+	// 6- fit the X-Y slope (0.5-1 day to implement and test);
+	// 7- combine the XZ and XY track and combine hodoscope matching (already implemented, needs test: 1-1.5 day)
+
 }
 
 
