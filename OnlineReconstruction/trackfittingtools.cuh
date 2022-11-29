@@ -348,33 +348,6 @@ __device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
     //}
 }
 
-__device__ void chi2_simplefit(size_t const n_points, REAL* const x_array, REAL* const y_array, REAL& a, REAL& b, REAL sum, REAL det, REAL sx, REAL sy, REAL sxx, REAL syy, REAL sxy)
-{
-	sx = 0;
-	sy = 0;
-	sxx = 0;
-	syy = 0;
-	sxy = 0;
-	
-	for(int i = 0; i<n_points; i++){
-		sum+=1.;
-		sx+=x_array[i];
-		sy+=y_array[i];
-		sxx+=x_array[i]*x_array[i];
-		syy+=y_array[i]*y_array[i];
-		sxy+=x_array[i]*y_array[i];
-	}
-	det = sum*sxx - sx*sx; 	
-	if(fabs(det)<1.e-20){
-		a = 0.;
-		b = 0.;
-		return;
-	}
-	a = (sum*sxy - sx*sy)/det;
-	b = (sy*sxx - sxy*sx)/det;
-
-}
-
 __device__ void chi2_straight(size_t const n_points, 
                               REAL* const driftdist, REAL* const resolutions,
                               REAL* const p1x, REAL* const p1y, REAL* const p1z,

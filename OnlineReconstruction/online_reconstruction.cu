@@ -423,38 +423,52 @@ int main(int argn, char * argv[]) {
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
-	size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
+	//size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
+	size_t NBytesAllOutputEvent = EstnEvtMax * sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
-	size_t NBytesAllFitters = EstnEvtMax * sizeof(gFitArrays);
-	size_t NBytesAllFitParam = sizeof(gFitParams)*3;// just to be sure: tracklets, back tracks, global tracks
+	//size_t NBytesAllFitters = EstnEvtMax * sizeof(gFitArrays);
+	//size_t NBytesAllFitParam = sizeof(gFitParams)*3;// just to be sure: tracklets, back tracks, global tracks
+	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
+	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
 	
-	cout << NBytesAllEvent << " " << NBytesAllSearchWindow << " " << NBytesAllPlanes << " " << NBytesAllFitters << " " << NBytesAllFitParam << endl;
-	cout << NBytesAllEvent+NBytesAllSearchWindow+NBytesAllPlanes+NBytesAllFitters+NBytesAllFitParam << endl;
+	
+
+	//cout << NBytesAllEvent << " " << NBytesAllSearchWindow << " " << NBytesAllPlanes << " " << NBytesAllFitters << " " << NBytesAllFitParam << endl;
+	//cout << NBytesAllEvent+NBytesAllSearchWindow+NBytesAllPlanes+NBytesAllFitters+NBytesAllFitParam+NBytesStraightTrackBuilders << endl;
+	
+	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
+	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
+	     << "; fitter tools: " << NBytesFitterTools << "; planes info: " << NBytesAllPlanes << endl;  
 	
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
-	gSW *host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
+	//gSW *host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
+	gOutputEvent *host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
 	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent *device_gEvent;
 	// gEvent *device_output_eR;
 	// gEvent *device_input_TKL;
-	gSW *device_output_TKL;
+	//gSW *device_output_TKL;
+	gOutputEvent *device_output_TKL;
 	gPlane *device_gPlane;
-	gFitParams *device_gFitParams;
-	gFitArrays *device_gFitArrays;
-	
+	//gFitParams *device_gFitParams;
+	//gFitArrays *device_gFitArrays;
+	gStraightFitArrays *device_gFitArrays;
+	gStraightTrackBuilder *device_gStraightTrackBuilder;
+
 	//printDeviceStatus();
 
 	// copy of data from host to device: evaluate operation time 
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
-	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllSearchWindow));
+	//gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllSearchWindow));
+	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesAllFitters));
-	gpuErrchk( cudaMalloc((void**)&device_gFitParams, NBytesAllFitParam));
-	//to give ourselves some leeway!
-	//gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
+	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesAllFitters));
+	//gpuErrchk( cudaMalloc((void**)&device_gFitParams, NBytesAllFitParam));
+	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
+	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
 
 	std::size_t free_bytes;
 	std::size_t total_bytes;
@@ -465,7 +479,7 @@ int main(int argn, char * argv[]) {
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
-	gpuErrchk( cudaMemcpy(device_gFitParams, fitparams, NBytesAllFitParam, cudaMemcpyHostToDevice));
+	//gpuErrchk( cudaMemcpy(device_gFitParams, fitparams, NBytesAllFitParam, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
 	clock_t cp4 = clock();
 		
@@ -480,7 +494,17 @@ int main(int argn, char * argv[]) {
 	size_t nEvents = EstnEvtMax;
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
+	
+	auto start_straight = std::chrono::system_clock::now();
+	
+	gKernel_XZ_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	
+	auto end_straight = std::chrono::system_clock::now();
 
+#ifdef KTRACKER_REC	
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
 	// this input_tkl should be the information that the device uses to reconstruct the tracklets
 	// gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
@@ -496,19 +520,6 @@ int main(int argn, char * argv[]) {
 	auto start_tkl2 = std::chrono::system_clock::now();
 	// I first want to see if indeed we can reuse the "gEvent" pointer
 	int stID = 3;// to make explicit that we are requiring station 3
-
-	//lemme try something...
-    	//dim3  threads(1, 1, 1);
-    	//dim3  blocks(1, 1, 1);
-	
-	//threads.y = 5;
-    	//threads.z = 4;
-    	//threads.x = int(THREADS_PER_BLOCK/threads.y/threads.z);
-
-	//blocks.x = int(EstnEvtMax/threads.x)+1;
-	//blocks.y = 1;
-	
-	//gkernel_TrackletinStation<<<blocks, threads>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	
 	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
 	auto end_tkl2 = std::chrono::system_clock::now();
@@ -536,12 +547,16 @@ int main(int argn, char * argv[]) {
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
+#endif
+	
+	
 	
 	clock_t cp5 = clock();
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
 
-	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
+	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
+	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
 
 	// thrust objects: C++ template library based on STL
 	// convert raw pointer device_gEvent to device_vector
@@ -588,7 +603,8 @@ int main(int argn, char * argv[]) {
 	cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
 	cudaFree(device_gEvent);
 
-	cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost);
+	//cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost);
 	cudaFree(device_output_TKL);
 	
 	ofstream out("OutputFile.txt");
@@ -663,19 +679,19 @@ int main(int argn, char * argv[]) {
 	auto cp_from_gpu = cp6-cp5;
 	
 	auto gpu_er = end_er - start_er;
-	auto er_tkl = start_tkl2-end_er;
-	auto gpu_tkl2 = end_tkl2 - start_tkl2;
-	auto tkl2_tkl3 = start_tkl3-end_tkl2;
-	auto gpu_tkl3 = end_tkl3 - start_tkl3;
+	//auto er_tkl = start_tkl2-end_er;
+	//auto gpu_tkl2 = end_tkl2 - start_tkl2;
+	//auto tkl2_tkl3 = start_tkl3-end_tkl2;
+	//auto gpu_tkl3 = end_tkl3 - start_tkl3;
 	auto overall = end - start;
 	cout<<"Read/prepare events: "<<evt_prep/1000000000.<<endl;
 	cout<<"Copy to GPU: "<<cp_to_gpu/1000000000.<<endl;
 	cout<<"Copy from GPU: "<<cp_from_gpu/1000000000.<<endl;
 	cout<<"event reducing: "<<(gpu_er.count())/1000000000.<<endl;
-	cout<<" <-> : "<<(er_tkl.count())/1000000000.<<endl;
-	cout<<"st2 trackletting: "<<(gpu_tkl2.count())/1000000000.<<endl;
-	cout<<" <-> : "<<(tkl2_tkl3.count())/1000000000.<<endl;
-	cout<<"st3 trackletting: "<<(gpu_tkl3.count())/1000000000.<<endl;
+	//cout<<" <-> : "<<(er_tkl.count())/1000000000.<<endl;
+	//cout<<"st2 trackletting: "<<(gpu_tkl2.count())/1000000000.<<endl;
+	//cout<<" <-> : "<<(tkl2_tkl3.count())/1000000000.<<endl;
+	//cout<<"st3 trackletting: "<<(gpu_tkl3.count())/1000000000.<<endl;
 	cout<<"Total time: "<<(overall.count())/1000000000.<<endl;
 		
 	return 0;

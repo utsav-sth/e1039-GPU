@@ -1,5 +1,6 @@
 #include "reconstruction_classes.cuh"
-#include "tracknumericalminimizer.cuh"
+//#include "tracknumericalminimizer.cuh"
+#include "trackanalyticalminimizer.cuh"
 
 // kernel functions: 
 // CUDA C++ extends C++ by allowing the programmer to define C++ functions, called kernels, that, when called, 
@@ -378,7 +379,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	short uidx = stID==0? stID*6 : stID*6+4;
 	short vidx = stID==0? stID*6+4 : stID*6;
 	
-	bool print = false;
+	//bool print = false;
 	//if(0<=ic[index].EventID && ic[index].EventID<20){
 	//	print = true;
 	//printf("evt %d, nx = %d, nu = %d, nv = %d, ucostheta(plane %d) = %1.6f, uwin(plane %d) = %1.6f\n", ic[index].EventID, nx, nu, nv, uidx, planes[uidx].costheta, uidx, planes[uidx].u_win);
@@ -576,7 +577,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				fitarrays[index].output_parameters[1] = 0.;
 				fitarrays[index].output_parameters[2] = 0.;
 				fitarrays[index].output_parameters[3] = 0.;
-
+				/*
 				get_straighttrack_fixedpoint(npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
@@ -602,7 +603,7 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 										npts, fitarrays[index].drift_dist, fitarrays[index].resolution, 
 										fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 										fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
-				
+				*/
 				oc[index].AllTracklets[n_tkl].x0 = fitarrays[index].output_parameters[0];
 				oc[index].AllTracklets[n_tkl].y0 = fitarrays[index].output_parameters[1];
 				oc[index].AllTracklets[n_tkl].tx = fitarrays[index].output_parameters[2];
@@ -769,7 +770,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 			fitarrays[index].chi2prev = 1.e20;
 			
 			//include fit here:
-
+			/*
 			gpufit_algorithm_fitter(fitparams[0].max_iterations,
 								fitarrays[index].n_iter, fitarrays[index].iter_failed, fitarrays[index].finished,
 								fitarrays[index].state, fitarrays[index].skip, fitarrays[index].singular,
@@ -785,7 +786,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 								fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z, 
 								fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz);					
 			
-			/**/
+			*/
 			
 			if(fitarrays[index].chi2>9000)continue;
 			
@@ -815,8 +816,9 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
         int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	//for the time being, declare in function;
-	REAL x_pos[4];
-	REAL z_pos[4];
+	//REAL x_pos[4];
+	//REAL x_res[4];
+	//REAL z_pos[4];
 	REAL a, b, sum, det, sx, sy, sxx, syy, sxy;
 	short nprop, iprop;
 	REAL xExp;
@@ -830,40 +832,55 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	int nx2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 0, planes);
 	int nu2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 1, planes);
 	int nv2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 2, planes);
-		
 	
         // 2- loop on X hit pairs; calculate slope between the hit X pairs (i.e. XZ tracking):
-
-	
 	for(int i = 0; i<nx1; i++){
+		for(int n = 0; n<nChamberPlanes; n++){
+			fitarrays[index].x_array[n] = 0;
+			fitarrays[index].z_array[n] = 0;
+			fitarrays[index].dx_array[n] = 0;
+		}
+		
 		nhits_X1 = 0;
 		if(straighttrackbuilder[index].hitpairs_x1[i].first>=0){
-			x_pos[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].pos;
-			z_pos[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].z;
+			fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].pos;
+			fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].spacing/3.4641;
+			fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].z;
 			nhits_X1++;
 		}
 		if(straighttrackbuilder[index].hitpairs_x1[i].second>=0){
-			x_pos[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].pos;
-			z_pos[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].z;
+			fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].pos;
+			fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].spacing/3.4641;
+			fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].z;
 			nhits_X1++;
 		}
 				
 		for(int j = 0; j<nx2; j++){
 			nhits_X2 = nhits_X1;
 			if(straighttrackbuilder[index].hitpairs_x2[i].first>=0){
-				x_pos[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
-				z_pos[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].z;
+				fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
+				fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].spacing/3.4641;
+				fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].z;
 				nhits_X2++;
 			}
 			if(straighttrackbuilder[index].hitpairs_x2[i].second>=0){
-				x_pos[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
-				z_pos[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].z;
+				fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
+				fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].spacing/3.4641;
+				fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].z;
 				nhits_X2++;
 			}
 			
 			//don't we want something with at least the errors???
 			
-			chi2_simplefit(nhits_X1+nhits_X2, z_pos, x_pos, a, b, sum, det, sx, sy, sxx, syy, sxy);
+			chi2_simplefit(nhits_X2, fitarrays[index].z_array, fitarrays[index].x_array, a, b, sum, det, sx, sy, sxx, syy, sxy);
+			if(ic[index].EventID<=20)printf("evt %d: %1.6f %1.6f\n", ic[index].EventID, a, b); 
+			
+			fit_2D_track(nhits_X2, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_xz);
+			if(ic[index].EventID<=20)printf("evt %d: (%1.6f+-%1.6f) + z * (%1.6f+-%1.6f), %1.6f \n", ic[index].EventID, 
+							fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
+							fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
+							fitarrays[index].chi2_xz); 
+			
 			if(fabs(a)>X0_MAX || fabs(b)>TX_MAX)continue;
 			//prop matching
 			nprop = 0;

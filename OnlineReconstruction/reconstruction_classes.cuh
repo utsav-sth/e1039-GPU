@@ -212,6 +212,8 @@ public:
       float drift_dist[nChamberPlanes]; // hit drift distance
       float resolution[nChamberPlanes]; // detector resolution
       
+      float output_parameters[4];
+      float output_parameters_errors[4];
       float chi2_xz;
       float chi2_xy;
       float chi2;
