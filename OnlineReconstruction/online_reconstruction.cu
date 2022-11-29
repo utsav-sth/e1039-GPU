@@ -1151,6 +1151,20 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 }
 
 
+__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gSW* oc, gFitArrays* fitarrays, gPlane* planes)
+{
+        int index = threadIdx.x + blockIdx.x * blockDim.x;
+        // 1- get X pairs in st2, st3:
+        // 2- calculate slope between the hit X pairs (i.e. XZ tracking): already implemented, may need additional tests (0.5 day);
+        // 3- get U, V pairs compatible with the X pair in each station: already implemented, tested;
+        // 4- U, V pairs also have to be compatible with the X pair slope => this last point needs more thought, and will probably need adjustments (2-3 days to implement and test);
+        // 5- calculate Y from U, V hits (0.5-1 day to implement and test);
+        // 6- fit the X-Y slope (0.5-1 day to implement and test);
+        // 7- combine the XZ and XY track and combine hodoscope matching (already implemented, needs test: 1-1.5 day)
+
+}
+
+
 int main(int argn, char * argv[]) {
 	
 	// initialization: declaration of SRaw event, opening file/tree, affecting rawEvent object to input tree
