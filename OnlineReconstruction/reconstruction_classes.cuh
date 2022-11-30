@@ -57,8 +57,8 @@ class gTracklet {
       float chisq_vtx;
 
       //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[nDetectors];// array of all hits
-      short hitsign[nDetectors];
+      gHit hits[nChamberPlanes];// array of all hits
+      short hitsign[nChamberPlanes];
       
       float tx;
       float ty;
@@ -74,6 +74,44 @@ class gTracklet {
       
       float residual[nChamberPlanes];
 };
+
+class gTrackXZ {
+      public:
+
+      short nXHits;
+
+      float tx;
+      float x0;
+
+      float err_tx;
+      float err_x0;
+
+      int hitlist[4];
+      short hitsign[4];
+      
+      float chisq;
+};
+
+class gTrackYZ {
+      public:
+      //YZ tracks cannot extist without XZ tracks
+      int trackXZindex;
+      
+      short nUHits;
+      short nVHits;
+
+      float ty;
+      float y0;
+
+      float err_ty;
+      float err_y0;
+
+      int hitlist[8];
+      short hitsign[8];
+
+      float chisq;
+};
+
 
 class gFitParams {
 public:
@@ -192,6 +230,9 @@ public:
 
 class gStraightTrackBuilder{
 public:
+	int nTracksXZ;	
+	gTrackXZ TrackXZ[TrackletSizeMax];
+	
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
 	thrust::pair<int, int> hitpairs_u2[100];
@@ -203,6 +244,7 @@ public:
 	thrust::pair<int, int> hitpairs_x3m[100];
 	thrust::pair<int, int> hitpairs_u3m[100];
 	thrust::pair<int, int> hitpairs_v3m[100];
+
 	//util arrays for pair making
 	int hitidx1[100];
 	int hitidx2[100];
