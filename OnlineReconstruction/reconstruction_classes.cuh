@@ -192,14 +192,18 @@ public:
 
 class gStraightTrackBuilder{
 public:
-	//pairs in station 1
-	thrust::pair<int, int> hitpairs_x1[100];
-	thrust::pair<int, int> hitpairs_u1[100];
-	thrust::pair<int, int> hitpairs_v1[100];
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
 	thrust::pair<int, int> hitpairs_u2[100];
 	thrust::pair<int, int> hitpairs_v2[100];
+	//pairs in station 3
+	thrust::pair<int, int> hitpairs_x3p[100];
+	thrust::pair<int, int> hitpairs_u3p[100];
+	thrust::pair<int, int> hitpairs_v3p[100];
+	thrust::pair<int, int> hitpairs_x3m[100];
+	thrust::pair<int, int> hitpairs_u3m[100];
+	thrust::pair<int, int> hitpairs_v3m[100];
+	//util arrays for pair making
 	int hitidx1[100];
 	int hitidx2[100];
 	short hitflag1[100];

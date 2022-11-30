@@ -814,7 +814,10 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, gPlane* planes)
 {
         int index = threadIdx.x + blockIdx.x * blockDim.x;
-
+	
+	oc[index].EventID = ic[index].EventID;
+	oc[index].nAH = ic[index].nAH;
+	
 	//for the time being, declare in function;
 	//REAL x_pos[4];
 	//REAL x_res[4];
@@ -822,66 +825,91 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	REAL a, b, sum, det, sx, sy, sxx, syy, sxy;
 	short nprop, iprop;
 	REAL xExp;
-	short nhits_X1, nhits_X2;
+	short nhits_X2, nhits_X3;
 
         // 1- get X pairs in st2, st3:
-	int nx1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 0, planes);
-	int nu1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 1, planes);
-	int nv1 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v1, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 1, 2, planes);
-	
+	//D2: stid = 3-1
 	int nx2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 0, planes);
 	int nu2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 1, planes);
 	int nv2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 2, 2, planes);
+
+	//D3p: stid = 4-1
+	int nx3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 3, 0, planes);
+	int nu3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 3, 1, planes);
+	int nv3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 3, 2, planes);
+	
+	//D3p: stid = 5-1
+	int nx3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 4, 0, planes);
+	int nu3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 4, 1, planes);
+	int nv3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, 4, 2, planes);
+	
+	//if(ic[index].EventID==13)printf("evt %d, %d pairs in st2, %d pairs in st3+, %d pairs in st3-\n", ic[index].EventID, nx2, nx3p, nx3m);
 	
         // 2- loop on X hit pairs; calculate slope between the hit X pairs (i.e. XZ tracking):
-	for(int i = 0; i<nx1; i++){
+	for(int i = 0; i<nx2; i++){
 		for(int n = 0; n<nChamberPlanes; n++){
 			fitarrays[index].x_array[n] = 0;
 			fitarrays[index].z_array[n] = 0;
 			fitarrays[index].dx_array[n] = 0;
 		}
 		
-		nhits_X1 = 0;
-		if(straighttrackbuilder[index].hitpairs_x1[i].first>=0){
-			fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].pos;
-			fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].spacing/3.4641;
-			fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].first].detectorID].z;
-			nhits_X1++;
+		nhits_X2 = 0;
+		if(straighttrackbuilder[index].hitpairs_x2[i].first>=0){
+			fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
+			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID-1].spacing/3.4641;
+			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID-1].z;
+			nhits_X2++;
 		}
-		if(straighttrackbuilder[index].hitpairs_x1[i].second>=0){
-			fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].pos;
-			fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].spacing/3.4641;
-			fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x1[i].second].detectorID].z;
-			nhits_X1++;
+		if(straighttrackbuilder[index].hitpairs_x2[i].second>=0){
+			fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
+			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID-1].spacing/3.4641;
+			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID-1].z;
+			nhits_X2++;
 		}
 				
-		for(int j = 0; j<nx2; j++){
-			nhits_X2 = nhits_X1;
-			if(straighttrackbuilder[index].hitpairs_x2[i].first>=0){
-				fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
-				fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].spacing/3.4641;
-				fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].z;
-				nhits_X2++;
-			}
-			if(straighttrackbuilder[index].hitpairs_x2[i].second>=0){
-				fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
-				fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].spacing/3.4641;
-				fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].z;
-				nhits_X2++;
-			}
-			
+		for(int j = 0; j<nx3p+nx3m; j++){
+			nhits_X3 = nhits_X2;
+			if(j<nx3p){
+				if(straighttrackbuilder[index].hitpairs_x3p[i].first>=0){
+					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].first].pos;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].first].detectorID-1].spacing/3.4641;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].first].detectorID-1].z;
+					nhits_X3++;
+				}
+				if(straighttrackbuilder[index].hitpairs_x3p[i].second>=0){
+					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].second].pos;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].second].detectorID-1].spacing/3.4641;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i].second].detectorID-1].z;
+					nhits_X3++;
+				}
+			}else{
+				if(straighttrackbuilder[index].hitpairs_x3m[i].first>=0){
+					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].first].pos;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].first].detectorID-1].spacing/3.4641;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].first].detectorID-1].z;
+					nhits_X3++;
+				}
+				if(straighttrackbuilder[index].hitpairs_x3m[i].second>=0){
+					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].second].pos;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].second].detectorID-1].spacing/3.4641;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[i].second].detectorID-1].z;
+					nhits_X3++;
+				}
+			}			
 			//don't we want something with at least the errors???
 			
-			chi2_simplefit(nhits_X2, fitarrays[index].z_array, fitarrays[index].x_array, a, b, sum, det, sx, sy, sxx, syy, sxy);
-			if(ic[index].EventID<=20)printf("evt %d: %1.6f %1.6f\n", ic[index].EventID, a, b); 
+			//if(ic[index].EventID==13)for(int k = 0; k<nhits_X3; k++)printf("k %d, x %1.6f, y %1.6f +- %1.6f \n", k, fitarrays[index].z_array[k], fitarrays[index].x_array[k], fitarrays[index].dx_array[k]);
+			//chi2_simplefit(nhits_X3, fitarrays[index].z_array, fitarrays[index].x_array, a, b, sum, det, sx, sy, sxx, syy, sxy);
+			//if(ic[index].EventID==13)printf("evt %d: %1.6f %1.6f\n", ic[index].EventID, a, b); 
 			
-			fit_2D_track(nhits_X2, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_xz);
-			if(ic[index].EventID<=20)printf("evt %d: (%1.6f+-%1.6f) + z * (%1.6f+-%1.6f), %1.6f \n", ic[index].EventID, 
-							fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
-							fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
-							fitarrays[index].chi2_xz); 
+			fit_2D_track(nhits_X3, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_xz);
+			//if(0<=ic[index].EventID && ic[index].EventID<=20)printf("evt %d: (%1.6f+-%1.6f) + z * (%1.6f+-%1.6f), %1.6f \n", ic[index].EventID, 
+			//				fitarrays[index].output_parameters[0], fitarrays[index].output_parameters_errors[0], 
+			//				fitarrays[index].output_parameters[1], fitarrays[index].output_parameters_errors[1], 
+			//				fitarrays[index].chi2_xz); 
 			
-			if(fabs(a)>X0_MAX || fabs(b)>TX_MAX)continue;
+			if(fabs(fitarrays[index].output_parameters[0])>X0_MAX || fabs(fitarrays[index].output_parameters[1])>TX_MAX)continue;
+			
 			//prop matching
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
@@ -901,10 +929,10 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			if(nprop==0)continue;
 
 			
-		}
+		}// loops on st3 X hits
 	
-	}
-
+	}//loop on st2 X hits
+	
         // 3- get U, V pairs compatible with the X pair in each station: already implemented, tested;
 
 

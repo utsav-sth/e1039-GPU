@@ -2,9 +2,9 @@
 
 __device__ void matinv_2x2_matrix_per_thread (const REAL *A, REAL *Ainv)
 {
-    const int blkNum = blockIdx.y * gridDim.x + blockIdx.x;
-    const int thrdNum = blkNum * blockDim.x + threadIdx.x;
-    const int N = 2;
+    //const int blkNum = blockIdx.y * gridDim.x + blockIdx.x;
+    //const int thrdNum = blkNum * blockDim.x + threadIdx.x;
+    //const int N = 2;
     int perm0, perm1;
     int icol0, icol1;
     REAL AA00, AA01; 
@@ -18,8 +18,8 @@ __device__ void matinv_2x2_matrix_per_thread (const REAL *A, REAL *Ainv)
     int i, pvt;
 //#endif
 
-    A    += thrdNum * N * N;
-    Ainv += thrdNum * N * N;
+//    A    += thrdNum * N * N;
+//    Ainv += thrdNum * N * N;
 
     //if (thrdNum < batch) {
 

@@ -197,12 +197,12 @@ __device__ void fit_2D_track(size_t const n_points, REAL *x_points, REAL *z_poin
 		
 		//printf("pt %d: x: %1.6f +- %1.6f, z = %1.6f\n", i, x_points[i], x_weights[i], z_points[i]);
     	}
-	
+		
 	matinv_2x2_matrix_per_thread(A, Ainv);
-	
+
 	for(int j = 0; j<2; j++){//row
 		output_parameters[j] = 0.0;
-		output_parameters_errors[j] = sqrtf(fabs(A[j*2+j]));
+		output_parameters_errors[j] = sqrtf(fabs(Ainv[j*2+j]));
 		for(int k = 0; k<2; k++){//column
 			output_parameters[j]+= Ainv[j*2+k]*B[k];
 		}
@@ -210,7 +210,7 @@ __device__ void fit_2D_track(size_t const n_points, REAL *x_points, REAL *z_poin
 	
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
-		chi2+= x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[1])*(output_parameters[0]+z_points[i]*output_parameters[1]);
+		chi2+= x_weights[i]*x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[1])*(output_parameters[0]+z_points[i]*output_parameters[1]);
 	}
 }
 
@@ -301,7 +301,7 @@ __device__ void fit_3D_track(size_t const n_points, REAL *x_points, REAL *y_poin
 	
 	for(int j = 0; j<4; j++){//row
 		output_parameters[j] = 0.0;
-		output_parameters_errors[j] = sqrtf(fabs(A[j*4+j]));
+		output_parameters_errors[j] = sqrtf(fabs(Ainv[j*4+j]));
 		for(int k = 0; k<4; k++){//column
 			output_parameters[j]+= Ainv[j*4+k]*B[k];
 		}
