@@ -28,6 +28,8 @@ namespace geometry{
 	__device__ constexpr float spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
 	__device__ constexpr short detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
 	__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
+	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 42}, {39, 42}};// range of planes to look for hits
+	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.15};
 }
 
 //clone of LoadEvent::Hit:
@@ -95,7 +97,7 @@ class gTrackXZ {
 class gTrackYZ {
       public:
       //YZ tracks cannot extist without XZ tracks
-      int trackXZindex;
+      //int trackXZindex;
       
       short nUHits;
       short nVHits;
@@ -109,9 +111,11 @@ class gTrackYZ {
       int hitlist[8];
       short hitsign[8];
 
+      //float y_array[8];
+      //float err_y_array[8];
+
       float chisq;
 };
-
 
 class gFitParams {
 public:
@@ -232,6 +236,8 @@ class gStraightTrackBuilder{
 public:
 	int nTracksXZ;	
 	gTrackXZ TrackXZ[TrackletSizeMax];
+	int nTracksYZ;
+	gTrackYZ TrackYZ[TrackletSizeMax];
 	
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
@@ -258,10 +264,16 @@ public:
       float drift_dist[nChamberPlanes]; // hit drift distance
       float resolution[nChamberPlanes]; // detector resolution
       
+      float p1x[nChamberPlanes];// x bottom end point of the wire hit 
+      float p1y[nChamberPlanes];// y bottom end point of the wire hit 
+      float p1z[nChamberPlanes];// z bottom end point of the wire hit 
+      
+      float deltapx[nChamberPlanes];// x distance between bottom and top end points of the wire hit 
+      float deltapy[nChamberPlanes];// y distance between bottom and top end points of the wire hit 
+      float deltapz[nChamberPlanes];// z distance between bottom and top end points of the wire hit 
+      
       float output_parameters[4];
       float output_parameters_errors[4];
-      float chi2_xz;
-      float chi2_xy;
       float chi2;
 
       float x_array[nChamberPlanes];// x position arrays
