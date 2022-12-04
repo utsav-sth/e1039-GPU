@@ -609,9 +609,11 @@ int main(int argn, char * argv[]) {
 	
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
+	long tklctr = 0;
 	for(int n = 0; n<nEvtMax; n++){
 		if(host_gEvent[n].nAH==0)continue;
 		out<<n<<" "<< host_gEvent[n].nAH <<" "<< host_output_TKL[n].nTracklets<<endl;
+		tklctr+= host_output_TKL[n].nTracklets;
 		for(int k = 1; k<=nDetectors; k++ ){
 			out << host_gEvent[n].NHits[k] << " ";
 		}out<<endl;
@@ -630,6 +632,7 @@ int main(int argn, char * argv[]) {
 		
 	}
 	
+	cout << tklctr << " straight tracks reconstructed" << endl;
 	//auto end_kernel = std::chrono::system_clock::now();
 
 

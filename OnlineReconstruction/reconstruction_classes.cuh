@@ -274,6 +274,7 @@ public:
       
       float output_parameters[4];
       float output_parameters_errors[4];
+      float chi2_2d;
       float chi2;
 
       float x_array[nChamberPlanes];// x position arrays
