@@ -242,21 +242,21 @@ __device__ int match_tracklet_to_hodo(gTracklet tkl, int stID, gEvent* ic, const
 		if(geometry::hodoplanerange[stID][0]>ic[index].AllHits[i].detectorID || geometry::hodoplanerange[stID][1]<ic[index].AllHits[i].detectorID)continue;
 		
 		//calculate the track position at the hodoscope plane z
-		xhodo = planes[ic[index].AllHits[i].detectorID-1].z*tkl.tx+tkl.x0;
-		yhodo = planes[ic[index].AllHits[i].detectorID-1].z*tkl.ty+tkl.y0;
+		xhodo = planes[ic[index].AllHits[i].detectorID].z*tkl.tx+tkl.x0;
+		yhodo = planes[ic[index].AllHits[i].detectorID].z*tkl.ty+tkl.y0;
 		
 		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
 		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
-		if(planes[ic[index].AllHits[i].detectorID-1].costheta>0.99){
-			xmin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID-1].spacing*(0.5f+geometry::hodofudgefac[stID])-planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
-			xmax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID-1].spacing*(0.5f+geometry::hodofudgefac[stID])+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
-			ymax = 0.5f*planes[ic[index].AllHits[i].detectorID-1].scaley+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
+		if(planes[ic[index].AllHits[i].detectorID].costheta>0.99){
+			xmin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID])-planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
+			xmax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID])+planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
+			ymax = 0.5f*planes[ic[index].AllHits[i].detectorID].scaley+planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
 			ymin = -ymax;
 		}else{
-			xmax = 0.5f*planes[ic[index].AllHits[i].detectorID-1].scalex+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_tx+tkl.err_x0;
+			xmax = 0.5f*planes[ic[index].AllHits[i].detectorID].scalex+planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
 			xmin = -xmax;
-			ymin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID-1].spacing-planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
-			ymax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID-1].spacing+planes[ic[index].AllHits[i].detectorID-1].z*tkl.err_ty+tkl.err_y0;
+			ymin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID].spacing-planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
+			ymax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID].spacing+planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
 		}
 
 		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
@@ -294,12 +294,12 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	float p1x, p2x;
 	for(int i = 0; i<ic[index].nAH; i++){
 		if(ic[index].AllHits[i].detectorID==detid1){
-			p1x = planes[ ic[index].AllHits[i].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID-1 ].dp1x * (ic[index].AllHits[i].elementID-1);
-			if(planes[ ic[index].AllHits[i].detectorID-1 ].deltapx>0){
-				p2x = p1x + planes[ ic[index].AllHits[i].detectorID-1 ].deltapx;
+			p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
+				p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}else{
 				p2x = p1x;
-				p1x+= planes[ ic[index].AllHits[i].detectorID-1 ].deltapx;
+				p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
 			if( (p1x <= xmax) && (p2x >= xmin) ){ 
@@ -308,12 +308,12 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			}
 		}
 		if(ic[index].AllHits[i].detectorID==detid2){
-			p1x = planes[ ic[index].AllHits[i].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID-1 ].dp1x * (ic[index].AllHits[i].elementID-1);
-			if(planes[ ic[index].AllHits[i].detectorID-1 ].deltapx>0){
-				p2x = p1x + planes[ ic[index].AllHits[i].detectorID-1 ].deltapx;
+			p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
+				p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}else{
 				p2x = p1x;
-				p1x+= planes[ ic[index].AllHits[i].detectorID-1 ].deltapx;
+				p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
 			if( (p1x <= xmax) && (p2x >= xmin) ){ 
@@ -393,8 +393,8 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 	int nu = make_hitpairs_in_station(ic, oc[index].hitpairs_u, oc[index].hitidx1, oc[index].hitidx2, oc[index].hitflag1, oc[index].hitflag2, stID, 1, planes);
 	int nv = make_hitpairs_in_station(ic, oc[index].hitpairs_v, oc[index].hitidx1, oc[index].hitidx2, oc[index].hitflag1, oc[index].hitflag2, stID, 2, planes);
 	
-	short uidx = stID==0? stID*6 : stID*6+4;
-	short vidx = stID==0? stID*6+4 : stID*6;
+	short uidx = stID==0? stID*6+1 : stID*6+5;
+	short vidx = stID==0? stID*6+5 : stID*6+1;
 	
 	//bool print = false;
 	//if(0<=ic[index].EventID && ic[index].EventID<20){
@@ -427,14 +427,14 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 			if(upos<umin || upos>umax)continue;
 			//if(print)printf("evt %d, %1.6f <? upos = %1.6f <? %1.6f \n", ic[index].EventID, umin, upos, umax);
 			//we chose by convention to start the numbering of the "planes" object arrays to 0 instead of 1, this is why we have to subtract 1 to detectorID to get the correct information
-			double z_x = oc[index].hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].z;
-			double z_u = oc[index].hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].z_mean : planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].z;
+			double z_x = oc[index].hitpairs_x[i].second>=0 ? planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].z;
+			double z_u = oc[index].hitpairs_u[j].second>=0 ? planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].z_mean : planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].z;
 			double z_v = planes[vidx].z_mean;
 			//if(ic[index].EventID==0)printf("detid x = %d, detid u = %d, z_x = %1.6f, z_u = %1.6f, z_v = %1.6f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID, z_x, z_u, z_v);
-			double v_win1 = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].v_win_fac1;
+			double v_win1 = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].v_win_fac1;
 			double v_win2 = fabs(z_u+z_v-2*z_x)*planes[ vidx ].v_win_fac2;
 			double v_win3 = fabs(z_v-z_u)*planes[ vidx ].v_win_fac3;
-			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing;
+			double v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].spacing;
 
 			double vmin = 2*xpos*planes[uidx].costheta-upos-v_win;
 			double vmax = vmin+2*v_win;
@@ -449,140 +449,104 @@ __global__ void gkernel_TrackletinStation(gEvent* ic, gSW* oc, gFitArrays* fitar
 				npts = 0;
 
 				if(oc[index].hitpairs_x[i].first>=0){
-					if(ic[index].EventID==0)printf("x first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("x first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_x[i].first ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
 					
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_x[i].first ].pos; // costheta = 1.
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].spacing*0.5f; // costheta = 1.
-					//fitarrays[index].y_array[npts] = 0.; // sintheta = 0.
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].scaley*0.5f; // sintheta = 0.
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].z;
-					
 					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_x[i].first ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_x[i].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].first ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_x[i].second>=0){
-					if(ic[index].EventID==0)printf("x second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("x second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_x[i].second ];
 					oc[index].AllTracklets[n_tkl].nXHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
 
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_x[i].second ].pos; // costheta = 1.
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].spacing*0.5f; // costheta = 1.
-					//fitarrays[index].y_array[npts] = 0.0; // sintheta = 0.
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].scaley*0.5f; // sintheta = 0.
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].z;
-
 					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_x[i].second ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_x[i].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_x[i].second ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_u[j].first>=0){
-					if(ic[index].EventID==0)printf("u first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("u first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_u[j].first ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
 					
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].costheta;
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].costheta);
-					//fitarrays[index].y_array[npts] = ic[index].AllHits[ oc[index].hitpairs_u[j].first ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].sintheta;
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].sintheta);
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].z;
-					
 					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_u[j].first ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].first ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_u[j].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].first ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_u[j].second>=0){
-					if(ic[index].EventID==0)printf("u second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("u second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_u[j].second ];
 					oc[index].AllTracklets[n_tkl].nUHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
 
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].costheta;
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].costheta);
-					//fitarrays[index].y_array[npts] = ic[index].AllHits[ oc[index].hitpairs_u[j].second ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].sintheta;
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].sintheta);
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].z;
-					
 					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_u[j].second ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[i].second ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_u[j].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_u[j].second ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_v[k].first>=0){
-					if(ic[index].EventID==0)printf("v first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("v first hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_v[k].first ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
 					
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].costheta;
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].costheta);
-					//fitarrays[index].y_array[npts] = ic[index].AllHits[ oc[index].hitpairs_v[k].first ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].sintheta;
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].sintheta);
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].z;
-					
 					fitarrays[index].drift_dist[npts] = 0.;//ic[index].AllHits[ oc[index].hitpairs_v[k].first ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].first ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_v[k].first ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].first ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
 				if(oc[index].hitpairs_v[k].second>=0){
-					if(ic[index].EventID==0)printf("v second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].p1z_w1);
+					if(ic[index].EventID==0)printf("v second hit plane = %d, elem %d, z = %1.4f\n", ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID, ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID, planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].p1z_w1);
 					oc[index].AllTracklets[n_tkl].hits[nhits_tkl]=ic[index].AllHits[ oc[index].hitpairs_v[k].second ];
 					oc[index].AllTracklets[n_tkl].nVHits++;
 					oc[index].AllTracklets[n_tkl].hitsign[nhits_tkl]=0;
-					
-					//fitarrays[index].x_array[npts] = ic[index].AllHits[ oc[index].hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].costheta;
-					//fitarrays[index].dx_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].costheta);
-					//fitarrays[index].y_array[npts] = ic[index].AllHits[ oc[index].hitpairs_v[k].second ].pos*planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].sintheta;
-					//fitarrays[index].dy_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].spacing*0.5f/fabs(planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].sintheta);
-					//fitarrays[index].z_array[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].z;
-					
+
 					fitarrays[index].drift_dist[npts] = 0;//ic[index].AllHits[ oc[index].hitpairs_v[k].second ].driftDistance;
-					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].spacing/3.4641f;//.resolution;
-					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
-					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].second ].detectorID-1 ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].second ].detectorID-1 ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
-					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
-					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].deltapx;
-					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].deltapy;
-					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID-1 ].deltapz;
+					fitarrays[index].resolution[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].spacing/3.4641f;//.resolution;
+					fitarrays[index].p1x[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].p1x_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].dp1x * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].p1y[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].second ].detectorID ].p1y_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[i].second ].detectorID ].dp1y * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].p1z[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].p1z_w1 + planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].dp1z * (ic[index].AllHits[ oc[index].hitpairs_v[k].second ].elementID-1) ;
+					fitarrays[index].deltapx[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].deltapx;
+					fitarrays[index].deltapy[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].deltapy;
+					fitarrays[index].deltapz[npts] = planes[ ic[index].AllHits[ oc[index].hitpairs_v[k].second ].detectorID ].deltapz;
 					npts++;
 					nhits_tkl++;
 				}
@@ -717,7 +681,7 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
 				iprop = 48+ip;
-				xExp = a*planes[iprop-1].z+b;
+				xExp = a*planes[iprop].z+b;
 				//loop on hits to find prop
 				for(int k = 0; k<ic[index].nAH; k++){
 					if(ic[index].AllHits[k].detectorID==iprop){
@@ -744,26 +708,26 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 				oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[i].hitsign[k];
 				
 				fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
-				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
-				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
-				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
-				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
-				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
-				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
-				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].spacing/3.4641f;//.resolution;
+				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1);
+				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapx;
+				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapy;
+				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapz;
 			}
 				
 			for(int k = nhits_2; k<nhits_2+nhits_3; k++){
 				oc[index].AllTracklets[n_tkl].hits[k]=oc[index].AllTracklets[j].hits[k-nhits_2];
 				oc[index].AllTracklets[n_tkl].hitsign[k]=oc[index].AllTracklets[j].hitsign[k-nhits_2];
 					fitarrays[index].drift_dist[k] = 0.;//oc[index].AllTracklets[n_tkl].hits[k].driftDistance;
-				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].spacing/3.4641f;//.resolution;
-				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
-				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapx;
-				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapy;
-				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID-1 ].deltapz;
+				fitarrays[index].resolution[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].spacing/3.4641f;//.resolution;
+				fitarrays[index].p1x[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1x_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1x * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].p1y[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1y_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1y * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].p1z[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].p1z_w1 + planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].dp1z * (oc[index].AllTracklets[n_tkl].hits[k].elementID-1) ;
+				fitarrays[index].deltapx[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapx;
+				fitarrays[index].deltapy[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapy;
+				fitarrays[index].deltapz[k] = planes[ oc[index].AllTracklets[n_tkl].hits[k].detectorID ].deltapz;
 			}
 			
 			//then fit:
@@ -829,8 +793,8 @@ __global__ void gkernel_BackPartialTracks(gEvent* ic, gSW* oc, gFitArrays* fitar
 
 __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrackXZ trackxz, const short stID, const short projID, const gPlane* planes)
 {
-	int detid1 = geometry::detsuperid[stID][projID]*2-1;
-	int detid2 = geometry::detsuperid[stID][projID]*2-2;
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
 	
 	xmin = min(planes[detid1].z*(trackxz.tx-trackxz.err_tx), planes[detid2].z*(trackxz.tx-trackxz.err_tx));
 	xmax = max(planes[detid1].z*(trackxz.tx+trackxz.err_tx), planes[detid2].z*(trackxz.tx+trackxz.err_tx));
@@ -841,26 +805,26 @@ __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack
 
 __device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
 	fitarray.drift_dist[n] = hit.driftDistance*hitsign;
-	fitarray.resolution[n] = planes[ hit.detectorID-1 ].resolution;
-	if(hitsign==0)fitarray.resolution[n] = planes[ hit.detectorID-1 ].spacing*3.4641f;
+	fitarray.resolution[n] = planes[ hit.detectorID ].resolution;
+	if(hitsign==0)fitarray.resolution[n] = planes[ hit.detectorID ].spacing*3.4641f;
 	
-	fitarray.p1x[n] = planes[ hit.detectorID-1 ].p1x_w1 + planes[ hit.detectorID-1 ].dp1x * (hit.elementID-1);
-	fitarray.p1y[n] = planes[ hit.detectorID-1 ].p1y_w1 + planes[ hit.detectorID-1 ].dp1y * (hit.elementID-1);
-	fitarray.p1z[n] = planes[ hit.detectorID-1 ].p1z_w1 + planes[ hit.detectorID-1 ].dp1z * (hit.elementID-1);
+	fitarray.p1x[n] = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	fitarray.p1y[n] = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
+	fitarray.p1z[n] = planes[ hit.detectorID ].p1z_w1 + planes[ hit.detectorID ].dp1z * (hit.elementID-1);
 	
-	fitarray.deltapx[n] = planes[ hit.detectorID-1 ].deltapx;
-	fitarray.deltapy[n] = planes[ hit.detectorID-1 ].deltapy;
-	fitarray.deltapz[n] = planes[ hit.detectorID-1 ].deltapz;
+	fitarray.deltapx[n] = planes[ hit.detectorID ].deltapx;
+	fitarray.deltapy[n] = planes[ hit.detectorID ].deltapy;
+	fitarray.deltapz[n] = planes[ hit.detectorID ].deltapz;
 }
 
 __device__ void calculate_y_uvhit(float &y, float &err_y, const gHit hit, const gTrackXZ trackxz, const gPlane* planes){
-	float p1x = planes[ hit.detectorID-1 ].p1x_w1 + planes[ hit.detectorID-1 ].dp1x * (hit.elementID-1);
-	float p1y = planes[ hit.detectorID-1 ].p1y_w1 + planes[ hit.detectorID-1 ].dp1y * (hit.elementID-1);
+	float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
 	
-	float x_trk = trackxz.x0+planes[ hit.detectorID-1 ].z*trackxz.tx;
+	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx;
 	
-	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID-1 ].deltapy/planes[ hit.detectorID-1 ].deltapx;
-	err_y = planes[ hit.detectorID-1 ].spacing/3.4641f * fabs(planes[ hit.detectorID-1 ].deltapy/planes[ hit.detectorID-1 ].deltapx);
+	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	err_y = planes[ hit.detectorID ].spacing/3.4641f * fabs(planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx);
 }
 
 
@@ -913,15 +877,15 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 		nhits_X2 = 0;
 		if(straighttrackbuilder[index].hitpairs_x2[i].first>=0){
 			fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].pos;
-			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID-1].spacing/3.4641f;
-			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID-1].z;
+			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].spacing/3.4641f;
+			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].first].detectorID].z;
 			straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X2] = straighttrackbuilder[index].hitpairs_x2[i].first;
 			nhits_X2++;
 		}
 		if(straighttrackbuilder[index].hitpairs_x2[i].second>=0){
 			fitarrays[index].x_array[nhits_X2] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].pos;
-			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID-1].spacing/3.4641f;
-			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID-1].z;
+			fitarrays[index].dx_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].spacing/3.4641f;
+			fitarrays[index].z_array[nhits_X2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x2[i].second].detectorID].z;
 			straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X2] = straighttrackbuilder[index].hitpairs_x2[i].second;
 			nhits_X2++;
 		}
@@ -931,30 +895,30 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			if(j<nx3p){
 				if(straighttrackbuilder[index].hitpairs_x3p[j].first>=0){
 					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].first].pos;
-					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].first].detectorID-1].spacing/3.4641f;
-					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].first].detectorID-1].z;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].first].detectorID].spacing/3.4641f;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].first].detectorID].z;
 					straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X3] = straighttrackbuilder[index].hitpairs_x3p[j].first;
 					nhits_X3++;
 				}
 				if(straighttrackbuilder[index].hitpairs_x3p[j].second>=0){
 					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].second].pos;
-					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].second].detectorID-1].spacing/3.4641f;
-					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].second].detectorID-1].z;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].second].detectorID].spacing/3.4641f;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[j].second].detectorID].z;
 					straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X3] = straighttrackbuilder[index].hitpairs_x3p[j].second;
 					nhits_X3++;
 				}
 			}else{
 				if(straighttrackbuilder[index].hitpairs_x3m[j].first>=0){
 					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].first].pos;
-					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].first].detectorID-1].spacing/3.4641f;
-					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].first].detectorID-1].z;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].first].detectorID].spacing/3.4641f;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].first].detectorID].z;
 					straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X3] = straighttrackbuilder[index].hitpairs_x3m[j].first;
 					nhits_X3++;
 				}
 				if(straighttrackbuilder[index].hitpairs_x3m[j].second>=0){
 					fitarrays[index].x_array[nhits_X3] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].second].pos;
-					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].second].detectorID-1].spacing/3.4641f;
-					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].second].detectorID-1].z;
+					fitarrays[index].dx_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].second].detectorID].spacing/3.4641f;
+					fitarrays[index].z_array[nhits_X3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3m[j].second].detectorID].z;
 					straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].hitlist[nhits_X3] = straighttrackbuilder[index].hitpairs_x3m[j].second;
 					nhits_X3++;
 				}
@@ -980,7 +944,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
 				iprop = 48+ip;
-				xExp = fitarrays[index].output_parameters[1]*planes[iprop-1].z+fitarrays[index].output_parameters[0];
+				xExp = fitarrays[index].output_parameters[1]*planes[iprop].z+fitarrays[index].output_parameters[0];
 				//loop on hits to find prop
 				for(int k = 0; k<ic[index].nAH; k++){
 					if(ic[index].AllHits[k].detectorID==iprop){
@@ -1082,7 +1046,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 				FillFitArrays(nxhits+nhits_U2, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].first], 0, fitarrays[index], planes);
 				fitarrays[index].y_array[nhits_U2] = y;
 				fitarrays[index].dy_array[nhits_U2] = err_y;
-				fitarrays[index].z_array[nhits_U2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].first].detectorID-1].z;
+				fitarrays[index].z_array[nhits_U2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].first].detectorID].z;
 				straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U2] = straighttrackbuilder[index].hitpairs_u2[j].first;
 				nhits_U2++;
 			}
@@ -1091,7 +1055,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 				FillFitArrays(nxhits+nhits_U2, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].second], 0, fitarrays[index], planes);
 				fitarrays[index].y_array[nhits_U2] = y;
 				fitarrays[index].dy_array[nhits_U2] = err_y;
-				fitarrays[index].z_array[nhits_U2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].second].detectorID-1].z;
+				fitarrays[index].z_array[nhits_U2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].second].detectorID].z;
 				straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U2] = straighttrackbuilder[index].hitpairs_u2[j].second;
 				nhits_U2++;
 			}
@@ -1106,7 +1070,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_U3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].first], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_U3] = y;
 						fitarrays[index].dy_array[nhits_U3] = err_y;
-						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].first].detectorID-1].z;
+						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].first].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U3] = straighttrackbuilder[index].hitpairs_u3p[k].first;
 						nhits_U3++;
 					}
@@ -1115,7 +1079,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_U3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].second], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_U3] = y;
 						fitarrays[index].dy_array[nhits_U3] = err_y;
-						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].second].detectorID-1].z;
+						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[k].second].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U3] = straighttrackbuilder[index].hitpairs_u3p[k].second;
 						nhits_U3++;
 					}
@@ -1125,7 +1089,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_U3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].first], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_U3] = y;
 						fitarrays[index].dy_array[nhits_U3] = err_y;
-						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].first].detectorID-1].z;
+						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].first].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U3] = straighttrackbuilder[index].hitpairs_u3m[k].first;
 						nhits_U3++;
 					}
@@ -1134,7 +1098,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_U3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].second], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_U3] = y;
 						fitarrays[index].dy_array[nhits_U3] = err_y;
-						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].second].detectorID-1].z;
+						fitarrays[index].z_array[nhits_U3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[k].second].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits++;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_U3] = straighttrackbuilder[index].hitpairs_u3m[k].second;
 						nhits_U3++;
@@ -1150,7 +1114,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_V2, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].first], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_V2] = y;
 						fitarrays[index].dy_array[nhits_V2] = err_y;
-						fitarrays[index].z_array[nhits_V2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].first].detectorID-1].z;
+						fitarrays[index].z_array[nhits_V2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].first].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V2] = straighttrackbuilder[index].hitpairs_v2[l].first;
 						nhits_V2++;
 					}
@@ -1160,7 +1124,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						FillFitArrays(nxhits+nhits_V2, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].second], 0, fitarrays[index], planes);
 						fitarrays[index].y_array[nhits_V2] = y;
 						fitarrays[index].dy_array[nhits_V2] = err_y;
-						fitarrays[index].z_array[nhits_V2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].second].detectorID-1].z;
+						fitarrays[index].z_array[nhits_V2] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[l].second].detectorID].z;
 						straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V2] = straighttrackbuilder[index].hitpairs_v2[l].second;
 						nhits_V2++;
 					}
@@ -1173,7 +1137,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 								FillFitArrays(nxhits+nhits_V3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].first], 0, fitarrays[index], planes);
 								fitarrays[index].y_array[nhits_V3] = y;
 								fitarrays[index].dy_array[nhits_V3] = err_y;
-								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].first].detectorID-1].z;
+								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].first].detectorID].z;
 								straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V3] = straighttrackbuilder[index].hitpairs_v3p[m].first;
 								nhits_V3++;
 							}
@@ -1182,7 +1146,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 								FillFitArrays(nxhits+nhits_V3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].second], 0, fitarrays[index], planes);
 								fitarrays[index].y_array[nhits_V3] = y;
 								fitarrays[index].dy_array[nhits_V3] = err_y;
-								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].second].detectorID-1].z;
+								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[m].second].detectorID].z;
 								straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V3] = straighttrackbuilder[index].hitpairs_v3p[m].second;
 								nhits_V3++;
 							}
@@ -1192,7 +1156,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 								FillFitArrays(nxhits+nhits_V3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].first], 0, fitarrays[index], planes);
 								fitarrays[index].y_array[nhits_V3] = y;
 								fitarrays[index].dy_array[nhits_V3] = err_y;
-								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].first].detectorID-1].z;
+								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].first].detectorID].z;
 								straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V3] = straighttrackbuilder[index].hitpairs_v3m[m].first;
 								nhits_V3++;
 							}
@@ -1201,7 +1165,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 								FillFitArrays(nxhits+nhits_V3, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].second], 0, fitarrays[index], planes);
 								fitarrays[index].y_array[nhits_V3] = y;
 								fitarrays[index].dy_array[nhits_V3] = err_y;
-								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].second].detectorID-1].z;
+								fitarrays[index].z_array[nhits_V3] = planes[ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[m].second].detectorID].z;
 								straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[nhits_V3] = straighttrackbuilder[index].hitpairs_v3m[m].second;
 								nhits_V3++;
 							}

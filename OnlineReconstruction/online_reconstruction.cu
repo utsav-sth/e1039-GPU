@@ -141,7 +141,7 @@ int main(int argn, char * argv[]) {
 	
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
-	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes];
+	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
 
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
@@ -153,44 +153,44 @@ int main(int argn, char * argv[]) {
 	      std::istringstream iss;
 	      iss.str(buffer);
 	      iss >> ipl >> z >> nelem >> spacing >> xoffset >> scalex >> x0 >> costheta >> scaley >> y0 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      plane[ipl-1].z = z;
-	      plane[ipl-1].nelem = nelem;
-	      plane[ipl-1].spacing = spacing;
-	      plane[ipl-1].xoffset = xoffset;
-	      plane[ipl-1].scalex = scalex;
-	      plane[ipl-1].x0 = x0;
-	      plane[ipl-1].costheta = costheta;
-	      plane[ipl-1].scaley = scaley;
-	      plane[ipl-1].y0 = y0;
-	      plane[ipl-1].sintheta = sintheta;
-	      plane[ipl-1].resolution = resolution;
-	      plane[ipl-1].p1x_w1 = p1x;
-	      plane[ipl-1].p1y_w1 = p1y;
-	      plane[ipl-1].p1z_w1 = p1z;
-	      plane[ipl-1].deltapx = deltapx;
-	      plane[ipl-1].deltapy = deltapy;
-	      plane[ipl-1].deltapz = deltapz;
-	      plane[ipl-1].dp1x = dp1x;
-	      plane[ipl-1].dp1y = dp1y;
-	      plane[ipl-1].dp1z = dp1z;
+	      plane[ipl].z = z;
+	      plane[ipl].nelem = nelem;
+	      plane[ipl].spacing = spacing;
+	      plane[ipl].xoffset = xoffset;
+	      plane[ipl].scalex = scalex;
+	      plane[ipl].x0 = x0;
+	      plane[ipl].costheta = costheta;
+	      plane[ipl].scaley = scaley;
+	      plane[ipl].y0 = y0;
+	      plane[ipl].sintheta = sintheta;
+	      plane[ipl].resolution = resolution;
+	      plane[ipl].p1x_w1 = p1x;
+	      plane[ipl].p1y_w1 = p1y;
+	      plane[ipl].p1z_w1 = p1z;
+	      plane[ipl].deltapx = deltapx;
+	      plane[ipl].deltapy = deltapy;
+	      plane[ipl].deltapz = deltapz;
+	      plane[ipl].dp1x = dp1x;
+	      plane[ipl].dp1y = dp1y;
+	      plane[ipl].dp1z = dp1z;
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
-			plane[ipl-1].deltaW_[k] = deltaW_;
+			plane[ipl].deltaW_[k] = deltaW_;
 		}
 	      }else{
 		iss >> deltaW_;
-		plane[ipl-1].deltaW_[0] = deltaW_;
+		plane[ipl].deltaW_[0] = deltaW_;
 	      }
 	      ipl++;
 	}
 	
 	for(int i = 0; i<5; i++){
-		int u_idx = i*6+4;
-		if(i==0)u_idx = i*6;
-		int x_idx = i*6+2;
+		int u_idx = i*6+5;
+		if(i==0)u_idx = i*6+1;
+		int x_idx = i*6+3;
 		for(int j = 0; j<6; j++){
-			int idx = i*6+j;
+			int idx = i*6+j+1;
 			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx+1].z):0.5*(plane[idx].z+plane[idx-1].z);
 			
 			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
@@ -199,7 +199,7 @@ int main(int argn, char * argv[]) {
 		}
 		
 		for(int j = 0; j<6; j++){
-			int idx = i*6+j;
+			int idx = i*6+j+1;
 			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[u_idx].spacing + u_factor[i];
 		}
 		//cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
@@ -207,36 +207,32 @@ int main(int argn, char * argv[]) {
 	}
 	cout << "Geometry file read out" << endl;
 	
-	//std::unordered_map<int, double> map_elemPosition[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
-	double wire_position[54][400];//Let's keep this: simpler, more robust
-	for(int i = 0; i < nChamberPlanes; ++i){
+	double wire_position[55][400];//Let's keep this: simpler, more robust
+	for(int i = 1; i <= nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
       		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
-          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 	}
-	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
+	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
-          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 	}
-	for(int i = nChamberPlanes+nHodoPlanes; i<nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
+	for(int i = nChamberPlanes+nHodoPlanes+1; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane[i].nelem; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
              		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
-          		//map_elemPosition[i].insert(posType(j, pos));
 			wire_position[i][j] = pos;
 		}
 		
 	}
-	
+	/*
 	float par_limits_min[5] = {-X0_MAX, -Y0_MAX, -TX_MAX, -TY_MAX, INVP_MIN};
 	float par_limits_max[5] = {+X0_MAX, +Y0_MAX, +TX_MAX, +TY_MAX, INVP_MAX};
 
@@ -259,7 +255,8 @@ int main(int argn, char * argv[]) {
 			fitparams[i].parameter_limits_max[j] = par_limits_max[j];
 		}
 	}
-	
+	*/
+		
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
@@ -513,7 +510,7 @@ int main(int argn, char * argv[]) {
 	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
 	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
 
-	//for(int m = 0; m<30; m++){
+	//for(int m = 1; m<=30; m++){
 	//	if(plane[m].u_win!=0)printf("plane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, plane[m].u_win, plane[m].costheta);
 	//	if(device_gPlane[m].u_win!=0)printf("device_gplane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, device_gPlane[m].u_win, device_gPlane[m].costheta);
 	//}
