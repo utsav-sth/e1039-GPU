@@ -11,7 +11,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 	//printf("Running the kernel function...\n");
 	// retrieve global thread index
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
-
+	
 	double w_max[EstnEvtMax]; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
 	
 	double w_min[EstnEvtMax]; // max drift distance of the hit closest to the cluster avg position // current average position of cluster * 0.4
@@ -193,7 +193,7 @@ __global__ void gkernel_eR(gEvent* ic) {
 	//if(((ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<270) || ((ic[index].NHits[7]+ic[index].NHits[8]+ic[index].NHits[9]+ic[index].NHits[10]+ic[index].NHits[11]+ic[index].NHits[12])>350) || ((ic[index].NHits[13]+ic[index].NHits[14]+ic[index].NHits[15]+ic[index].NHits[16]+ic[index].NHits[17]+ic[index].NHits[18])>170) || ((ic[index].NHits[19]+ic[index].NHits[20]+ic[index].NHits[21]+ic[index].NHits[22]+ic[index].NHits[23]+ic[index].NHits[24])>140) || ((ic[index].NHits[25]+ic[index].NHits[26]+ic[index].NHits[27]+ic[index].NHits[28]+ic[index].NHits[29]+ic[index].NHits[30])>140))
 
 	//we do not accept the event unless there is at least one hit in the first DC
-
+	
 	/*
 	if( (ic[index].NHits[1]+ic[index].NHits[2]+ic[index].NHits[3]+ic[index].NHits[4]+ic[index].NHits[5]+ic[index].NHits[6])<1){
 		//printf("Event rejected...\n");
@@ -225,7 +225,6 @@ __global__ void gkernel_eR(gEvent* ic) {
 		}
 	*/
 }
-
 
 // function to match a tracklet to a hodoscope hit
 __device__ int match_tracklet_to_hodo(gTracklet tkl, int stID, gEvent* ic, const gPlane* planes)
@@ -894,7 +893,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	//D2: stid = 3-1
 	stid = 2;
 	int nx2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes);
-
+	
 	//D3p: stid = 4-1
 	stid = 3;
 	int nx3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes);
@@ -902,9 +901,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	//D3p: stid = 5-1
 	stid = 4;
 	int nx3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes);
-	
-	//if(ic[index].EventID==13)printf("evt %d, %d pairs in st2, %d pairs in st3+, %d pairs in st3-\n", ic[index].EventID, nx2, nx3p, nx3m);
-	
+
         // 2- loop on X hit pairs; calculate slope between the hit X pairs (i.e. XZ tracking):
 	for(int i = 0; i<nx2; i++){
 		for(int n = 0; n<nChamberPlanes; n++){
@@ -978,8 +975,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			   fitarrays[index].output_parameters[0]-fitarrays[index].output_parameters_errors[0]>X0_MAX)continue;
 			if(fitarrays[index].output_parameters[1]+fitarrays[index].output_parameters_errors[1]<-TX_MAX || 
 			   fitarrays[index].output_parameters[1]-fitarrays[index].output_parameters_errors[1]>TX_MAX)continue;
-			
-						
+							
 			//prop matching
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
@@ -996,7 +992,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 				}
 				if(nprop>0)break;
 			}
-			//if(nprop==0)continue;
+			if(nprop==0)continue;
 			
 			//fill in the XZ track
 			straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].nXHits = nhits_X3;
@@ -1081,6 +1077,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			nhits_U2 = 0;
 			//if(j<nu2){
 			if(straighttrackbuilder[index].hitpairs_u2[j].first>=0){
+				// 5- calculate Y from U, V hits 
 				calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].first], straighttrackbuilder[index].TrackXZ[i], planes);
 				FillFitArrays(nxhits+nhits_U2, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[j].first], 0, fitarrays[index], planes);
 				fitarrays[index].y_array[nhits_U2] = y;
@@ -1210,6 +1207,8 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 							}
 						}
 						
+						// 6- fit the X-Y slope (0.5-1 day to implement and test);
+						
 						//fit here
 						fit_2D_track(nhits_V3, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 						
@@ -1244,6 +1243,8 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 									fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z,
 									fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
 									fitarrays[index].output_parameters, fitarrays[index].chi2);
+						
+						
 						/*
 						//what happens if we keep all YZ tracks???
 						if(fitarrays[index].chi2<9000 && yz_in_acceptance){
@@ -1275,6 +1276,22 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 							
 						}
 						*/
+
+						// 7- combine the XZ and XY track and combine hodoscope matching (already implemented)
+						oc[index].AllTracklets[oc[index].nTracklets].x0 = straighttrackbuilder[index].TrackXZ[i].x0;
+						oc[index].AllTracklets[oc[index].nTracklets].y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].y0;
+						oc[index].AllTracklets[oc[index].nTracklets].tx = straighttrackbuilder[index].TrackXZ[i].tx;
+						oc[index].AllTracklets[oc[index].nTracklets].ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].ty;
+						
+						oc[index].AllTracklets[oc[index].nTracklets].err_x0 = straighttrackbuilder[index].TrackXZ[i].err_x0;
+						oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_y0;
+						oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
+						oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_ty;
+
+						if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
+						//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
+						//   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
+						
 						if(fitarrays[index].chi2<=chi2min){
 							chi2min = fitarrays[index].chi2;
 							bestYZcand = straighttrackbuilder[index].nTracksYZ;
@@ -1349,16 +1366,12 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			}
 			oc[index].nTracklets++;
 		}else{
-			printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
+			//printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
 			continue;
 		}
 	}// end loop on XZ tracks
-
-        // 5- calculate Y from U, V hits (0.5-1 day to implement and test);
-
-        // 6- fit the X-Y slope (0.5-1 day to implement and test);
-
-        // 7- combine the XZ and XY track and combine hodoscope matching (already implemented, needs test: 1-1.5 day)
+	
+	
 
 }
 

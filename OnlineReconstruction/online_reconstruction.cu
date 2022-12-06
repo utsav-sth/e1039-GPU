@@ -310,7 +310,7 @@ int main(int argn, char * argv[]) {
 	}
 	int nEvtMax = dataTree->GetEntries();
 	static gEvent host_gEvent[EstnEvtMax];
-
+	
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -382,13 +382,14 @@ int main(int argn, char * argv[]) {
 			
 			for(int k = 0; k<nDetectors; k++)host_gEvent[i].NHits[k] = 0;//we will increment those in the vector hit loop
 			int ntrighits = 0;
-			host_gEvent[i].nAH = hit_vec.size();
+			host_gEvent[i].nAH = 0;//hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
 				if(hit_vec[m]->get_detector_id()>54){
-					//if(_event_id<20)cout << " dark photon plane hit! " << hit_vec[m]->get_detector_id() << endl;  
+					//if(_event_id<20)cout << " dark photon plane hit! " << hit_vec[m]->get_detector_id() << endl;
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
+				host_gEvent[i].nAH++;
 				host_gEvent[i].NHits[hit_vec[m]->get_detector_id()]++;
 				host_gEvent[i].AllHits[m].index=hit_vec[m]->get_hit_id();
 				host_gEvent[i].AllHits[m].detectorID=hit_vec[m]->get_detector_id();
@@ -554,9 +555,11 @@ int main(int argn, char * argv[]) {
 	clock_t cp5 = clock();
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
-
+	cudaFree(device_gEvent);
+	
 	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
 	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
+	cudaFree(device_output_TKL);
 
 	// thrust objects: C++ template library based on STL
 	// convert raw pointer device_gEvent to device_vector
@@ -600,26 +603,24 @@ int main(int argn, char * argv[]) {
 	// }
 	
 	//TODO: need to check that host_gEvent is updated
-	cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
-	cudaFree(device_gEvent);
+	//cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
 
 	//cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost);
-	cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost);
-	cudaFree(device_output_TKL);
+	//cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost);
 	
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
 	for(int n = 0; n<nEvtMax; n++){
-		if(host_gEvent[n].nAH==0)continue;
-		out<<n<<" "<< host_gEvent[n].nAH <<" "<< host_output_TKL[n].nTracklets<<endl;
+		if(host_output_eR[n].nAH==0)continue;
+		out<<n<<" "<< host_output_eR[n].nAH <<" "<< host_output_TKL[n].nTracklets<<endl;
 		tklctr+= host_output_TKL[n].nTracklets;
 		for(int k = 1; k<=nDetectors; k++ ){
-			out << host_gEvent[n].NHits[k] << " ";
+			out << host_output_eR[n].NHits[k] << " ";
 		}out<<endl;
 		
-		for(int k = 0; k<host_gEvent[n].nAH; k++ ){
-			out << host_gEvent[n].AllHits[k].detectorID << " " << host_gEvent[n].AllHits[k].elementID << " " << host_gEvent[n].AllHits[k].driftDistance << endl;
+		for(int k = 0; k<host_output_eR[n].nAH; k++ ){
+			out << host_output_eR[n].AllHits[k].detectorID << " " << host_output_eR[n].AllHits[k].elementID << " " << host_output_eR[n].AllHits[k].driftDistance << endl;
 		}
 		
 		for(int k = 0; k<host_output_TKL[n].nTracklets; k++ ){
