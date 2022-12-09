@@ -27,11 +27,21 @@ const double INVP_MIN = 0.01;
 namespace geometry{
 	__device__ constexpr float spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
 	__device__ constexpr short detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 26, -1}, {24, 27, -1}}; 
+	__device__ constexpr short planetype[15] = {1, 0, 2, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1};
+//	__device__ constexpr float u_win[5] = {24.4677, 22.961, 45.9755, 40.1417, 40.2632};
+//	__device__ constexpr float u_costheta[5] = {0.971457, 0.969688, 0.968944, 0.970302, 0.969927};
+//	__device__ constexpr float u_sintheta[5] = {0.237214,  0.244345, 0.247278, -0.241897, -0.243395};
 	__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
 	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 42}, {39, 42}};// range of planes to look for hits
 	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.15};
+	__device__ constexpr float Z_TARGET = -300;
+	__device__ constexpr float Z_DUMP = 42;
+	__device__ constexpr float SAGITTA_TARGET_CENTER = 1.85;
+	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
+	__device__ constexpr float SAGITTA_DUMP_CENTER = 1.5;
+	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
 }
-
+// SAGITTA_TARGET_CENTER 1.85 SAGITTA_TARGET_WIDTH 0.25 SAGITTA_DUMP_CENTER 1.5 SAGITTA_DUMP_WIDTH 0.3 Z_TARGET -300 Z_DUMP 42
 //clone of LoadEvent::Hit:
 class gHit {
 	public:

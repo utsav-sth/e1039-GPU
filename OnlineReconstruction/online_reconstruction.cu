@@ -195,15 +195,15 @@ int main(int argn, char * argv[]) {
 			
 			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
 			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
-			plane[idx].v_win_fac3 = fabs(plane[u_idx].sintheta*TY_MAX);
+			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
 		}
 		
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j+1;
 			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[u_idx].spacing + u_factor[i];
 		}
-		//cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
-		//cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
+		cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
+		cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
 	}
 	cout << "Geometry file read out" << endl;
 	
@@ -341,8 +341,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
 				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
 				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				//host_gEvent[i].AllHits[m].pos=map_elemPosition[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
-				host_gEvent[i].AllHits[m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID-1][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent[i].AllHits[m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
 				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
 			}
 			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
@@ -351,8 +350,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
 				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
 				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				//host_gEvent[i].TriggerHits[n].pos=map_elemPosition[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
-				host_gEvent[i].TriggerHits[n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID-1][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent[i].TriggerHits[n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
 				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
 			}
 			// printouts for test
@@ -393,7 +391,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
 				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
 				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
+				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
 				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
 				//if(host_gEvent[i].EventID<20)cout << " det " << host_gEvent[i].AllHits[m].detectorID << " elem " << host_gEvent[i].AllHits[m].elementID << " time " << host_gEvent[i].AllHits[m].tdcTime << " dd " << host_gEvent[i].AllHits[m].driftDistance << " pos " << host_gEvent[i].AllHits[m].pos << endl;
 				if(hit_vec[m]->is_trigger_mask()){
@@ -402,7 +400,7 @@ int main(int argn, char * argv[]) {
 					host_gEvent[i].TriggerHits[ntrighits].elementID=hit_vec[m]->get_element_id();
 					host_gEvent[i].TriggerHits[ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
 					host_gEvent[i].TriggerHits[ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-					host_gEvent[i].TriggerHits[ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()-1][hit_vec[m]->get_element_id()];
+					host_gEvent[i].TriggerHits[ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
 					host_gEvent[i].TriggerHits[ntrighits].flag=(1<<hit_vec[m]->is_in_time());
 					ntrighits++;
 				}
@@ -501,6 +499,10 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 	
 	auto end_straight = std::chrono::system_clock::now();
+	
+	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gPlane);
+
+	auto global_straight = std::chrono::system_clock::now();
 
 #ifdef KTRACKER_REC	
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
