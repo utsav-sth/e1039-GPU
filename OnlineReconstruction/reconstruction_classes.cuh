@@ -32,8 +32,8 @@ namespace geometry{
 //	__device__ constexpr float u_costheta[5] = {0.971457, 0.969688, 0.968944, 0.970302, 0.969927};
 //	__device__ constexpr float u_sintheta[5] = {0.237214,  0.244345, 0.247278, -0.241897, -0.243395};
 	__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
-	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 42}, {39, 42}};// range of planes to look for hits
-	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.15};
+	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
+	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.0};
 	__device__ constexpr float Z_TARGET = -300;
 	__device__ constexpr float Z_DUMP = 42;
 	__device__ constexpr float SAGITTA_TARGET_CENTER = 1.85;
@@ -312,13 +312,18 @@ class gPlane {
       public:
       float z;
       int nelem;
+      float cellwidth;
       float spacing;
       float xoffset;
       float scalex;
       float x0;
+      float x1;
+      float x2;
       float costheta;
       float scaley;
       float y0;
+      float y1;
+      float y2;
       float sintheta;
       float resolution;
       float deltaW_[9];

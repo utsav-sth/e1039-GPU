@@ -233,24 +233,41 @@ __device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEven
 	int masked = 0;//false
 	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
 	// define the region in which we are supposed to have hits:
+
+	printf(" stID %d hodo plane[0] %d [1] %d \n", stID, geometry::hodoplanerange[stID][0], geometry::hodoplanerange[stID][1]);
+		
 	
-	REAL xhodo, yhodo, xmin, xmax, ymin, ymax;
-	
+	REAL xhodo, yhodo, err_x, err_y, xmin, xmax, ymin, ymax;
+		
 	// loop on the hits and select hodoscope hits corresponding to the station
 	for(int i = 0; i<ic[index].nAH; i++){
 		//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
 		if(geometry::hodoplanerange[stID][0]>ic[index].AllHits[i].detectorID || geometry::hodoplanerange[stID][1]<ic[index].AllHits[i].detectorID)continue;
-		
+				
 		//calculate the track position at the hodoscope plane z
 		xhodo = planes[ic[index].AllHits[i].detectorID].z*tkl.tx+tkl.x0;
 		yhodo = planes[ic[index].AllHits[i].detectorID].z*tkl.ty+tkl.y0;
 		
+		err_x = 3.f*(fabs(planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx)+tkl.err_x0)+planes[ic[index].AllHits[i].detectorID].spacing*0.5;
+		err_y = 3.f*(fabs(planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty)+tkl.err_y0);
+
+		printf(" tkl x0 %1.6f y0 %1.6f tx %1.6f ty %1.6f  \n", tkl.x0, tkl.y0, tkl.tx, tkl.ty);
+		printf(" det %d elem %d z_hodo %1.6f x_hodo %1.6f y_hodo %1.6f err x %1.6f err y %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, planes[ic[index].AllHits[i].detectorID].z, xhodo, yhodo, err_x, err_y);
+		
+		xmin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID]);
+		xmax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID]);
+
+		ymax = planes[ic[index].AllHits[i].detectorID].scaley;
+		ymin = -ymax;
+
+		printf(" xmin %1.6f xmax %1.6f, ymin %1.6f ymax %1.6f xfudge %1.6f\n", xmin, xmax, ymin, ymax, planes[ic[index].AllHits[i].detectorID].spacing*0.5);
+/*		
 		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
 		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
 		if(planes[ic[index].AllHits[i].detectorID].costheta>0.99){
 			xmin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID])-planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
 			xmax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID].spacing*(0.5f+geometry::hodofudgefac[stID])+planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
-			ymax = 0.5f*planes[ic[index].AllHits[i].detectorID].scaley+planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
+			ymax = 0.5f*planes[ic[index].AllHits[i].detectorID].scaley;
 			ymin = -ymax;
 		}else{
 			xmax = 0.5f*planes[ic[index].AllHits[i].detectorID].scalex+planes[ic[index].AllHits[i].detectorID].z*tkl.err_tx+tkl.err_x0;
@@ -258,9 +275,17 @@ __device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEven
 			ymin = ic[index].AllHits[i].pos-planes[ic[index].AllHits[i].detectorID].spacing-planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
 			ymax = ic[index].AllHits[i].pos+planes[ic[index].AllHits[i].detectorID].spacing+planes[ic[index].AllHits[i].detectorID].z*tkl.err_ty+tkl.err_y0;
 		}
+*/
 
+		xmin-= err_x;
+		xmax+= err_x;
+		ymin-= err_y;
+		ymax+= err_y;
+		
+		printf(" xmin %1.6f xmax %1.6f, ymin %1.6f ymax %1.6f \n", xmin, xmax, ymin, ymax);
 		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
 			masked++;
+			break;
 		}
 		
 	}
@@ -1002,9 +1027,9 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			
 							oc[index].AllTracklets[oc[index].nTracklets].chisq = fitarrays[index].chi2;
 							
-							if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
-							if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
-							   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
+							//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
+							//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
+							//  !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
 
 							for(int n = 0; n<nxhits; n++){
 								oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
@@ -1030,9 +1055,9 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 		
 		//if(straighttrackbuilder[index].nTracksYZ==0)printf("evt %d, %d pairs u2, %d pairs v2, %d pairs v2, %d pairs v3\n", ic[index].EventID, nu2, nu3p+nu3m, nv2, nv3p+nv3m);
 		
-#ifdef BEST_TRACKYZ_ONLY
+//#ifdef BEST_TRACKYZ_ONLY
 		//if(bestYZcand>straighttrackbuilder[index].nTracksYZ)printf("%d %d \n", bestYZcand, straighttrackbuilder[index].nTracksYZ);
-		if(straighttrackbuilder[index].nTracksYZ>0 && bestYZcand>=0){
+		if(straighttrackbuilder[index].nTracksYZ>0 && bestYZcand>=0 && ic[index].EventID==13){
 			oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
 			oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
 			oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[bestYZcand].nUHits;
@@ -1050,6 +1075,13 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			
 			oc[index].AllTracklets[oc[index].nTracklets].chisq = chi2min;
 			
+			if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
+			//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
+			//   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
+			
+			match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes);
+			match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes);
+			
 			for(int n = 0; n<nxhits; n++){
 				oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
 			}
@@ -1065,6 +1097,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 					);
 
 			}
+
 			if(nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits>nChamberPlanes)
 			printf("%d + %d + %d  > %d \n", nxhits, oc[index].AllTracklets[oc[index].nTracklets].nUHits, oc[index].AllTracklets[oc[index].nTracklets].nVHits, nChamberPlanes);
 			for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
@@ -1095,7 +1128,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			//printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
 			continue;
 		}
-#endif
+//#endif
 	}// end loop on XZ tracks
 	
 	
@@ -1176,6 +1209,7 @@ __global__ void gKernel_GlobalTracking(const gEvent* ic, gOutputEvent* oc, const
 	
 	for(int i = 0; i<oc[index].nTracklets; i++){
 		SagittaRatioInStation1(oc[index].AllTracklets[i], pos_exp, window, planes);
+		
 	}
 	
 	
