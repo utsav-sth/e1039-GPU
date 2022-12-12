@@ -429,9 +429,10 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
 	//size_t NBytesAllFitters = EstnEvtMax * sizeof(gFitArrays);
 	//size_t NBytesAllFitParam = sizeof(gFitParams)*3;// just to be sure: tracklets, back tracks, global tracks
+	//size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
-	
+	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
 	
 
 	//cout << NBytesAllEvent << " " << NBytesAllSearchWindow << " " << NBytesAllPlanes << " " << NBytesAllFitters << " " << NBytesAllFitParam << endl;
@@ -456,6 +457,8 @@ int main(int argn, char * argv[]) {
 	//gFitArrays *device_gFitArrays;
 	gStraightFitArrays *device_gFitArrays;
 	gStraightTrackBuilder *device_gStraightTrackBuilder;
+	gFullTrackBuilder *device_gFullTrackBuilder;
+	//gFullFitArrays *device_gKalmanFitArrays;
 
 	//printDeviceStatus();
 
@@ -505,9 +508,21 @@ int main(int argn, char * argv[]) {
 	
 	auto end_straight = std::chrono::system_clock::now();
 	
-	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gPlane);
+	//release here the memory for straight track builders and straight track fitters	
+	cudaFree(device_gStraightTrackBuilder);
+	
+	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
+	
+	auto start_global = std::chrono::system_clock::now();
 
-	auto global_straight = std::chrono::system_clock::now();
+	//gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane);
+
+	auto end_global = std::chrono::system_clock::now();
+
+
+
+
+
 
 #ifdef KTRACKER_REC	
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
