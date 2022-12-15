@@ -218,6 +218,11 @@ int main(int argn, char * argv[]) {
       		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
 			wire_position[i][j] = pos;
+			//if(25<=i && i<=30){
+			//	 double p1x_ = plane[i].p1x_w1+plane[i].dp1x*(j-1);
+			//	 double p2x_ = p1x_+plane[i].deltapx;
+			//	 cout << i << " " << j << " " << pos << " " << p1x_ << " " << p2x_ << " " << (p1x_+p2x_)/2. << " " << (p1x_+p2x_)/2.-pos << endl;
+			//}
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
@@ -515,7 +520,7 @@ int main(int argn, char * argv[]) {
 	
 	auto start_global = std::chrono::system_clock::now();
 
-	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane);
+	//gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane);
 
 	auto end_global = std::chrono::system_clock::now();
 
