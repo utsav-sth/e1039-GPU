@@ -58,7 +58,8 @@ namespace extrapolation_tools{
 	__device__ constexpr float straight_st1_det_extrap[2][2][2] = { { {-0.004794, 170.823}, {-0.00207589,  170.346} }, 
 									{ {0.244445, 166.351},  {0.031227, 171.986} } };
 	
-	__device__ constexpr float invP_x0_[2] = {-0.00422085, 0.00107737};
+	__device__ constexpr float invP_x0_[2][2] = {{-0.00422085, 0.00107737}, {0.00157655, 0.000549662}};
+	__device__ constexpr float err_invP_x0 = 0.0041388368;
 }
 
 

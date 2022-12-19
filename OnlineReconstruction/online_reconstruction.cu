@@ -520,7 +520,10 @@ int main(int argn, char * argv[]) {
 	
 	auto start_global = std::chrono::system_clock::now();
 
-	//gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane);
+	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 0);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 
 	auto end_global = std::chrono::system_clock::now();
 
