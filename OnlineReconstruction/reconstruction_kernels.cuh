@@ -1245,15 +1245,13 @@ __device__ void SagittaRatioInStation1(const gTracklet tkl, float* pos_exp, floa
 }
 
 
-__device__ void extrapolate_track_position_st1(gTracklet tkl, float* x_st1_mean, float* x_st1_width, const gPlane* planes)
+__device__ void extrapolate_track_position_st1(gTracklet& tkl, float* x_st1_mean, float* x_st1_width, const gPlane* planes, const short hyp)
 {
 	//1st order;
-	tkl.invP = extrapolation_tools::invP_x0_[0][0]+fabs(tkl.x0)*extrapolation_tools::invP_x0_[0][1];
-	tkl.err_invP = extrapolation_tools::err_invP_x0;
+	tkl.invP = extrapolation_tools::invP_x0_[hyp][0]+fabs(tkl.x0)*extrapolation_tools::invP_x0_[hyp][1];
+	tkl.err_invP = extrapolation_tools::err_invP_x0[hyp];
 
 	//printf("x0 %1.6f, p0 %1.6f p1 %1.6f => invP %1.6f\n", tkl.x0, extrapolation_tools::invP_x0_[0][0], extrapolation_tools::invP_x0_[0][1], tkl.invP);
-	
-	float invP_hyp2 = extrapolation_tools::invP_x0_[1][0]+fabs(tkl.x0)*extrapolation_tools::invP_x0_[1][1];;
 	
 	float x_st1_trk_diff, dx_st1_trk_diff;
 	bool xpos = tkl.x0>0;
@@ -1495,12 +1493,23 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	
 	for(int i = 0; i<oc[index].nTracklets; i++){
 		//if(ic[index].EventID!=13)continue;
-		extrapolate_track_position_st1(oc[index].AllTracklets[i], x_st1_mean, x_st1_width, planes);
+		short hyp = 0;
+		extrapolate_track_position_st1(oc[index].AllTracklets[i], x_st1_mean, x_st1_width, planes, hyp);
 		xmin = min(x_st1_mean[0]-x_st1_width[0], x_st1_mean[1]-x_st1_width[1]);
 		xmax = max(x_st1_mean[0]+x_st1_width[0], x_st1_mean[1]+x_st1_width[1]);
 		
 		projid = 0;
 		nx1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_x1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
+		
+		if(nx1==0){
+			hyp = 1;
+			extrapolate_track_position_st1(oc[index].AllTracklets[i], x_st1_mean, x_st1_width, planes, hyp);
+			xmin = min(x_st1_mean[0]-x_st1_width[0], x_st1_mean[1]-x_st1_width[1]);
+			xmax = max(x_st1_mean[0]+x_st1_width[0], x_st1_mean[1]+x_st1_width[1]);
+
+			projid = 0;
+			nx1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_x1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
+		}
 		
 		//printf("xmin %1.6f, xmax %1.6f, nx1 %d\n", xmin, xmax, nx1);
 		
@@ -1563,8 +1572,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 , fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
 			//printf(" xmin %1.6f xmax %1.6f  nv1 %d \n", xmin, xmax, nv1);
 			//
-			
-			/*									
 			nhits_U1 = nhits_X1;
 			for(int k = 0; k<nu1; k++){
 				if(fulltrackbuilder[index].hitpairs_u1[k].first>=0){
@@ -1637,7 +1644,8 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					oc[index].AllTracklets[N_tkl].ty = oc[index].AllTracklets[i].ty;
 					oc[index].AllTracklets[N_tkl].err_ty = oc[index].AllTracklets[i].err_ty;
 					oc[index].AllTracklets[N_tkl].invP = oc[index].AllTracklets[i].invP;
-						
+					oc[index].AllTracklets[N_tkl].err_invP = oc[index].AllTracklets[i].err_invP;
+					
 					nhits_1 = 0;
 					for(int n = 0; n<oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits; n++){
 						oc[index].AllTracklets[N_tkl].hits[nhits_1] = oc[index].AllTracklets[i].hits[n];
@@ -1656,25 +1664,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					N_tkl++;
 				}//end loop on v hits
 			}//end loop on u hits
-			*/
-			
-					oc[index].AllTracklets[N_tkl].stationID = 6;
-					oc[index].AllTracklets[N_tkl].nXHits = oc[index].AllTracklets[i].nXHits + nhits_X1;
-					oc[index].AllTracklets[N_tkl].nUHits = oc[index].AllTracklets[i].nUHits + nhits_U1-nhits_X1;
-					oc[index].AllTracklets[N_tkl].nUHits = oc[index].AllTracklets[i].nVHits + nhits_V1-nhits_U1;
-					
-					oc[index].AllTracklets[N_tkl].x0 = oc[index].AllTracklets[i].x0;
-					oc[index].AllTracklets[N_tkl].err_x0 = oc[index].AllTracklets[i].err_x0;
-					oc[index].AllTracklets[N_tkl].y0 = oc[index].AllTracklets[i].y0;
-					oc[index].AllTracklets[N_tkl].err_y0 = oc[index].AllTracklets[i].err_y0;
-					oc[index].AllTracklets[N_tkl].tx = oc[index].AllTracklets[i].tx;
-					oc[index].AllTracklets[N_tkl].err_tx = oc[index].AllTracklets[i].err_tx;
-					oc[index].AllTracklets[N_tkl].ty = oc[index].AllTracklets[i].ty;
-					oc[index].AllTracklets[N_tkl].err_ty = oc[index].AllTracklets[i].err_ty;
-					oc[index].AllTracklets[N_tkl].invP = oc[index].AllTracklets[i].invP;
-					N_tkl++;
-			
-			
 			
 		}//end loop on x_hits
 		//printf("nTracklets = %d \n", N_tkl);
