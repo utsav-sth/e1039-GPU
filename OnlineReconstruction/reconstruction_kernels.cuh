@@ -1259,7 +1259,7 @@ __device__ void extrapolate_track_position_st1(gTracklet& tkl, float* x_st1_mean
 	for(int i = 3; i<=4; i++){
 		x_st1_trk_diff = extrapolation_tools::straight_st1_det_extrap[i-3][xpos][0]+tkl.invP*extrapolation_tools::straight_st1_det_extrap[i-3][xpos][1];
 		dx_st1_trk_diff = tkl.err_invP*extrapolation_tools::straight_st1_det_extrap[i-3][xpos][1];
-		//printf(" %d %1.6f %1.6f %1.6f \n", i, x_st1_trk_diff, extrapolation_tools::straight_st1_det_extrap[i-3][xpos][0], extrapolation_tools::straight_st1_det_extrap[i-3][xpos][1]);
+		//if(xpos)printf(" %d %1.6f %1.6f %1.6f \n", i, x_st1_trk_diff, extrapolation_tools::straight_st1_det_extrap[i-3][xpos][0], extrapolation_tools::straight_st1_det_extrap[i-3][xpos][1]);
 		x_st1_mean[i-3] = x_st1_trk_diff+tkl.x0+tkl.tx*planes[i].z;
 		x_st1_width[i-3] = dx_st1_trk_diff+tkl.err_x0+tkl.err_tx*planes[i].z+planes[i].spacing;
 	}
@@ -1491,9 +1491,10 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	float xmin_[2], xmax_[2];
 	float xmin, xmax;
 	
+	short hyp;
+	
 	for(int i = 0; i<oc[index].nTracklets; i++){
-		//if(ic[index].EventID!=13)continue;
-		short hyp = 0;
+		hyp = 0;
 		extrapolate_track_position_st1(oc[index].AllTracklets[i], x_st1_mean, x_st1_width, planes, hyp);
 		xmin = min(x_st1_mean[0]-x_st1_width[0], x_st1_mean[1]-x_st1_width[1]);
 		xmax = max(x_st1_mean[0]+x_st1_width[0], x_st1_mean[1]+x_st1_width[1]);
@@ -1506,7 +1507,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 			extrapolate_track_position_st1(oc[index].AllTracklets[i], x_st1_mean, x_st1_width, planes, hyp);
 			xmin = min(x_st1_mean[0]-x_st1_width[0], x_st1_mean[1]-x_st1_width[1]);
 			xmax = max(x_st1_mean[0]+x_st1_width[0], x_st1_mean[1]+x_st1_width[1]);
-
 			projid = 0;
 			nx1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_x1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
 		}
@@ -1559,7 +1559,7 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 				projid = 2;
 				find_xmin_xmax_in_chamber(xmin_[projid-1], xmax_[projid-1], fulltrackbuilder[index].TrackXZ_st1[i], stid, projid, planes);
 			}// end loop on vertex hypotheses//
-			
+
 			//taking the widest window possible
 			xmin = min(xmin_[0], xmin_[1]);
 			xmax = max(xmax_[0], xmax_[1]);
@@ -1664,7 +1664,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					N_tkl++;
 				}//end loop on v hits
 			}//end loop on u hits
-			
 		}//end loop on x_hits
 		//printf("nTracklets = %d \n", N_tkl);
 	}//end loop on tracklets
