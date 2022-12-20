@@ -232,12 +232,12 @@ __device__ void fit_2D_track_to_origin(const short flag, size_t const n_points, 
 
 	if(flag==0){
 		z_points[n_points] = geometry::Z_TARGET;
-		x_points[n_points] = geometry::SAGITTA_TARGET_CENTER;
-		x_weights[n_points] = geometry::SAGITTA_TARGET_WIDTH;
+		x_points[n_points] = 0.0;
+		x_weights[n_points] = 0.5;
 	}else{
 		z_points[n_points] = geometry::Z_DUMP;
-		x_points[n_points] = geometry::SAGITTA_DUMP_CENTER;
-		x_weights[n_points] = geometry::SAGITTA_DUMP_WIDTH;
+		x_points[n_points] = 0.0;
+		x_weights[n_points] = 0.5;
 	}
 	
 	for( int i=0; i<=n_points; i++ ){

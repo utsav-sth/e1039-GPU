@@ -651,11 +651,16 @@ int main(int argn, char * argv[]) {
 		}
 		
 		for(int k = 0; k<host_output_TKL[n].nTracklets; k++ ){
-			if(isnan(host_output_TKL[n].AllTracklets[k].x0))host_output_TKL[n].AllTracklets[k].x0 = -200;
-			if(isnan(host_output_TKL[n].AllTracklets[k].y0))host_output_TKL[n].AllTracklets[k].y0 = -100;
-			if(isnan(host_output_TKL[n].AllTracklets[k].tx))host_output_TKL[n].AllTracklets[k].tx = -0.2;
-			if(isnan(host_output_TKL[n].AllTracklets[k].ty))host_output_TKL[n].AllTracklets[k].ty = -0.2;
-			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << host_output_TKL[n].AllTracklets[k].invP << endl;
+			if(isnan(host_output_TKL[n].AllTracklets[k].x0))host_output_TKL[n].AllTracklets[k].x0 = -1000;
+			if(isnan(host_output_TKL[n].AllTracklets[k].y0))host_output_TKL[n].AllTracklets[k].y0 = -1000;
+			if(isnan(host_output_TKL[n].AllTracklets[k].invP))host_output_TKL[n].AllTracklets[k].invP = -1.0;
+			if(isnan(host_output_TKL[n].AllTracklets[k].tx))host_output_TKL[n].AllTracklets[k].tx = -1.0;
+			if(isnan(host_output_TKL[n].AllTracklets[k].ty))host_output_TKL[n].AllTracklets[k].ty = -1.0;
+			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << host_output_TKL[n].AllTracklets[k].invP << " " << host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits << endl;
+			//if(n<100 && host_output_TKL[n].nTracklets>1)cout << n << " " << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].nXHits<< " " <<host_output_TKL[n].AllTracklets[k].nUHits<< " " <<host_output_TKL[n].AllTracklets[k].nVHits << endl;
+			for(int l = 0; l<host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits; l++){
+				out << host_output_TKL[n].AllTracklets[k].hits[l].detectorID << " " << host_output_TKL[n].AllTracklets[k].hits[l].elementID << " " << host_output_TKL[n].AllTracklets[k].hits[l].driftDistance << " " << host_output_TKL[n].AllTracklets[k].hits[l].pos << endl;
+			}
 		}
 		
 	}
