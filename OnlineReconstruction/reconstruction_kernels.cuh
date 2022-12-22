@@ -1279,7 +1279,7 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	short projid;
 	short stid = 0;
 	short nhits_X1, nhits_U1, nhits_V1, nhits_1;
-	float y, err_y;
+	//float y, err_y;
 	
 	float umin1, umax1;
 	float vmin1, vmax1;
@@ -1287,7 +1287,7 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	
 	float z_x1, z_u1, z_v1;
 	float v_win1, v_win2, v_win3, v_win;
-		
+	
 	if(ktracker){
 	
 	for(int i = 0; i<oc[index].nTracklets; i++){
@@ -1328,23 +1328,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 				nhits_X1++;
 			}
 			
-			/*
-			//fit here // edit 2022/12/20: not even needed, this straight fit to the origin is not correct
-			for(int m = 0; m<2; m++){
-				fit_2D_track_to_origin(m, nhits_X1, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-				
-				fulltrackbuilder[index].TrackXZ_st1[m].nXHits = nhits_X1;
-				fulltrackbuilder[index].TrackXZ_st1[m].x0 = fitarrays[index].output_parameters[0];
-				fulltrackbuilder[index].TrackXZ_st1[m].err_x0 = fitarrays[index].output_parameters_errors[0];
-				fulltrackbuilder[index].TrackXZ_st1[m].tx = fitarrays[index].output_parameters[1];
-				fulltrackbuilder[index].TrackXZ_st1[m].err_tx = fitarrays[index].output_parameters_errors[1];
-				
-				fulltrackbuilder[index].TrackXZ_st1[m].chisq = fitarrays[index].chi2_2d;
-
-				fulltrackbuilder[index].TrackXZ_st1[m].hitlist[0] = fulltrackbuilder[index].hitpairs_x1[j].first;
-				if(fulltrackbuilder[index].hitpairs_x1[j].second)fulltrackbuilder[index].TrackXZ_st1[m].hitlist[1] = fulltrackbuilder[index].hitpairs_x1[j].second;
-			}
-			*/
 			
 			for(int k = 0; k<nu1; k++){
 				nhits_U1 = nhits_X1;
@@ -1365,32 +1348,10 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 				vmax1 = vmin1+2*v_win;
 				
 				if(fulltrackbuilder[index].hitpairs_u1[k].first>=0){
-					//FillFitArrays(nhits_U1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first], 0, fitarrays[index], planes);
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-					//fitarrays[index].y_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dy_array[nhits_U1-nhits_X1] = err_y;
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-					////this is bending the use of the x arrays a bit, but that's a way to avoid declaring another array
-					//fitarrays[index].x_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dx_array[nhits_U1-nhits_X1] = err_y;
-					//fitarrays[index].z_array[nhits_U1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z;
-					
-					for(int m = 0; m<2; m++)fulltrackbuilder[index].TrackYZ_st1[m].hitlist[nhits_U1-nhits_X1] = fulltrackbuilder[index].hitpairs_u1[k].first;
 					fulltrackbuilder[index].hitlist[nhits_U1] = fulltrackbuilder[index].hitpairs_u1[k].first;
 					nhits_U1++;
 				}
 				if(fulltrackbuilder[index].hitpairs_u1[k].second>=0){
-					//FillFitArrays(nhits_U1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second], 0, fitarrays[index], planes);
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-					//fitarrays[index].y_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dy_array[nhits_U1-nhits_X1] = err_y;
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-					////this is bending the use of the x arrays a bit, but that's a way to avoid declaring another array
-					//fitarrays[index].x_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dx_array[nhits_U1-nhits_X1] = err_y;
-					//fitarrays[index].z_array[nhits_U1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second].detectorID].z;
-					
-					for(int m = 0; m<2; m++)fulltrackbuilder[index].TrackYZ_st1[m].hitlist[nhits_U1-nhits_X1] = fulltrackbuilder[index].hitpairs_u1[k].second;
 					fulltrackbuilder[index].hitlist[nhits_U1] = fulltrackbuilder[index].hitpairs_u1[k].second;
 					nhits_U1++;
 				}
@@ -1402,59 +1363,14 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					if(vpos1<vmin1 || vpos1>vmax1)continue;
 					
 					if(fulltrackbuilder[index].hitpairs_v1[l].first>=0){
-						//FillFitArrays(nhits_V1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fitarrays[index], planes);
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-						//fitarrays[index].y_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dy_array[nhits_V1-nhits_X1] = err_y;
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-						////this is bending the use of the x arrays a bit, but that's a way to avoid declaring another array
-						//fitarrays[index].x_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dx_array[nhits_V1-nhits_X1] = err_y;
-						//fitarrays[index].z_array[nhits_V1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first].detectorID].z;
-						
-						for(int m = 0; m<2; m++)fulltrackbuilder[index].TrackYZ_st1[m].hitlist[nhits_V1-nhits_X1] = fulltrackbuilder[index].hitpairs_v1[l].first;
 						fulltrackbuilder[index].hitlist[nhits_V1] = fulltrackbuilder[index].hitpairs_v1[l].first;
 						nhits_V1++;
 					}
 					if(fulltrackbuilder[index].hitpairs_v1[l].second>=0){
-						//FillFitArrays(nhits_V1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fitarrays[index], planes);
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-						//fitarrays[index].y_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dy_array[nhits_V1-nhits_X1] = err_y;
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-						////this is bending the use of the x arrays a bit, but that's a way to avoid declaring another array
-						//fitarrays[index].x_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dx_array[nhits_V1-nhits_X1] = err_y;
-						//fitarrays[index].z_array[nhits_V1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second].detectorID].z;
-						
-						for(int m = 0; m<2; m++)fulltrackbuilder[index].TrackYZ_st1[m].hitlist[nhits_V1-nhits_X1] = fulltrackbuilder[index].hitpairs_v1[l].second;
 						fulltrackbuilder[index].hitlist[nhits_V1] = fulltrackbuilder[index].hitpairs_v1[l].second;
 						nhits_V1++;
 					}
 					
-					/*
-					fit_2D_track(nhits_V1-nhits_X1, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-
-					fulltrackbuilder[index].TrackYZ_st1[0].nUHits = nhits_U1-nhits_X1;
-					fulltrackbuilder[index].TrackYZ_st1[0].nVHits = nhits_V1-nhits_U1;
-					fulltrackbuilder[index].TrackYZ_st1[0].y0 = fitarrays[index].output_parameters[0];
-					fulltrackbuilder[index].TrackYZ_st1[0].err_y0 = fitarrays[index].output_parameters_errors[0];
-					fulltrackbuilder[index].TrackYZ_st1[0].ty = fitarrays[index].output_parameters[1];
-					fulltrackbuilder[index].TrackYZ_st1[0].err_ty = fitarrays[index].output_parameters_errors[1];
-				
-					fulltrackbuilder[index].TrackYZ_st1[0].chisq = fitarrays[index].chi2_2d;
-					
-					fit_2D_track(nhits_V1-nhits_X1, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-					
-					fulltrackbuilder[index].TrackYZ_st1[1].nUHits = nhits_U1-nhits_X1;
-					fulltrackbuilder[index].TrackYZ_st1[1].nVHits = nhits_V1-nhits_U1;
-					fulltrackbuilder[index].TrackYZ_st1[1].y0 = fitarrays[index].output_parameters[0];
-					fulltrackbuilder[index].TrackYZ_st1[1].err_y0 = fitarrays[index].output_parameters_errors[0];
-					fulltrackbuilder[index].TrackYZ_st1[1].ty = fitarrays[index].output_parameters[1];
-					fulltrackbuilder[index].TrackYZ_st1[1].err_ty = fitarrays[index].output_parameters_errors[1];
-				
-					fulltrackbuilder[index].TrackXZ_st1[1].chisq = fitarrays[index].chi2_2d;
-					*/
 					//building here the global track candidate
 					
 					oc[index].AllTracklets[N_tkl].stationID = 6;
@@ -1480,17 +1396,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].hitlist[n]];
 						nhits_1++;
 					}
-					/*
-					for(int n = 0; n<nhits_X1; n++){
-						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].TrackXZ_st1[0].hitlist[n]];
-						nhits_1++;
-					}
-					for(int n = 0; n<nhits_V1-nhits_X1; n++){
-						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].TrackYZ_st1[0].hitlist[n]];
-						nhits_1++;
-					}
-					*/
-										
 					N_tkl++;
 				}
 			}//end loop on u hits
@@ -1501,8 +1406,8 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	
 	float x_st1_mean[2];
 	float x_st1_width[2];
-		
-	float xmin_[2], xmax_[2];
+	
+	//float xmin_[2], xmax_[2];
 	float xmin, xmax;
 	
 	short hyp;
@@ -1546,74 +1451,13 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 			
 			//in x, we can already make a first evaluation of tx_st1, and a first evaluation of Pinv
 			if(fulltrackbuilder[index].hitpairs_x1[j].first>=0){
-				//FillFitArrays(nhits_X1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first], 0, fitarrays[index], planes);
-				//fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos;
-				//fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].detectorID].spacing/3.4641f;
-				//fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].detectorID].z;
-				
 				fulltrackbuilder[index].hitlist[nhits_X1] = fulltrackbuilder[index].hitpairs_x1[j].first;
 				nhits_X1++;
 			}
 			if(fulltrackbuilder[index].hitpairs_x1[j].second>=0){
-				//FillFitArrays(nhits_X1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second], 0, fitarrays[index], planes);
-				//fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second].pos;
-				//fitarrays[index].dx_array[nhits_X1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second].detectorID].spacing/3.4641f;
-				//fitarrays[index].z_array[nhits_X1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second].detectorID].z;
-				
 				fulltrackbuilder[index].hitlist[nhits_X1] = fulltrackbuilder[index].hitpairs_x1[j].second;
 				nhits_X1++;
 			}
-			/*
-			//printf("nhits X1 = %d\n", nhits_X1);
-			
-			//fit here: 2 vertex hypotheses: target or dump
-			for(int m = 0; m<2; m++){
-				fit_2D_track_to_origin(m, nhits_X1, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-				
-				fulltrackbuilder[index].TrackXZ_st1[m].nXHits = nhits_X1;
-				fulltrackbuilder[index].TrackXZ_st1[m].x0 = fitarrays[index].output_parameters[0];
-				fulltrackbuilder[index].TrackXZ_st1[m].err_x0 = fitarrays[index].output_parameters_errors[0];
-				fulltrackbuilder[index].TrackXZ_st1[m].tx = fitarrays[index].output_parameters[1];
-				fulltrackbuilder[index].TrackXZ_st1[m].err_tx = fitarrays[index].output_parameters_errors[1];
-				
-				fulltrackbuilder[index].TrackXZ_st1[m].chisq = fitarrays[index].chi2_2d;
-
-				fulltrackbuilder[index].TrackXZ_st1[m].hitlist[0] = fulltrackbuilder[index].hitpairs_x1[j].first;
-				if(fulltrackbuilder[index].hitpairs_x1[j].second)fulltrackbuilder[index].TrackXZ_st1[m].hitlist[1] = fulltrackbuilder[index].hitpairs_x1[j].second;
-
-				//printf(" m %d x0 %1.6f tx %1.6f \n", m, fulltrackbuilder[index].TrackXZ_st1[m].x0, fulltrackbuilder[index].TrackXZ_st1[m].tx);
-				
-				//get UV hits:
-				projid = 1;
-				find_xmin_xmax_in_chamber(xmin_[projid-1], xmax_[projid-1], fulltrackbuilder[index].TrackXZ_st1[m], stid, projid, planes);
-				//printf(" xmin %1.6f xmax %1.6f  nu1 %d \n", xmin, xmax, nu1);
-				projid = 2;
-				find_xmin_xmax_in_chamber(xmin_[projid-1], xmax_[projid-1], fulltrackbuilder[index].TrackXZ_st1[m], stid, projid, planes);
-			}// end loop on vertex hypotheses//
-			
-			//taking the widest window possible
-			xmin = min(xmin_[0], xmin_[1]);
-			xmax = max(xmax_[0], xmax_[1]);
-
-			//printf(" xmin %1.6f xmax %1.6f  nv1 %d \n", xmin, xmax, nv1);
-			
-			projid = 1;
-			nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin_[0], xmax_[0]);
-			projid = 2;
-			nv1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_v1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin_[0], xmax_[0]);
-  
-			if(nu1==0 || nv1==0){
-				projid = 1;
-                        	nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin_[1], xmax_[1]);
-                        	projid = 2;
-                        	nv1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_v1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin_[1], xmax_[1]);
-
-			}
-			*/
 			//
 			for(int k = 0; k<nu1; k++){
 				nhits_U1 = nhits_X1;
@@ -1634,24 +1478,10 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 				vmax1 = vmin1+2*v_win;
 				
 				if(fulltrackbuilder[index].hitpairs_u1[k].first>=0){
-					//FillFitArrays(nhits_U1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first], 0, fitarrays[index], planes);
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-					//fitarrays[index].y_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dy_array[nhits_U1-nhits_X1] = err_y;
-					//fitarrays[index].z_array[nhits_U1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z;
-					//fulltrackbuilder[index].TrackYZ_st1[0].hitlist[nhits_U1-nhits_X1] = fulltrackbuilder[index].hitpairs_u1[k].first;
-					
 					fulltrackbuilder[index].hitlist[nhits_U1] = fulltrackbuilder[index].hitpairs_u1[k].first;
 					nhits_U1++;
 				}
 				if(fulltrackbuilder[index].hitpairs_u1[k].second>=0){
-					//FillFitArrays(nhits_U1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second], 0, fitarrays[index], planes);
-					//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-					//fitarrays[index].y_array[nhits_U1-nhits_X1] = y;
-					//fitarrays[index].dy_array[nhits_U1-nhits_X1] = err_y;
-					//fitarrays[index].z_array[nhits_U1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second].detectorID].z;
-					//fulltrackbuilder[index].TrackYZ_st1[0].hitlist[nhits_U1-nhits_X1] = fulltrackbuilder[index].hitpairs_u1[k].second;
-					
 					fulltrackbuilder[index].hitlist[nhits_U1] = fulltrackbuilder[index].hitpairs_u1[k].second;
 					nhits_U1++;
 				}
@@ -1664,43 +1494,15 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					if(vpos1<vmin1 || vpos1>vmax1)continue;
 
 					if(fulltrackbuilder[index].hitpairs_v1[l].first>=0){
-						//FillFitArrays(nhits_V1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fitarrays[index], planes);
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-						//fitarrays[index].y_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dy_array[nhits_V1-nhits_X1] = err_y;
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-						//fulltrackbuilder[index].TrackYZ_st1[0].hitlist[nhits_V1-nhits_X1] = fulltrackbuilder[index].hitpairs_v1[l].first;
-						
 						fulltrackbuilder[index].hitlist[nhits_V1] = fulltrackbuilder[index].hitpairs_v1[l].first;
 						nhits_V1++;
 					}
 					if(fulltrackbuilder[index].hitpairs_v1[l].second>=0){
-						//FillFitArrays(nhits_V1, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fitarrays[index], planes);
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fulltrackbuilder[index].TrackXZ_st1[0], planes);
-						//fitarrays[index].y_array[nhits_V1-nhits_X1] = y;
-						//fitarrays[index].dy_array[nhits_V1-nhits_X1] = err_y;
-						//calculate_y_uvhit(y, err_y, ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second], 0, fulltrackbuilder[index].TrackXZ_st1[1], planes);
-						//fitarrays[index].z_array[nhits_V1] = planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second].detectorID].z;
-						//fulltrackbuilder[index].TrackYZ_st1[0].hitlist[nhits_V1-nhits_X1] = fulltrackbuilder[index].hitpairs_v1[l].second;
-						
 						fulltrackbuilder[index].hitlist[nhits_V1] = fulltrackbuilder[index].hitpairs_v1[l].second;
 						nhits_V1++;
 					}
 					//printf("nhits V1 = %d\n", nhits_V1-nhits_U1);
 
-					/*
-					fit_2D_track(nhits_V1-nhits_X1, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-					
-					fulltrackbuilder[index].TrackYZ_st1[0].nUHits = nhits_U1-nhits_X1;
-					fulltrackbuilder[index].TrackYZ_st1[0].nVHits = nhits_V1-nhits_U1;
-					fulltrackbuilder[index].TrackYZ_st1[0].y0 = fitarrays[index].output_parameters[0];
-					fulltrackbuilder[index].TrackYZ_st1[0].err_y0 = fitarrays[index].output_parameters_errors[0];
-					fulltrackbuilder[index].TrackYZ_st1[0].ty = fitarrays[index].output_parameters[1];
-					fulltrackbuilder[index].TrackYZ_st1[0].err_ty = fitarrays[index].output_parameters_errors[1];
-					
-					fulltrackbuilder[index].TrackYZ_st1[0].chisq = fitarrays[index].chi2_2d;
-					*/
-										
 					//building here the global track candidate
 					oc[index].AllTracklets[N_tkl].stationID = 6;
 					oc[index].AllTracklets[N_tkl].nXHits = oc[index].AllTracklets[i].nXHits + nhits_X1;
@@ -1727,17 +1529,6 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].hitlist[n]];
 						nhits_1++;
 					}
-					/*
-					//printf("nhits_X1 = %d, nhits_UV = %d\n", nhits_X1, nhits_V1-nhits_X1);
-					for(int n = 0; n<nhits_X1; n++){
-						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].TrackXZ_st1[0].hitlist[n]];
-						nhits_1++;
-					}
-					for(int n = 0; n<nhits_V1-nhits_X1; n++){
-						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].TrackYZ_st1[0].hitlist[n]];
-						nhits_1++;
-					}
-					*/	
 					//printf("%d  %d %d \n", N_tkl-oc[index].nTracklets, N_tkl, oc[index].AllTracklets[N_tkl].stationID);
 					N_tkl++;
 				}//end loop on v hits

@@ -162,11 +162,11 @@ class gEvent {
 
 class gFullTrackBuilder{
 public:
-	gTrackXZ TrackXZ_st1[2];
-	gTrackYZ TrackYZ_st1[2];
-
-      	int hitlist[6];
-      	short hitsign[6];
+	//gTrackXZ TrackXZ_st1[2];
+	//gTrackYZ TrackYZ_st1[2];
+	
+      	int hitlist[18];
+      	short hitsign[18];
 	
 	thrust::pair<int, int> hitpairs_x1[100];
 	thrust::pair<int, int> hitpairs_u1[100];
