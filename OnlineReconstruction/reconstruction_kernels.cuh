@@ -1449,11 +1449,9 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 	short hyp;
 	
 	projid = 1;
-	nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid);
+	//nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid);
 	projid = 2;
-	nv1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_v1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1
-, fulltrackbuilder[index].hitflag2, stid, projid);
+	//nv1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_v1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid);
 
 	for(int i = 0; i<oc[index].nTracklets; i++){
 		hyp = 0;
@@ -1480,10 +1478,10 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 		for(int j = 0; j<nx1; j++){
 			nhits_X1 = 0;
 			
-			xpos1 = fulltrackbuilder[index].hitpairs_x1[j].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos;
+			//xpos1 = fulltrackbuilder[index].hitpairs_x1[j].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos;
 			
-			umin1 = xpos1*planes[geometry::detsuperid[0][1]*2].costheta-planes[geometry::detsuperid[0][1]*2].u_win;
-			umax1 = umin1+2*planes[geometry::detsuperid[0][1]*2].u_win;
+			//umin1 = xpos1*planes[geometry::detsuperid[0][1]*2].costheta-planes[geometry::detsuperid[0][1]*2].u_win;
+			//umax1 = umin1+2*planes[geometry::detsuperid[0][1]*2].u_win;
 			
 			if(fulltrackbuilder[index].hitpairs_x1[j].first>=0){
 				fitarrays[index].x_array[nhits_X1] = ic[index].AllHits[fulltrackbuilder[index].hitpairs_x1[j].first].pos;
@@ -1519,31 +1517,31 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 
 			projid = 1;
 			find_xmin_xmax_in_chamber(xmin, xmax, fulltrackbuilder[index].TrackXZ_st1, stid, projid, planes);
-			//nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
+			nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
 			
 			projid = 2;
 			find_xmin_xmax_in_chamber(xmin, xmax, fulltrackbuilder[index].TrackXZ_st1, stid, projid, planes);
-			//nu1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_u1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
+			nv1 = make_hitpairs_in_station(ic, fulltrackbuilder[index].hitpairs_v1, fulltrackbuilder[index].hitidx1, fulltrackbuilder[index].hitidx2, fulltrackbuilder[index].hitflag1, fulltrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
 			
 			
 			//
 			for(int k = 0; k<nu1; k++){
 				nhits_U1 = nhits_X1;
-				upos1 = fulltrackbuilder[index].hitpairs_u1[k].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].pos;
+				//upos1 = fulltrackbuilder[index].hitpairs_u1[k].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].pos;
 				
-				if(upos1<umin1 || upos1>umax1)continue;
+				//if(upos1<umin1 || upos1>umax1)continue;
 				
-				z_x1 = fulltrackbuilder[index].hitpairs_x1[j].second>=0 ? planes[geometry::detsuperid[0][0]*2].z_mean : planes[geometry::detsuperid[0][0]*2].z; 
-				z_u1 = fulltrackbuilder[index].hitpairs_u1[k].second>=0 ? planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z_mean : planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z; 
-				z_v1 = planes[geometry::detsuperid[0][2]*2].z_mean;
+				//z_x1 = fulltrackbuilder[index].hitpairs_x1[j].second>=0 ? planes[geometry::detsuperid[0][0]*2].z_mean : planes[geometry::detsuperid[0][0]*2].z; 
+				//z_u1 = fulltrackbuilder[index].hitpairs_u1[k].second>=0 ? planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z_mean : planes[ic[index].AllHits[fulltrackbuilder[index].hitpairs_u1[k].first].detectorID].z; 
+				//z_v1 = planes[geometry::detsuperid[0][2]*2].z_mean;
 				
-				v_win1 = planes[ ic[index].AllHits[ fulltrackbuilder[index].hitpairs_u1[k].first ].detectorID].v_win_fac1;
-				v_win2 = fabs(z_u1+z_v1-2*z_x1)*planes[ geometry::detsuperid[0][2]*2 ].v_win_fac2;
-				v_win3 = fabs((z_v1-z_u1)*planes[ geometry::detsuperid[0][2]*2 ].v_win_fac3);
-				v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ fulltrackbuilder[index].hitpairs_u1[k].first ].detectorID].spacing;
+				//v_win1 = planes[ ic[index].AllHits[ fulltrackbuilder[index].hitpairs_u1[k].first ].detectorID].v_win_fac1;
+				//v_win2 = fabs(z_u1+z_v1-2*z_x1)*planes[ geometry::detsuperid[0][2]*2 ].v_win_fac2;
+				//v_win3 = fabs((z_v1-z_u1)*planes[ geometry::detsuperid[0][2]*2 ].v_win_fac3);
+				//v_win = v_win1+v_win2+v_win3+2*planes[ ic[index].AllHits[ fulltrackbuilder[index].hitpairs_u1[k].first ].detectorID].spacing;
 			
-				vmin1 = 2*xpos1*planes[geometry::detsuperid[0][1]*2].costheta-upos1-v_win;
-				vmax1 = vmin1+2*v_win;
+				//vmin1 = 2*xpos1*planes[geometry::detsuperid[0][1]*2].costheta-upos1-v_win;
+				//vmax1 = vmin1+2*v_win;
 				
 				if(fulltrackbuilder[index].hitpairs_u1[k].first>=0){
 					fulltrackbuilder[index].hitlist[nhits_U1] = fulltrackbuilder[index].hitpairs_u1[k].first;
@@ -1557,9 +1555,9 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 				//printf("nhits U1 = %d, nv1 = %d \n", nhits_U1-nhits_X1, nv1);
 				for(int l = 0; l<nv1; l++){
 					nhits_V1 = nhits_U1;
-					vpos1 = fulltrackbuilder[index].hitpairs_v1[l].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first].pos;
+					//vpos1 = fulltrackbuilder[index].hitpairs_v1[l].second>=0 ? 0.5f*(ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first].pos+ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].second].pos) : ic[index].AllHits[fulltrackbuilder[index].hitpairs_v1[l].first].pos;
 					
-					if(vpos1<vmin1 || vpos1>vmax1)continue;
+					//if(vpos1<vmin1 || vpos1>vmax1)continue;
 
 					if(fulltrackbuilder[index].hitpairs_v1[l].first>=0){
 						fulltrackbuilder[index].hitlist[nhits_V1] = fulltrackbuilder[index].hitpairs_v1[l].first;
