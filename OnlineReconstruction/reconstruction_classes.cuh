@@ -40,6 +40,9 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
 	__device__ constexpr float SAGITTA_DUMP_CENTER = 1.5;
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
+	__device__ constexpr float PT_KICK_KMAG = 0.4016;
+	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 }
 // SAGITTA_TARGET_CENTER 1.85 SAGITTA_TARGET_WIDTH 0.25 SAGITTA_DUMP_CENTER 1.5 SAGITTA_DUMP_WIDTH 0.3 Z_TARGET -300 Z_DUMP 42
 //clone of LoadEvent::Hit:
@@ -93,6 +96,7 @@ class gTracklet {
       float err_y0;
       float err_invP;
       
+      short charge;
       float residual[nChamberPlanes];
 };
 
@@ -162,8 +166,7 @@ class gEvent {
 
 class gFullTrackBuilder{
 public:
-	//gTrackXZ TrackXZ_st1[2];
-	//gTrackYZ TrackYZ_st1[2];
+	gTrackXZ TrackXZ_st1;
 	
       	int hitlist[18];
       	short hitsign[18];
