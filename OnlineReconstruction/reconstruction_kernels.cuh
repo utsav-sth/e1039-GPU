@@ -468,9 +468,53 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 
 
 
-//device int resolve_leftright(gTracklet tkl)
-//{
-//}
+__device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
+{
+	bool isUpdated = false;
+	short npairs = (tkl.nXHits+tkl.nUHits+tkl.nVHits)/2;
+	short nresolved = 0;
+	short i, j;
+	int indexmin = -1;
+	float pull_min = 1.e6;
+	float pull;
+	float slope_local, inter_local;
+	float slope_exp, inter_exp;
+	float err_slope, err_inter;
+	for(short n = 0; n<npairs; n++){
+		i = 2*n;
+		j = i+1;
+		if(tkl.hitsign[i]*tkl.hitsign[j]){
+			indexmin = -1;
+			pull_min = 1.e6;
+			for(int k = 0; k<4; k++){
+				slope_local = ( tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - tkl.hits[j].pos+tkl.hits[j].driftDistance*geometry::lrpossibility[k][1] )/(planes[tkl.hits[i].detectorID].z-planes[tkl.hits[j].detectorID].z);
+				inter_local = tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - slope_local*planes[tkl.hits[i].detectorID].z;
+				
+				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
+				
+				slope_exp = planes[tkl.hits[i].detectorID].costheta*tkl.tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
+				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*tkl.err_tx) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_ty);
+				
+				inter_exp = planes[tkl.hits[i].detectorID].costheta*tkl.x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
+				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*tkl.err_x0) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_y0);
+				
+				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
+				
+				if(pull<pull_min){
+					indexmin = k;
+					pull_min = pull;
+				}
+			}
+			
+			if(indexmin>0 && pull_min<thr){
+				tkl.hitsign[i] = geometry::lrpossibility[indexmin][0];
+				tkl.hitsign[j] = geometry::lrpossibility[indexmin][1];
+				isUpdated = 0;
+			}
+		}
+		++nresolved;
+	}
+}
 
 
 

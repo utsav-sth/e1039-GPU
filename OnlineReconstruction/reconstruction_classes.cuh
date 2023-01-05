@@ -282,4 +282,6 @@ class gPlane {
       float dp1x;
       float dp1y;
       float dp1z;
+      float slope_max;
+      float inter_max;
 };

@@ -187,6 +187,16 @@ int main(int argn, char * argv[]) {
 		iss >> deltaW_;
 		plane[ipl].deltaW_[0] = deltaW_;
 	      }
+	      plane[ipl].slope_max = costheta*TX_MAX+sintheta*TY_MAX;
+	      plane[ipl].inter_max = costheta*X0_MAX+sintheta*Y0_MAX;
+	      if(ipl%2==0 && ipl>1){
+		double dslope = (plane[ipl].resolution+plane[ipl-1].resolution)/(plane[ipl].z-plane[ipl-1].z);
+		double dinter = dslope*plane[ipl].z;
+		plane[ipl].slope_max+= dslope;
+		plane[ipl].inter_max+= dinter;
+		plane[ipl-1].slope_max+= dslope;
+		plane[ipl-1].inter_max+= dinter;
+	      }
 	      ipl++;
 	}
 	
@@ -242,30 +252,6 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-	/*
-	float par_limits_min[5] = {-X0_MAX, -Y0_MAX, -TX_MAX, -TY_MAX, INVP_MIN};
-	float par_limits_max[5] = {+X0_MAX, +Y0_MAX, +TX_MAX, +TY_MAX, INVP_MAX};
-
-	gFitParams fitparams[3];
-	fitparams[0].max_iterations = 50;
-	fitparams[1].max_iterations = 50;
-	fitparams[2].max_iterations = 50;
-	
-	fitparams[0].nparam = 4;
-	fitparams[1].nparam = 4;
-	fitparams[2].nparam = 5;
-	
-	fitparams[0].tolerance = 0.001;
-	fitparams[1].tolerance = 0.001;
-	fitparams[2].tolerance = 0.001;
-
-	for(int i = 0; i<3; i++){
-		for(int j = 0; j<5; j++){
-			fitparams[i].parameter_limits_min[j] = par_limits_min[j];
-			fitparams[i].parameter_limits_max[j] = par_limits_max[j];
-		}
-	}
-	*/
 		
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
