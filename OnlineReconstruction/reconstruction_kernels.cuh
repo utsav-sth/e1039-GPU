@@ -468,9 +468,20 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 
 
 
+
+__device__ void calculate_x0_tx_st1(const gTracklet tkl, float &x0, float &tx, float &err_x0, float &err_tx)
+{	
+	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
+	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
+	
+	err_tx = tkl.err_tx + fabs(tkl.err_invP*geometry::PT_KICK_KMAG);
+        err_x0 = tkl.err_x0 + fabs(tkl.err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
+}
+
+
 __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
 {
-	bool isUpdated = false;
+	//bool isUpdated = false;
 	short npairs = (tkl.nXHits+tkl.nUHits+tkl.nVHits)/2;
 	short nresolved = 0;
 	short i, j;
@@ -480,10 +491,17 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 	float slope_local, inter_local;
 	float slope_exp, inter_exp;
 	float err_slope, err_inter;
+	float x0, tx;// x0 and tx are different for global track station 1 hits 
+	float err_x0, err_tx;// x0 and tx are different for global track station 1 hits 
 	for(short n = 0; n<npairs; n++){
 		i = 2*n;
 		j = i+1;
-		if(tkl.hitsign[i]*tkl.hitsign[j]){
+		//if( abs(tkl.hits[i].detectorID-tkl.hits[j].detectorID)!=1 ){
+		//    i+=1;
+		//    j+=1;
+		//}
+		
+		if(tkl.hitsign[i]*tkl.hitsign[j]==0){
 			indexmin = -1;
 			pull_min = 1.e6;
 			for(int k = 0; k<4; k++){
@@ -492,11 +510,20 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 				
 				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
 				
-				slope_exp = planes[tkl.hits[i].detectorID].costheta*tkl.tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
-				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*tkl.err_tx) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_ty);
+				if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
+					calculate_x0_tx_st1(tkl, x0, tx, err_x0, err_tx);
+				}else{
+					tx = tkl.tx;
+					x0 = tkl.x0;
+					err_x0 = tkl.err_x0;
+					err_tx = tkl.err_tx;
+				}
 				
-				inter_exp = planes[tkl.hits[i].detectorID].costheta*tkl.x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
-				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*tkl.err_x0) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_y0);
+				slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
+				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_ty);
+				
+				inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
+				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_y0);
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
@@ -509,7 +536,7 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 			if(indexmin>0 && pull_min<thr){
 				tkl.hitsign[i] = geometry::lrpossibility[indexmin][0];
 				tkl.hitsign[j] = geometry::lrpossibility[indexmin][1];
-				isUpdated = 0;
+				//isUpdated = true;
 			}
 		}
 		++nresolved;
@@ -735,7 +762,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	int nu2, nu3p, nu3m;
 	int nv2, nv3p, nv3m;
 	int nxhits;
-	int bestYZcand = -1;
+	//int bestYZcand = -1;
 	float y, err_y;
 	// loop on XZ tracks
 	float chi2min = 100000.;//-1.0f;
@@ -743,7 +770,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	
 	for(int i = 0; i<straighttrackbuilder[index].nTracksXZ; i++){
 		nxhits = straighttrackbuilder[index].TrackXZ[i].nXHits;
-		bestYZcand = -1;
+		//bestYZcand = -1;
 		chi2min = 100000.;//-1.0f;
 		straighttrackbuilder[index].nTracksYZ = 0;
 		/*
@@ -1105,7 +1132,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						//what happens if we keep all YZ tracks???
 						//if(fitarrays[index].chi2>9000)continue;// allowing for even looser track parameters
 						
-						bestYZcand = straighttrackbuilder[index].nTracksYZ;
+						//bestYZcand = straighttrackbuilder[index].nTracksYZ;
 						oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
 						oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
 						oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits;
@@ -1120,13 +1147,20 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_y0;
 						oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
 						oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_ty;
-			
+						
 						oc[index].AllTracklets[oc[index].nTracklets].chisq = fitarrays[index].chi2;
-							
+						
 						if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
 						if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
 						   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
-
+						
+						resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
+						resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
+						
+						//refit after???
+						
+						
+						
 						for(int n = 0; n<nxhits; n++){
 							oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
 						}
@@ -1137,7 +1171,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						
 						if(fitarrays[index].chi2<=chi2min){
 							chi2min = fitarrays[index].chi2;
-							bestYZcand = straighttrackbuilder[index].nTracksYZ;
+							//bestYZcand = straighttrackbuilder[index].nTracksYZ;
 						}
 						straighttrackbuilder[index].nTracksYZ++;
 						//
@@ -1246,14 +1280,6 @@ __device__ void calculate_invP(gTracklet& tkl, const gTrackXZ tkl_st1)
 //                = (err_tx_st1 - err_tx)/PT_KICK_KMAG
 	
 	tkl.err_invP = ( tkl_st1.err_tx - tkl.err_tx )/( geometry::PT_KICK_KMAG );
-}
-
-
-__device__ void resolveLeftRight(gTracklet& tkl)
-{
-	//geometry::lrpossibility[][];
-	
-	
 }
 
 
@@ -1466,6 +1492,11 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 					oc[index].AllTracklets[N_tkl].err_ty = oc[index].AllTracklets[i].err_ty;
 					
 					calculate_invP(oc[index].AllTracklets[N_tkl], fulltrackbuilder[index].TrackXZ_st1);
+					
+					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 75.);
+					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 150.);
+					
+					//refit after???
 					
 					nhits_1 = 0;
 					for(int n = 0; n<oc[index].AllTracklets[i].nXHits+oc[index].AllTracklets[i].nUHits+oc[index].AllTracklets[i].nVHits; n++){
