@@ -44,7 +44,7 @@ namespace geometry{
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 }
-// SAGITTA_TARGET_CENTER 1.85 SAGITTA_TARGET_WIDTH 0.25 SAGITTA_DUMP_CENTER 1.5 SAGITTA_DUMP_WIDTH 0.3 Z_TARGET -300 Z_DUMP 42
+
 //clone of LoadEvent::Hit:
 class gHit {
 	public:
@@ -53,6 +53,7 @@ class gHit {
 	short elementID; // ID of the element in the detector: wire/slat/tube number
 	float tdcTime; // raw TDC time from the DAQ 
 	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
+	//short sign_mc;//temp
 	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
 	short flag; // 1: in time; 2: hodo mask; 3: trigger mask
 };

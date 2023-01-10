@@ -387,6 +387,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
 				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
 				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+				//host_gEvent[i].AllHits[m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
 				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
 				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
 				//if(host_gEvent[i].EventID<20)cout << " det " << host_gEvent[i].AllHits[m].detectorID << " elem " << host_gEvent[i].AllHits[m].elementID << " time " << host_gEvent[i].AllHits[m].tdcTime << " dd " << host_gEvent[i].AllHits[m].driftDistance << " pos " << host_gEvent[i].AllHits[m].pos << endl;
@@ -506,7 +507,7 @@ int main(int argn, char * argv[]) {
 	
 	auto start_global = std::chrono::system_clock::now();
 
-	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 0);
+	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -634,6 +635,7 @@ int main(int argn, char * argv[]) {
 		
 		for(int k = 0; k<host_output_eR[n].nAH; k++ ){
 			out << host_output_eR[n].AllHits[k].detectorID << " " << host_output_eR[n].AllHits[k].elementID << " " << host_output_eR[n].AllHits[k].driftDistance << endl;
+			// *host_output_eR[n].AllHits[k].sign_mc
 		}
 		
 		for(int k = 0; k<host_output_TKL[n].nTracklets; k++ ){
@@ -645,7 +647,7 @@ int main(int argn, char * argv[]) {
 			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << host_output_TKL[n].AllTracklets[k].invP << " " << host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits << endl;
 			//if(n<100 && host_output_TKL[n].nTracklets>1)cout << n << " " << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].nXHits<< " " <<host_output_TKL[n].AllTracklets[k].nUHits<< " " <<host_output_TKL[n].AllTracklets[k].nVHits << endl;
 			for(int l = 0; l<host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits; l++){
-				out << host_output_TKL[n].AllTracklets[k].hits[l].detectorID << " " << host_output_TKL[n].AllTracklets[k].hits[l].elementID << " " << host_output_TKL[n].AllTracklets[k].hits[l].driftDistance << " " << host_output_TKL[n].AllTracklets[k].hits[l].pos << endl;
+				out << host_output_TKL[n].AllTracklets[k].hits[l].detectorID << " " << host_output_TKL[n].AllTracklets[k].hits[l].elementID << " " << host_output_TKL[n].AllTracklets[k].hits[l].driftDistance*host_output_TKL[n].AllTracklets[k].hitsign[l] << " " << host_output_TKL[n].AllTracklets[k].hits[l].pos << endl;
 			}
 		}
 		
