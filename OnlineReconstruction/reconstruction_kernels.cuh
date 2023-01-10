@@ -518,8 +518,11 @@ __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack
 __device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
 	fitarray.drift_dist[n] = hit.driftDistance*hitsign;
 	fitarray.resolution[n] = planes[ hit.detectorID ].resolution;
-	if(hitsign==0)fitarray.resolution[n] = planes[ hit.detectorID ].spacing*3.4641f;
-	
+	if(hitsign==0){
+		fitarray.resolution[n] = planes[ hit.detectorID ].spacing*3.4641f;
+	}else{
+		fitarray.resolution[n] = planes[ hit.detectorID ].resolution;
+	}	       
 	fitarray.p1x[n] = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
 	fitarray.p1y[n] = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
 	fitarray.p1z[n] = planes[ hit.detectorID ].p1z_w1 + planes[ hit.detectorID ].dp1z * (hit.elementID-1);
@@ -534,9 +537,9 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 	float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
 	float p2x = p1x+planes[ hit.detectorID ].deltapx;
 	
-	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx - hit.driftDistance*hitsign;
+	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx;
 
-	y = p1y + (x_trk-hit.driftDistance*hitsign-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
 	
 	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
 	if(hitsign==0){
@@ -554,6 +557,71 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 	return true;
 }
 
+__device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const float x0, const float tx, const gPlane* planes){
+	float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
+	float p2x = p1x+planes[ hit.detectorID ].deltapx;
+	
+	float x_trk = x0+planes[ hit.detectorID ].z*tx;//x_trk is x_trk
+	
+	// we build a virtual wire, parallel to the wire hit, at a distance driftDistance*hitsign from the wire
+	// the track will intersect this wire...
+	//y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	
+	y = p1y + (x_trk-p1x+hit.driftDistance*hitsign*planes[ hit.detectorID ].costheta) * planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	
+	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
+	if(hitsign==0){
+		if( x_trk-hit.driftDistance>p1x && x_trk-hit.driftDistance>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk+hit.driftDistance<p1x && x_trk+hit.driftDistance<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+
+		y = max(y, p1y);
+		y = min(y, p1y+planes[ hit.detectorID ].deltapy);
+
+	}else{
+		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+	}
+
+	err_y = hitsign==0? planes[ hit.detectorID ].spacing/3.4641f : planes[ hit.detectorID ].resolution; 
+	err_y*= fabs(planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx);
+
+	return true;
+}
+
+
+__device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitArrays& fitarray, const gPlane* planes){
+	//X hits are stored first, so we fit them first;
+	for(int i = 0; i<tkl.nXHits; i++){
+		fitarray.x_array[i] = tkl.hits[i].pos+tkl.hits[i].driftDistance*tkl.hitsign[i];
+		fitarray.dx_array[i] = planes[tkl.hits[i].detectorID].resolution;
+		fitarray.z_array[i] = planes[tkl.hits[i].detectorID].z;
+	}
+	fit_2D_track(tkl.nXHits, fitarray.x_array, fitarray.z_array, fitarray.dx_array, fitarray.A, fitarray.Ainv, fitarray.B, fitarray.output_parameters, fitarray.output_parameters_errors, fitarray.chi2_2d);
+
+	tkl.x0 = fitarray.output_parameters[0];
+	tkl.err_x0 = fitarray.output_parameters_errors[0];
+	
+	tkl.tx = fitarray.output_parameters[1];
+	tkl.err_tx = fitarray.output_parameters_errors[1];
+	
+	float y, err_y;
+	
+	for(int i = tkl.nXHits; i<tkl.nXHits+tkl.nUHits+tkl.nVHits; i++){
+		if( calculate_y_uvhit(y, err_y, tkl.hits[i], tkl.hitsign[i], tkl.x0, tkl.tx, planes) ){
+			fitarray.y_array[i-tkl.nXHits] = y;
+			fitarray.dy_array[i-tkl.nXHits] = err_y;
+			fitarray.z_array[i-tkl.nXHits] = planes[tkl.hits[i].detectorID].z;
+		}
+	}
+	fit_2D_track(tkl.nUHits+tkl.nVHits, fitarray.y_array, fitarray.z_array, fitarray.dy_array, fitarray.A, fitarray.Ainv, fitarray.B, fitarray.output_parameters, fitarray.output_parameters_errors, fitarray.chi2_2d);
+
+	tkl.y0 = fitarray.output_parameters[0];
+	tkl.err_y0 = fitarray.output_parameters_errors[0];
+	
+	tkl.ty = fitarray.output_parameters[1];
+	tkl.err_ty = fitarray.output_parameters_errors[1];
+}
 
 
 __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes)
@@ -657,11 +725,6 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			fit_2D_track(nhits_X3, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 			if(fabs(fitarrays[index].output_parameters[0])>2*X0_MAX || fabs(fitarrays[index].output_parameters[1])>2*TX_MAX)continue;
 			
-			//if(fitarrays[index].output_parameters[0]+fitarrays[index].output_parameters_errors[0]<-X0_MAX || 
-			//   fitarrays[index].output_parameters[0]-fitarrays[index].output_parameters_errors[0]>X0_MAX)continue;
-			//if(fitarrays[index].output_parameters[1]+fitarrays[index].output_parameters_errors[1]<-TX_MAX || 
-			//   fitarrays[index].output_parameters[1]-fitarrays[index].output_parameters_errors[1]>TX_MAX)continue;
-					
 			//prop matching
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
@@ -774,11 +837,9 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 		umax3m = umin3m+2*planes[geometry::detsuperid[4][1]*2].u_win;
 #endif
 
-		//straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits = 0;
-		//straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nVHits = 0;
+		straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits = 0;
+		straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nVHits = 0;
 
-		//if(ic[index].EventID!=13)return;
-		
 		projid = 1;
 		stid = 2;
 		find_xmin_xmax_in_chamber(xmin, xmax, straighttrackbuilder[index].TrackXZ[i], stid, projid, planes);
@@ -1122,7 +1183,6 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
 						
 						//refit after???
-
 						oc[index].nTracklets++;
 						
 
@@ -1216,7 +1276,10 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 #endif
 	}// end loop on XZ tracks
 	
-	
+	//reloop in tracklets to refit???
+	//for(int n = 0; n<oc[index].nTracklets; n++){
+	//	refit_backpartialtrack_with_drift(oc[index].AllTracklets[n], fitarrays[index], planes);
+	//}
 
 }
 
