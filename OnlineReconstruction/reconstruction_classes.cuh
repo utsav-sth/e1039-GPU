@@ -53,7 +53,7 @@ class gHit {
 	short elementID; // ID of the element in the detector: wire/slat/tube number
 	float tdcTime; // raw TDC time from the DAQ 
 	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
-	//short sign_mc;//temp
+	short sign_mc;//temp
 	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
 	short flag; // 1: in time; 2: hodo mask; 3: trigger mask
 };
@@ -235,9 +235,19 @@ public:
       float dx_array[nChamberPlanes];// x position uncertainty
       float dy_array[nChamberPlanes];// x position uncertainty
       
-      float A[5];// matrix: max size 5x5, but we can use this unique array for all possible sizes
-      float Ainv[25];// matrix
-      float B[5];// input vector
+      float A[4];// matrix: max size 2x2
+      float Ainv[4];// inverted matrix
+      float B[2];// input vector
+};
+
+class gKalmanFitArrays{
+public:
+	float state[5];// 5-vector: x0, y0, tx, ty, invP
+	float Cov[25];// symmetric 5x5 matrix: C00 = err_x0, C11 = err_y0, C22 = err_tx, C33 = err_ty, C44 = err_invP
+	float H[2];
+	float K[5];// matrix: max size 5x5, but we can use this unique array for all possible sizes
+	float KCResKt[25];// matrix 5x5, result of tensor product of K*K
+	float chi2;// chi2
 };
 
 class gOutputEvent {

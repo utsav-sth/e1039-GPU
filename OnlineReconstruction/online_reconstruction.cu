@@ -302,6 +302,8 @@ int main(int argn, char * argv[]) {
 		dataTree->SetBranchAddress("DST.SQHitVector._vector", &hit_vec);
 	}
 	int nEvtMax = dataTree->GetEntries();
+	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
+	
 	static gEvent host_gEvent[EstnEvtMax];
 	
 	cout << "unfolding " << nEvtMax <<" events" << endl;
@@ -387,7 +389,7 @@ int main(int argn, char * argv[]) {
 				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
 				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
 				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-				//host_gEvent[i].AllHits[m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
+				host_gEvent[i].AllHits[m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
 				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
 				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
 				//if(host_gEvent[i].EventID<20)cout << " det " << host_gEvent[i].AllHits[m].detectorID << " elem " << host_gEvent[i].AllHits[m].elementID << " time " << host_gEvent[i].AllHits[m].tdcTime << " dd " << host_gEvent[i].AllHits[m].driftDistance << " pos " << host_gEvent[i].AllHits[m].pos << endl;
@@ -507,7 +509,7 @@ int main(int argn, char * argv[]) {
 	
 	auto start_global = std::chrono::system_clock::now();
 
-	gKernel_GlobalTracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
+	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -634,8 +636,7 @@ int main(int argn, char * argv[]) {
 		}out<<endl;
 		
 		for(int k = 0; k<host_output_eR[n].nAH; k++ ){
-			out << host_output_eR[n].AllHits[k].detectorID << " " << host_output_eR[n].AllHits[k].elementID << " " << host_output_eR[n].AllHits[k].driftDistance << endl;
-			// *host_output_eR[n].AllHits[k].sign_mc
+			out << host_output_eR[n].AllHits[k].detectorID << " " << host_output_eR[n].AllHits[k].elementID << " " << host_output_eR[n].AllHits[k].driftDistance*host_output_eR[n].AllHits[k].sign_mc << endl;
 		}
 		
 		for(int k = 0; k<host_output_TKL[n].nTracklets; k++ ){

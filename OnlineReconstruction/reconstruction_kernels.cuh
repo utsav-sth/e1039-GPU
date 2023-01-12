@@ -1,4 +1,4 @@
-#include "reconstruction_classes.cuh"
+#include "reconstruction_helper.cuh"
 //#include "tracknumericalminimizer.cuh"
 #include "trackanalyticalminimizer.cuh"
 
@@ -183,6 +183,12 @@ __global__ void gkernel_eR(gEvent* ic) {
 	ic[index].nAH = nAH_reduced[index];
 }
 
+
+
+
+
+
+
 // function to match a tracklet to a hodoscope hit
 __device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEvent* ic, const gPlane* planes)
 {
@@ -354,12 +360,16 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	float p1x, p2x;
 	for(int i = 0; i<ic[index].nAH; i++){
 		if(ic[index].AllHits[i].detectorID==detid1){
-			p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
 			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
-				p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
+				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}else{
-				p2x = p1x;
-				p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
+				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x;
+				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}
 			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
@@ -369,12 +379,16 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 			}
 		}
 		if(ic[index].AllHits[i].detectorID==detid2){
-			p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
 			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
-				p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
+				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}else{
-				p2x = p1x;
-				p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
+				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x;
+				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
 			}
 			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
@@ -424,18 +438,6 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 }
 
 
-
-
-__device__ void calculate_x0_tx_st1(const gTracklet tkl, float &x0, float &tx, float &err_x0, float &err_tx)
-{	
-	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
-	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
-	
-	err_tx = tkl.err_tx + fabs(tkl.err_invP*geometry::PT_KICK_KMAG);
-        err_x0 = tkl.err_x0 + fabs(tkl.err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
-}
-
-
 __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
 {
 	//bool isUpdated = false;
@@ -468,7 +470,7 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
 				
 				if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
-					calculate_x0_tx_st1(tkl, x0, tx, err_x0, err_tx);
+					calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
 				}else{
 					tx = tkl.tx;
 					x0 = tkl.x0;
@@ -477,10 +479,10 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 				}
 				
 				slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
-				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_ty);
+				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_ty);
 				
 				inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
-				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[i].detectorID].sintheta*tkl.err_y0);
+				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_y0);
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
@@ -523,9 +525,12 @@ __device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, 
 	}else{
 		fitarray.resolution[n] = planes[ hit.detectorID ].resolution;
 	}	       
-	fitarray.p1x[n] = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	fitarray.p1y[n] = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	fitarray.p1z[n] = planes[ hit.detectorID ].p1z_w1 + planes[ hit.detectorID ].dp1z * (hit.elementID-1);
+	fitarray.p1x[n] = x_bep( hit, planes[ hit.detectorID ]);
+	fitarray.p1y[n] = y_bep( hit, planes[ hit.detectorID ]);
+	fitarray.p1z[n] = z_bep( hit, planes[ hit.detectorID ]);
+	//fitarray.p1x[n] = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	//fitarray.p1y[n] = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
+	//fitarray.p1z[n] = planes[ hit.detectorID ].p1z_w1 + planes[ hit.detectorID ].dp1z * (hit.elementID-1);
 	
 	fitarray.deltapx[n] = planes[ hit.detectorID ].deltapx;
 	fitarray.deltapy[n] = planes[ hit.detectorID ].deltapy;
@@ -533,9 +538,12 @@ __device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, 
 }
 
 __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const gTrackXZ trackxz, const gPlane* planes){
-	float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	float p2x = p1x+planes[ hit.detectorID ].deltapx;
+	float p1x = x_bep( hit, planes[ hit.detectorID ]);
+	float p1y = y_bep( hit, planes[ hit.detectorID ]);
+	float p2x = x_tep( hit, planes[ hit.detectorID ]);
+	//float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	//float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
+	//float p2x = p1x+planes[ hit.detectorID ].deltapx;
 	
 	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx;
 
@@ -558,9 +566,12 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 }
 
 __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const float x0, const float tx, const gPlane* planes){
-	float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	float p2x = p1x+planes[ hit.detectorID ].deltapx;
+	float p1x = x_bep( hit, planes[ hit.detectorID ]);
+	float p1y = y_bep( hit, planes[ hit.detectorID ]);
+	float p2x = x_tep( hit, planes[ hit.detectorID ]);
+	//float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
+	//float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
+	//float p2x = p1x+planes[ hit.detectorID ].deltapx;
 	
 	float x_trk = x0+planes[ hit.detectorID ].z*tx;//x_trk is x_trk
 	
@@ -719,9 +730,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 					nhits_X3++;
 				}
 			}
-			//chi2_simplefit(nhits_X3, fitarrays[index].z_array, fitarrays[index].x_array, a, b, sum, det, sx, sy, sxx, syy, sxy);
-			//if(fabs(a)>2*TX_MAX || fabs(b)>2*X0_MAX)continue;
-			
+
 			fit_2D_track(nhits_X3, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 			if(fabs(fitarrays[index].output_parameters[0])>2*X0_MAX || fabs(fitarrays[index].output_parameters[1])>2*TX_MAX)continue;
 			
@@ -752,14 +761,14 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 
 			straighttrackbuilder[index].TrackXZ[straighttrackbuilder[index].nTracksXZ].chisq = fitarrays[index].chi2_2d;
 			
-			straighttrackbuilder[index].nTracksXZ++;
+			if(straighttrackbuilder[index].nTracksXZ>=TrackletSizeMax)continue;
 			
+			straighttrackbuilder[index].nTracksXZ++;
 			
 		}// loops on st3 X hits
 	
 	}//loop on st2 X hits
-
-		
+	
 	// 3- get U, V pairs compatible with the X pair in each station: already implemented, tested;
         // 4- U, V pairs also have to be compatible with the X pair slope => this last point needs more thought, and will probably need adjustments (2-3 days to implement and test);
 	// don't we just want U, V pairs compatible with the track slope?
@@ -1284,26 +1293,6 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 }
 
 
-__device__ void calculate_invP(gTracklet& tkl, const gTrackXZ tkl_st1)
-{
-// invP = ( tx_st1 - tx ) / ( PT_KICK_KMAG*Charge );
-//      = ( ( tx*Z_KMAG_BEND + x0 - x0_st1 )/Z_KMAG_BEND - tx ) / ( PT_KICK_KMAG*Charge );
-	
-	tkl.invP = ( tkl_st1.tx - tkl.tx )/( geometry::PT_KICK_KMAG );
-	if(tkl.invP<0){
-		tkl.charge = -1;
-		tkl.invP*= tkl.charge;
-	}else{
-		tkl.charge = +1;
-	}
-
-//Error: err_invP = err_kick/PT_KICK_KMAG
-//                = (err_tx_st1 - err_tx)/PT_KICK_KMAG
-	
-	tkl.err_invP = ( tkl_st1.err_tx - tkl.err_tx )/( geometry::PT_KICK_KMAG );
-}
-
-
 __device__ void SagittaRatioInStation1(const gTracklet tkl, float* pos_exp, float* window, const gPlane* planes)
 {
 	float z_st3 = planes[tkl.hits[tkl.nXHits+tkl.nUHits+tkl.nVHits-1].detectorID].z;
@@ -1383,7 +1372,7 @@ __device__ void extrapolate_track_position_st1(gTracklet& tkl, float* x_st1_mean
 
 
 
-__global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackBuilder* fulltrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, bool ktracker)
+__global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFullTrackBuilder* fulltrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, bool ktracker)
 {
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1676,4 +1665,103 @@ __global__ void gKernel_GlobalTracking(gEvent* ic, gOutputEvent* oc, gFullTrackB
 
 
 
+//   ////////////////////////////////////////
+//  //   functions for Kalman filtering   // 
+// ////////////////////////////////////////
 
+__device__ void initialize_arrays(gTracklet& tkl, gKalmanFitArrays fitarray)
+{
+	fitarray.state[0] = tkl.x0;
+	fitarray.state[1] = tkl.y0;
+	fitarray.state[2] = tkl.tx;
+	fitarray.state[3] = tkl.ty;
+	fitarray.state[4] = tkl.invP;
+	
+	//initialize covariance matrix:
+
+	fitarray.Cov[0] = 100.f;                    //c00
+	fitarray.Cov[1] = fitarray.Cov[5] = 0.f;             //c01
+	fitarray.Cov[2] = fitarray.Cov[10] = 0.f;            //c02
+	fitarray.Cov[3] = fitarray.Cov[15] = 0.f;            //c03
+	fitarray.Cov[4] = fitarray.Cov[20] = 0.f;            //c03
+	
+	fitarray.Cov[6] = 100.f;                    //c11
+	fitarray.Cov[7] = fitarray.Cov[11] = 0.f;            //c12
+	fitarray.Cov[8] = fitarray.Cov[16] = 0.f;            //c13
+	fitarray.Cov[9] = fitarray.Cov[21] = 0.f;            //c14
+	
+	fitarray.Cov[12] = 0.01f;                   //c22
+	fitarray.Cov[13] = fitarray.Cov[17] = 0.f;           //c23
+	fitarray.Cov[14] = fitarray.Cov[22] = 0.f;           //c24
+	
+	fitarray.Cov[18] = 0.01f;                   //c33
+	fitarray.Cov[19] = fitarray.Cov[23] = 0.f;           //c34
+	
+	fitarray.Cov[24] = 0.09f*tkl.invP*tkl.invP; //c44
+	
+	
+}
+
+
+
+__device__ void predict_state(const gTracklet tkl, const float z, float* pred_state)
+//if we do it this way we have to make sure we update the tracklet parameters at each step
+{
+	pred_state[1] = tkl.y0;
+	pred_state[3] = tkl.ty;
+	pred_state[4] = tkl.invP;
+
+	if(z<geometry::Z_KMAG_BEND){
+		float x0_st1, tx_st1;
+		calculate_x0_tx_st1(tkl, x0_st1, tx_st1);
+
+		pred_state[0] = x0_st1+z*tx_st1;
+		pred_state[2] = tx_st1;
+	}else{
+		pred_state[0] = tkl.x0+z*tkl.tx;
+		pred_state[2] = tkl.tx;
+	}
+}
+
+
+__device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays fitarray, const gPlane plane)//will optimize after if something is redundant
+{
+/*
+float state[5];
+float Cov[25];
+float H[2];
+float K[5];
+float KCResKt[25];
+float chi2;
+*/
+	float dxdy = plane.deltapx/plane.deltapy;
+	float y0 = y_bep(hit, plane);
+}
+
+
+
+
+__global__ void gKernel_GlobalTrack_KalmanFitting(gOutputEvent* oc, gKalmanFitArrays* fitarrays, const gPlane* planes)
+{
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	int nhits_tkl;
+	
+	for(int k = 0; k<oc[index].nTracklets; k++){
+		if(oc[index].AllTracklets[k].stationID<6)continue;
+		
+		nhits_tkl = oc[index].AllTracklets[k].nXHits+oc[index].AllTracklets[k].nUHits+oc[index].AllTracklets[k].nVHits;
+		
+		//initialize state
+		initialize_arrays(oc[index].AllTracklets[k], fitarrays[index]);
+		
+		
+		for(int i = 0; i<nhits_tkl; i++){
+			// first predict the state at the hit z
+			predict_state(oc[index].AllTracklets[k], planes[oc[index].AllTracklets[k].hits[i].detectorID].z, fitarrays[index].state);
+			update_state(oc[index].AllTracklets[k], oc[index].AllTracklets[k].hits[i], fitarrays[index], planes[oc[index].AllTracklets[k].hits[i].detectorID]);
+		}
+	}
+	
+	//
+}
