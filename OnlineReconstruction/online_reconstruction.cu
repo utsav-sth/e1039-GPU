@@ -427,6 +427,7 @@ int main(int argn, char * argv[]) {
 	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
 	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
+	size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	
 
 	//cout << NBytesAllEvent << " " << NBytesAllSearchWindow << " " << NBytesAllPlanes << " " << NBytesAllFitters << " " << NBytesAllFitParam << endl;
@@ -452,7 +453,7 @@ int main(int argn, char * argv[]) {
 	gStraightFitArrays *device_gFitArrays;
 	gStraightTrackBuilder *device_gStraightTrackBuilder;
 	gFullTrackBuilder *device_gFullTrackBuilder;
-	//gFullFitArrays *device_gKalmanFitArrays;
+	gKalmanFitArrays *device_gKalmanFitArrays;
 
 	//printDeviceStatus();
 
@@ -515,12 +516,14 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 
 	auto end_global = std::chrono::system_clock::now();
+	
+	gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
+	
+	gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
-
-
-
-
-
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	
 #ifdef KTRACKER_REC	
 	// copy result of event reconstruction from device_gEvent to device_input_TKL
 	// this input_tkl should be the information that the device uses to reconstruct the tracklets
