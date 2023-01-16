@@ -268,243 +268,6 @@ __device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEven
 
 
 
-
-// function to make the hit pairs in station;
-// I assume it will only be called by the tracklet builder
-// (not by the main function), so I can make it a "device" function. 
-__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
-	// I think we assume that by default we want to know where we are
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	
-	int npairs = 0;
-	
-	//declaring arrays for the hit lists
-	for(int i = 0; i<100; i++){
-		hitidx1[i] = hitidx2[i] = 0;
-		hitflag1[i] = hitflag2[i] = 0;
-	}
-	
-	//building the lists of hits for each detector plane
-	int detid1 = geometry::detsuperid[stID][projID]*2;
-	int detid2 = geometry::detsuperid[stID][projID]*2-1;
-	int superdetid = geometry::detsuperid[stID][projID];
-	int hitctr1 = 0, hitctr2 = 0;
-	for(int i = 0; i<ic[index].nAH; i++){
-		if(ic[index].AllHits[i].detectorID==detid1){
-			hitidx1[hitctr1] = i;
-			hitctr1++;
-		}
-		if(ic[index].AllHits[i].detectorID==detid2){
-			hitidx2[hitctr2] = i;
-			hitctr2++;
-		}
-	}
-	
-	// pair the hits by position:
-	// if one hit on e.g. x and one hit on x' are closer than
-	// the "spacing" defined for the planes, then the hits can be paired together.
-	int idx1 = -1;
-	int idx2 = -1;
-	for(int i = 0; i<hitctr1; i++){
-		idx1++;
-		idx2 = -1;
-		for(int j = 0; j<hitctr2; j++){
-			idx2++;
-			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
-				continue;
-			}
-			
-			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
-			npairs++;
-			hitflag1[idx1] = 1;
-			hitflag2[idx2] = 1;
-		}
-	}
-	// here the hits that cannot be paired to another hit are paired to "nothing"
-	// (but they still have to be paired to be used in the trackletteing)
-	for(int i = 0; i<hitctr1; i++){
-		if(hitflag1[i]<1){
-			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
-			npairs++;
-		}
-	}
-	for(int i = 0; i<hitctr2; i++){
-		if(hitflag2[i]<1){
-			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
-			npairs++;
-		   }
-	}
-	   	   
-	return npairs;
-}
-
-
-
-__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const REAL xmin, const REAL xmax){
-	// I think we assume that by default we want to know where we are
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	
-	int npairs = 0;
-	
-	//declaring arrays for the hit lists
-	for(int i = 0; i<100; i++){
-		hitidx1[i] = hitidx2[i] = 0;
-		hitflag1[i] = hitflag2[i] = 0;
-	}
-	
-	//building the lists of hits for each detector plane
-	int detid1 = geometry::detsuperid[stID][projID]*2;
-	int detid2 = geometry::detsuperid[stID][projID]*2-1;
-	int superdetid = geometry::detsuperid[stID][projID];
-	int hitctr1 = 0, hitctr2 = 0;
-	float p1x, p2x;
-	for(int i = 0; i<ic[index].nAH; i++){
-		if(ic[index].AllHits[i].detectorID==detid1){
-			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
-			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
-				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
-			}else{
-				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				//p2x = p1x;
-				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
-			}
-			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
-			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
-			if( (p1x <= xmax) && (p2x >= xmin) ){ 
-				hitidx1[hitctr1] = i;
-				hitctr1++;
-			}
-		}
-		if(ic[index].AllHits[i].detectorID==detid2){
-			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
-			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
-				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
-			}else{
-				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
-				//p2x = p1x;
-				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
-			}
-			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
-			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
-			if( (p1x <= xmax) && (p2x >= xmin) ){ 
-				hitidx2[hitctr2] = i;
-				hitctr2++;
-			}
-		}
-	}
-	
-	// pair the hits by position:
-	// if one hit on e.g. x and one hit on x' are closer than
-	// the "spacing" defined for the planes, then the hits can be paired together.
-	int idx1 = -1;
-	int idx2 = -1;
-	for(int i = 0; i<hitctr1; i++){
-		idx1++;
-		idx2 = -1;
-		for(int j = 0; j<hitctr2; j++){
-			idx2++;
-			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
-				continue;
-			}
-			
-			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
-			npairs++;
-			hitflag1[idx1] = 1;
-			hitflag2[idx2] = 1;
-		}
-	}
-	// here the hits that cannot be paired to another hit are paired to "nothing"
-	// (but they still have to be paired to be used in the trackletteing)
-	for(int i = 0; i<hitctr1; i++){
-		if(hitflag1[i]<1){
-			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
-			npairs++;
-		}
-	}
-	for(int i = 0; i<hitctr2; i++){
-		if(hitflag2[i]<1){
-			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
-			npairs++;
-		   }
-	}
-	   	   
-	return npairs;
-}
-
-
-__device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
-{
-	//bool isUpdated = false;
-	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
-	short nresolved = 0;
-	short i, j;
-	int indexmin = -1;
-	float pull_min = 1.e6;
-	float pull;
-	float slope_local, inter_local;
-	float slope_exp, inter_exp;
-	float err_slope, err_inter;
-	float x0, tx;// x0 and tx are different for global track station 1 hits 
-	float err_x0, err_tx;// x0 and tx are different for global track station 1 hits 
-	for(short n = 0; n<nhits; n+=2){
-		i = n;
-		j = i+1;
-		if( abs(tkl.hits[i].detectorID-tkl.hits[j].detectorID)!=1 ){
-		    n--;//step back by 1 to move by 1 hit instead of 2
-		    continue;		    
-		}
-		
-		if(tkl.hitsign[i]*tkl.hitsign[j]==0){
-			indexmin = -1;
-			pull_min = 1.e6;
-			for(int k = 0; k<4; k++){
-				slope_local = ( tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - tkl.hits[j].pos+tkl.hits[j].driftDistance*geometry::lrpossibility[k][1] )/(planes[tkl.hits[i].detectorID].z-planes[tkl.hits[j].detectorID].z);
-				inter_local = tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - slope_local*planes[tkl.hits[i].detectorID].z;
-				
-				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
-				
-				if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
-					calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
-				}else{
-					tx = tkl.tx;
-					x0 = tkl.x0;
-					err_x0 = tkl.err_x0;
-					err_tx = tkl.err_tx;
-				}
-				
-				slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
-				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_ty);
-				
-				inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
-				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_y0);
-				
-				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
-				
-				if(pull<pull_min){
-					indexmin = k;
-					pull_min = pull;
-				}
-			}
-			
-			if(indexmin>0 && pull_min<thr){
-				tkl.hitsign[i] = geometry::lrpossibility[indexmin][0];
-				tkl.hitsign[j] = geometry::lrpossibility[indexmin][1];
-				//isUpdated = true;
-			}
-		}
-		++nresolved;
-	}
-}
-
-
-
-
 __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitArrays& fitarray, const gPlane* planes){
 	//X hits are stored first, so we fit them first;
 	for(int i = 0; i<tkl.nXHits; i++){
@@ -539,7 +302,13 @@ __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitAr
 }
 
 
-__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes)
+
+
+
+
+// I would need to rewrite this function...
+//
+__global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, const bool best_cand_yz_only = false)
 {
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	
@@ -551,10 +320,6 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	oc[index].nTracklets = 0;
 	
 	//for the time being, declare in function;
-	//REAL x_pos[4];
-	//REAL x_res[4];
-	//REAL z_pos[4];
-	//REAL a, b, sum, det, sx, sy, sxx, syy, sxy;
 	short nprop, iprop;
 	REAL xExp;
 	short nhits_X2, nhits_X3;
@@ -697,9 +462,8 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	int nu2, nu3p, nu3m;
 	int nv2, nv3p, nv3m;
 	int nxhits;
-#ifdef BEST_TRACKYZ_ONLY
 	int bestYZcand = -1;
-#endif
+
 	float y, err_y;
 	// loop on XZ tracks
 	float chi2min = 100000.;//-1.0f;
@@ -707,9 +471,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	
 	for(int i = 0; i<straighttrackbuilder[index].nTracksXZ; i++){
 		nxhits = straighttrackbuilder[index].TrackXZ[i].nXHits;
-#ifdef BEST_TRACKYZ_ONLY
 		bestYZcand = -1;
-#endif
 		chi2min = 100000.;//-1.0f;
 		straighttrackbuilder[index].nTracksYZ = 0;
 
@@ -780,7 +542,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 		nv3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
 		
 		if(nu2==0 || nv2==0 || nu3p+nu3m==0 || nv3p+nv3m==0) continue;
-		
+
 		// build tracks with UHits only first?
 		for(int j = 0; j<nu2; j++){
 			for(int n = 0; n<nChamberPlanes; n++){
@@ -1061,49 +823,51 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						//what happens if we keep all YZ tracks???
 						//if(fitarrays[index].chi2>9000)continue;// allowing for even looser track parameters
 						
-#ifdef BEST_TRACKYZ_ONLY
 						bestYZcand = straighttrackbuilder[index].nTracksYZ;
-#endif
-						oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
-						oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
-						oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits;
-						oc[index].AllTracklets[oc[index].nTracklets].nVHits = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nVHits;
 						
-						oc[index].AllTracklets[oc[index].nTracklets].x0 = straighttrackbuilder[index].TrackXZ[i].x0;
-						oc[index].AllTracklets[oc[index].nTracklets].y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].y0;
-						oc[index].AllTracklets[oc[index].nTracklets].tx = straighttrackbuilder[index].TrackXZ[i].tx;
-						oc[index].AllTracklets[oc[index].nTracklets].ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].ty;
+						if(!best_cand_yz_only){
+							oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
+							oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
+							oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nUHits;
+							oc[index].AllTracklets[oc[index].nTracklets].nVHits = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].nVHits;
+						
+							oc[index].AllTracklets[oc[index].nTracklets].x0 = straighttrackbuilder[index].TrackXZ[i].x0;
+							oc[index].AllTracklets[oc[index].nTracklets].y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].y0;
+							oc[index].AllTracklets[oc[index].nTracklets].tx = straighttrackbuilder[index].TrackXZ[i].tx;
+							oc[index].AllTracklets[oc[index].nTracklets].ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].ty;
 							
-						oc[index].AllTracklets[oc[index].nTracklets].err_x0 = straighttrackbuilder[index].TrackXZ[i].err_x0;
-						oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_y0;
-						oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
-						oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_ty;
+							oc[index].AllTracklets[oc[index].nTracklets].err_x0 = straighttrackbuilder[index].TrackXZ[i].err_x0;
+							oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_y0;
+							oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
+							oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].err_ty;
 						
-						oc[index].AllTracklets[oc[index].nTracklets].chisq = fitarrays[index].chi2;
+							oc[index].AllTracklets[oc[index].nTracklets].chisq = fitarrays[index].chi2;
 						
-						if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
-						if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
-						   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
+							if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
+							if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
+							   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
 						
-						for(int n = 0; n<nxhits; n++){
-							oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
-						}
-						for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
-							oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[n-nxhits]];
-						}
+							//geometry::detmap_zincr[31] 
+							//= {-1,  0,  1,  3,  2,  4,  5,  0,  1,  3,  2,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 12, 13, 14, 15, 16, 17};		
+							// geometry::detmap_zincr[ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]].detectorID]
 						
-						resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
-						resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
+							for(int n = 0; n<nxhits; n++){
+								oc[index].AllTracklets[oc[index].nTracklets].hits[ n ] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
+							}
+							for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
+								oc[index].AllTracklets[oc[index].nTracklets].hits[ n ] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[straighttrackbuilder[index].nTracksYZ].hitlist[n-nxhits]];
+							}
 						
-						//refit after???
-						oc[index].nTracklets++;
+							resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
+							resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
 						
+							//refit after???
+							oc[index].nTracklets++;
 
-						if(fitarrays[index].chi2<=chi2min){
-							chi2min = fitarrays[index].chi2;
-#ifdef BEST_TRACKYZ_ONLY
-							bestYZcand = straighttrackbuilder[index].nTracksYZ;
-#endif
+							if(fitarrays[index].chi2<=chi2min){
+								chi2min = fitarrays[index].chi2;
+								bestYZcand = straighttrackbuilder[index].nTracksYZ;
+							}
 						}
 						straighttrackbuilder[index].nTracksYZ++;
 						//
@@ -1114,36 +878,37 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 		
 		//if(straighttrackbuilder[index].nTracksYZ==0)printf("evt %d, %d pairs u2, %d pairs v2, %d pairs v2, %d pairs v3\n", ic[index].EventID, nu2, nu3p+nu3m, nv2, nv3p+nv3m);
 		
-#ifdef BEST_TRACKYZ_ONLY
-		if(straighttrackbuilder[index].nTracksYZ>0 && bestYZcand>=0){
-			oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
-			oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
-			oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[bestYZcand].nUHits;
-			oc[index].AllTracklets[oc[index].nTracklets].nVHits = straighttrackbuilder[index].TrackYZ[bestYZcand].nVHits;
-
-			oc[index].AllTracklets[oc[index].nTracklets].x0 = straighttrackbuilder[index].TrackXZ[i].x0;
-			oc[index].AllTracklets[oc[index].nTracklets].y0 = straighttrackbuilder[index].TrackYZ[bestYZcand].y0;
-			oc[index].AllTracklets[oc[index].nTracklets].tx = straighttrackbuilder[index].TrackXZ[i].tx;
-			oc[index].AllTracklets[oc[index].nTracklets].ty = straighttrackbuilder[index].TrackYZ[bestYZcand].ty;
-			
-			oc[index].AllTracklets[oc[index].nTracklets].err_x0 = straighttrackbuilder[index].TrackXZ[i].err_x0;
-			oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[bestYZcand].err_y0;
-			oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
-			oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[bestYZcand].err_ty;
-			
-			oc[index].AllTracklets[oc[index].nTracklets].chisq = chi2min;
-			
-			if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
-			//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
-			//   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
-			
-			match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes);
-			match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes);
-			
-			for(int n = 0; n<nxhits; n++){
-				oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
-			}
-			if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
+		if(best_cand_yz_only){
+			if(straighttrackbuilder[index].nTracksYZ>0 && bestYZcand>=0){
+				oc[index].AllTracklets[oc[index].nTracklets].stationID = 5;
+				oc[index].AllTracklets[oc[index].nTracklets].nXHits = straighttrackbuilder[index].TrackXZ[i].nXHits;
+				oc[index].AllTracklets[oc[index].nTracklets].nUHits = straighttrackbuilder[index].TrackYZ[bestYZcand].nUHits;
+				oc[index].AllTracklets[oc[index].nTracklets].nVHits = straighttrackbuilder[index].TrackYZ[bestYZcand].nVHits;
+				
+				oc[index].AllTracklets[oc[index].nTracklets].x0 = straighttrackbuilder[index].TrackXZ[i].x0;
+				oc[index].AllTracklets[oc[index].nTracklets].y0 = straighttrackbuilder[index].TrackYZ[bestYZcand].y0;
+				oc[index].AllTracklets[oc[index].nTracklets].tx = straighttrackbuilder[index].TrackXZ[i].tx;
+				oc[index].AllTracklets[oc[index].nTracklets].ty = straighttrackbuilder[index].TrackYZ[bestYZcand].ty;
+				
+				oc[index].AllTracklets[oc[index].nTracklets].err_x0 = straighttrackbuilder[index].TrackXZ[i].err_x0;
+				oc[index].AllTracklets[oc[index].nTracklets].err_y0 = straighttrackbuilder[index].TrackYZ[bestYZcand].err_y0;
+				oc[index].AllTracklets[oc[index].nTracklets].err_tx = straighttrackbuilder[index].TrackXZ[i].err_tx;
+				oc[index].AllTracklets[oc[index].nTracklets].err_ty = straighttrackbuilder[index].TrackYZ[bestYZcand].err_ty;
+				
+				oc[index].AllTracklets[oc[index].nTracklets].chisq = chi2min;
+				
+				if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
+				//if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
+				//   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
+				
+				match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes);
+				match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes);
+				
+				for(int n = 0; n<nxhits; n++){
+					oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
+				}
+#ifdef DEBUG
+				if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
 				printf("1- evt %d, bestYZcand %d, nYZ %d, chi2 %1.6f, nuhits = %d (%d+%d+%d), nvhits = %d (%d+%d+%d), x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f \n",
 					ic[index].EventID, bestYZcand, straighttrackbuilder[index].nTracksYZ, chi2min,
 					oc[index].AllTracklets[oc[index].nTracklets].nUHits, nu2, nu3p, nu3m,
@@ -1153,15 +918,10 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 					oc[index].AllTracklets[oc[index].nTracklets].tx, 
 					oc[index].AllTracklets[oc[index].nTracklets].ty 
 					);
-
-			}
-
-			if(nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits>nChamberPlanes)
-			printf("%d + %d + %d  > %d \n", nxhits, oc[index].AllTracklets[oc[index].nTracklets].nUHits, oc[index].AllTracklets[oc[index].nTracklets].nVHits, nChamberPlanes);
-			for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
-				oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[bestYZcand].hitlist[n-nxhits]];
-			}
-			if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
+				}
+				if(nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits>nChamberPlanes)
+				printf("%d + %d + %d  > %d \n", nxhits, oc[index].AllTracklets[oc[index].nTracklets].nUHits, oc[index].AllTracklets[oc[index].nTracklets].nVHits, nChamberPlanes);
+				if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
 				printf("2- evt %d, bestYZcand %d, nYZ %d, chi2 %1.6f, nuhits = %d (%d+%d+%d), nvhits = %d (%d+%d+%d), x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f \n",
 					ic[index].EventID, bestYZcand, straighttrackbuilder[index].nTracksYZ, chi2min,
 					oc[index].AllTracklets[oc[index].nTracklets].nUHits, nu2, nu3p, nu3m,
@@ -1172,21 +932,18 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 					oc[index].AllTracklets[oc[index].nTracklets].ty 
 					);
 
-			}
-			//if(ic[index].EventID==13){
-			//	printf("x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f \n", 
-			//		oc[index].AllTracklets[oc[index].nTracklets].x0, 
-			//		oc[index].AllTracklets[oc[index].nTracklets].y0, 
-			//		oc[index].AllTracklets[oc[index].nTracklets].tx, 
-			//		oc[index].AllTracklets[oc[index].nTracklets].ty 
-			//		);
-			//}
-			oc[index].nTracklets++;
-		}else{
-			//printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
-			continue;
-		}
+				}
 #endif
+				
+				for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
+					oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[bestYZcand].hitlist[n-nxhits]];
+				}
+				oc[index].nTracklets++;
+			}else{
+				//printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
+				continue;
+			}
+		}
 	}// end loop on XZ tracks
 	
 	//reloop in tracklets to refit???
@@ -1509,10 +1266,12 @@ __global__ void gKernel_GlobalTrack_KalmanFitting(gOutputEvent* oc, gKalmanFitAr
 		nhits_tkl = oc[index].AllTracklets[k].nXHits+oc[index].AllTracklets[k].nUHits+oc[index].AllTracklets[k].nVHits;
 		
 		//initialize state
-		initialize_arrays(oc[index].AllTracklets[k], fitarrays[index]);
+		//initialize_arrays(oc[index].AllTracklets[k], fitarrays[index]);
 		
 		
+			if(oc[index].EventID<20)
 		for(int i = 0; i<nhits_tkl; i++){
+printf("hit %d, z = %1.3f \n", i, planes[oc[index].AllTracklets[k].hits[i].detectorID].z);
 			// first predict the state at the hit z
 			predict_state(oc[index].AllTracklets[k], planes[oc[index].AllTracklets[k].hits[i].detectorID].z, fitarrays[index]);
 			update_state(oc[index].AllTracklets[k], oc[index].AllTracklets[k].hits[i], fitarrays[index], planes[oc[index].AllTracklets[k].hits[i].detectorID]);

@@ -36,6 +36,175 @@ __device__ float z_tep(const gHit hit, const gPlane plane)
 }
 
 
+// ---------------------------------------------------
+
+// function to make the hit pairs in station;
+// I assume it will only be called by the tracklet builder
+// (not by the main function), so I can make it a "device" function. 
+__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
+	// I think we assume that by default we want to know where we are
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	int npairs = 0;
+	
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitidx1[i] = hitidx2[i] = 0;
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	int superdetid = geometry::detsuperid[stID][projID];
+	int hitctr1 = 0, hitctr2 = 0;
+	for(int i = 0; i<ic[index].nAH; i++){
+		if(ic[index].AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
+			hitctr1++;
+		}
+		if(ic[index].AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
+			hitctr2++;
+		}
+	}
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<hitctr1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<hitctr2; j++){
+			idx2++;
+			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			npairs++;
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<hitctr1; i++){
+		if(hitflag1[i]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
+			npairs++;
+		}
+	}
+	for(int i = 0; i<hitctr2; i++){
+		if(hitflag2[i]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
+			npairs++;
+		   }
+	}
+	   	   
+	return npairs;
+}
+
+
+
+__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const REAL xmin, const REAL xmax){
+	// I think we assume that by default we want to know where we are
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	int npairs = 0;
+	
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitidx1[i] = hitidx2[i] = 0;
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	int superdetid = geometry::detsuperid[stID][projID];
+	int hitctr1 = 0, hitctr2 = 0;
+	float p1x, p2x;
+	for(int i = 0; i<ic[index].nAH; i++){
+		if(ic[index].AllHits[i].detectorID==detid1){
+			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
+				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
+			}else{
+				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x;
+				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
+			}
+			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
+			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+			if( (p1x <= xmax) && (p2x >= xmin) ){ 
+				hitidx1[hitctr1] = i;
+				hitctr1++;
+			}
+		}
+		if(ic[index].AllHits[i].detectorID==detid2){
+			//p1x = planes[ ic[index].AllHits[i].detectorID ].p1x_w1 + planes[ ic[index].AllHits[i].detectorID ].dp1x * (ic[index].AllHits[i].elementID-1);
+			if(planes[ ic[index].AllHits[i].detectorID ].deltapx>0){
+				p1x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x + planes[ ic[index].AllHits[i].detectorID ].deltapx;
+			}else{
+				p1x = x_tep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				p2x = x_bep(ic[index].AllHits[i], planes[ ic[index].AllHits[i].detectorID ]);
+				//p2x = p1x;
+				//p1x+= planes[ ic[index].AllHits[i].detectorID ].deltapx;
+			}
+			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic[index].AllHits[i].detectorID, ic[index].AllHits[i].elementID, ic[index].AllHits[i].pos, p1x, p2x, xmin, xmax);
+			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+			if( (p1x <= xmax) && (p2x >= xmin) ){ 
+				hitidx2[hitctr2] = i;
+				hitctr2++;
+			}
+		}
+	}
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<hitctr1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<hitctr2; j++){
+			idx2++;
+			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			npairs++;
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<hitctr1; i++){
+		if(hitflag1[i]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
+			npairs++;
+		}
+	}
+	for(int i = 0; i<hitctr2; i++){
+		if(hitflag2[i]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
+			npairs++;
+		   }
+	}
+	   	   
+	return npairs;
+}
 
 
 // ------------------------------------------------------------- //
@@ -195,6 +364,76 @@ __device__ float calculate_invP_error(float err_tx, float err_tx_st1)
 } 
 
 
+
+// ----------------------------------------------------------- //
+// function to resolve the left right ambiguities in the track //
+// ----------------------------------------------------------- //
+
+__device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
+{
+	//bool isUpdated = false;
+	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
+	short nresolved = 0;
+	short i, j;
+	int indexmin = -1;
+	float pull_min = 1.e6;
+	float pull;
+	float slope_local, inter_local;
+	float slope_exp, inter_exp;
+	float err_slope, err_inter;
+	float x0, tx;// x0 and tx are different for global track station 1 hits 
+	float err_x0, err_tx;// x0 and tx are different for global track station 1 hits 
+	for(short n = 0; n<nhits; n+=2){
+		i = n;
+		j = i+1;
+		if( abs(tkl.hits[i].detectorID-tkl.hits[j].detectorID)!=1 ){
+		    n--;//step back by 1 to move by 1 hit instead of 2
+		    continue;		    
+		}
+		
+		if(tkl.hitsign[i]*tkl.hitsign[j]==0){
+			indexmin = -1;
+			pull_min = 1.e6;
+			for(int k = 0; k<4; k++){
+				slope_local = ( tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - tkl.hits[j].pos+tkl.hits[j].driftDistance*geometry::lrpossibility[k][1] )/(planes[tkl.hits[i].detectorID].z-planes[tkl.hits[j].detectorID].z);
+				inter_local = tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - slope_local*planes[tkl.hits[i].detectorID].z;
+				
+				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
+				
+				if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
+					calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
+				}else{
+					tx = tkl.tx;
+					x0 = tkl.x0;
+					err_x0 = tkl.err_x0;
+					err_tx = tkl.err_tx;
+				}
+				
+				slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
+				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_ty);
+				
+				inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
+				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_y0);
+				
+				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
+				
+				if(pull<pull_min){
+					indexmin = k;
+					pull_min = pull;
+				}
+			}
+			
+			if(indexmin>0 && pull_min<thr){
+				tkl.hitsign[i] = geometry::lrpossibility[indexmin][0];
+				tkl.hitsign[j] = geometry::lrpossibility[indexmin][1];
+				//isUpdated = true;
+			}
+		}
+		++nresolved;
+	}
+}
+
+
 // ----------------------------------------------------------------- //
 // functions for selection of station 1 hits for back partial tracks //
 // ----------------------------------------------------------------- // 
@@ -288,11 +527,10 @@ __device__ float similarity_1x2_S5x5_2x1(const float* M_2x1, const float* M_S5x5
 
 __device__ void multiply_S5x5_2x1(const float* M_2x1, const float* M_S5x5, float* M_5x1)
 {
-	M_5x1[0] = M_S5x5[0] * M_2x1[0] + M_S5x5[5] * M_2x1[1];
-	M_5x1[1] = M_S5x5[1] * M_2x1[0] + M_S5x5[6] * M_2x1[1];
-	M_5x1[2] = M_S5x5[2] * M_2x1[0] + M_S5x5[7] * M_2x1[1];
-	M_5x1[3] = M_S5x5[3] * M_2x1[0] + M_S5x5[8] * M_2x1[1];
-	M_5x1[4] = M_S5x5[4] * M_2x1[0] + M_S5x5[9] * M_2x1[1];
+	for(int k = 0; k<5; k++){
+		M_5x1[k] = M_S5x5[k]*M_2x1[0]+M_S5x5[5+k] * M_2x1[1];
+		//printf("k = %d M5x5_k = %1.6f, M5x5_5+k = %1.6f \n", k, M_S5x5[k], M_S5x5[5+k]);
+	}
 }
 
 __device__ void tensor_product(const float* M_5x1_1, const float* M_5x1_2, float* M_5x5, const float Cnorm)
@@ -324,7 +562,7 @@ __device__ void add_matrix(float* M1, const float* M2, const short size, const f
 // functions for Kalman filtering // 
 // ------------------------------ //
 
-__device__ void initialize_arrays(gTracklet& tkl, gKalmanFitArrays fitarray)
+__device__ void initialize_arrays(gTracklet& tkl, gKalmanFitArrays &fitarray)
 {
 	fitarray.state[0] = tkl.x0;
 	fitarray.state[1] = tkl.y0;
@@ -358,7 +596,7 @@ __device__ void initialize_arrays(gTracklet& tkl, gKalmanFitArrays fitarray)
 __device__ void predict_state(const gTracklet tkl, const float z, gKalmanFitArrays& fitarray)//float* pred_state)
 //if we do it this way we have to make sure we update the tracklet parameters at each step
 {
-	fitarray.state[1] = tkl.y0+z*tkl.tx;
+	fitarray.state[1] = tkl.y0+z*tkl.ty;
 	fitarray.state[3] = tkl.ty;
 	fitarray.state[4] = tkl.invP;
 
@@ -402,7 +640,7 @@ __device__ void update_tkl(gTracklet& tkl, const float z, gKalmanFitArrays& fita
 	
 }
 
-__device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays fitarray, const gPlane plane)//will optimize after if something is redundant
+__device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays& fitarray, const gPlane plane)//will optimize after if something is redundant
 {
 	const float dxdy = plane.deltapx/plane.deltapy;
 	const float y0 = y_bep(hit, plane);
@@ -410,18 +648,25 @@ __device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays fi
 	const float x0 = hit.pos*plane.costheta + y0*dxdy;
 	const float x1 = x0 + (y1-y0) *dxdy;
 	const float z = plane.z;
-	
+
 	const float x2y2 = sqrtf( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
 	
+	//printf("x0 %1.6f x1 %1.6f y0 %1.6f y1 %1.6f x2y2 %1.6f \n", x0, x1, y0, y1, x2y2);
+
 	fitarray.H[0] = (y1-y0) / x2y2;
 	fitarray.H[1] = (x1-x0) / x2y2;
 	
 	const float res = fitarray.H[0] * x0 + fitarray.H[1] * y0 - (fitarray.H[0] * fitarray.state[0] + fitarray.H[1] * fitarray.state[1]); 
 	const float CRes = similarity_1x2_S5x5_2x1(fitarray.H, fitarray.Cov) + plane.resolution * plane.resolution;
-	
+
+	//printf("h0 %1.6f h1 %1.6f res %1.6f CRes %1.6f \n", fitarray.H[0], fitarray.H[1], res, CRes);
+		
 	multiply_S5x5_2x1(fitarray.H, fitarray.Cov, fitarray.K);
 	
-	scale_matrix(fitarray.K, 1./CRes, 5);	
+	scale_matrix(fitarray.K, 1./CRes, 5);
+	for(int k = 0; k<5; k++){
+		printf("%d, %1.6f, %1.6f\n", k, fitarray.state[k], fitarray.K[k]);
+	}
 	add_matrix(fitarray.state, fitarray.K, 5, res);
 	
 	tensor_product(fitarray.K, fitarray.K, fitarray.KCResKt, CRes);
