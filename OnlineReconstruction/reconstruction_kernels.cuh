@@ -860,7 +860,8 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 						
 							resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
 							resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
-						
+							resolve_single_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes);
+							
 							//refit after???
 							oc[index].nTracklets++;
 
@@ -913,6 +914,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 
 				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
 				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
+				resolve_single_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes);
 
 #ifdef DEBUG
 				if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
@@ -1105,6 +1107,7 @@ __global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFull
 					
 					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 75.);
 					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 150.);
+					resolve_single_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes);
 					
 					//refit after???
 					

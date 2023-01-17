@@ -379,7 +379,7 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 {
 	//bool isUpdated = false;
 	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
-	short nresolved = 0;
+	//short nresolved = 0;
 	short i, j;
 	int indexmin = -1;
 	float pull_min = 1.e6;
@@ -446,8 +446,34 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 				//isUpdated = true;
 			}
 		}
-		++nresolved;
+	//	++nresolved;
 	}
+}
+
+__device__ void resolve_single_leftright(gTracklet &tkl, const gPlane* planes)
+{
+	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
+	float pos_exp;
+	short detID;
+	float x0, tx;// x0 and tx are different for global track station 1 hits 
+	
+	for(short n = 0; n<nhits; n++){
+
+		if(tkl.stationID>=6 && tkl.hits[n].detectorID<=6){
+			calculate_x0_tx_st1(tkl, x0, tx);
+		}else{
+			tx = tkl.tx;
+			x0 = tkl.x0;
+		}
+		
+		// don't do anything for hits whichs already have a sign...
+		if(tkl.hitsign[n]!=0)continue;
+		
+		detID = tkl.hits[n].detectorID;
+		pos_exp = (planes[detID].z*tx+x0)*planes[detID].costheta+(planes[detID].z*tkl.ty+tkl.y0)*planes[detID].sintheta;
+		tkl.hitsign[n] = pos_exp>tkl.hits[n].pos? +1 : -1;
+	}
+	
 }
 
 
