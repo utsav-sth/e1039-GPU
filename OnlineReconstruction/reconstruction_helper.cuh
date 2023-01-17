@@ -36,6 +36,12 @@ __device__ float z_tep(const gHit hit, const gPlane plane)
 }
 
 
+__device__ float position(const gHit hit, const short sign)
+{
+	return (hit.pos+sign*hit.driftDistance);
+}
+
+
 // ---------------------------------------------------
 
 // function to make the hit pairs in station;
@@ -391,32 +397,43 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 		    continue;		    
 		}
 		
+		if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
+			calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
+		}else{
+			tx = tkl.tx;
+			x0 = tkl.x0;
+			err_x0 = tkl.err_x0;
+			err_tx = tkl.err_tx;
+		}
+		
+		slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
+		err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_ty);
+		
+		inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
+		err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_y0);
+		
+#ifdef DEBUG
+		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", tkl.hits[i].detectorID, tkl.hits[j].detectorID, slope_exp, err_slope, inter_exp, err_inter);
+		printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
+			position(tkl.hits[i], +1), position(tkl.hits[i], -1), 
+			position(tkl.hits[j], +1), position(tkl.hits[j], -1));
+#endif
+
 		if(tkl.hitsign[i]*tkl.hitsign[j]==0){
 			indexmin = -1;
 			pull_min = 1.e6;
 			for(int k = 0; k<4; k++){
-				slope_local = ( tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - tkl.hits[j].pos+tkl.hits[j].driftDistance*geometry::lrpossibility[k][1] )/(planes[tkl.hits[i].detectorID].z-planes[tkl.hits[j].detectorID].z);
-				inter_local = tkl.hits[i].pos+tkl.hits[i].driftDistance*geometry::lrpossibility[k][0] - slope_local*planes[tkl.hits[i].detectorID].z;
+				slope_local = ( position(tkl.hits[i], geometry::lrpossibility[k][0]) - position(tkl.hits[j], geometry::lrpossibility[k][1]) )/(planes[tkl.hits[i].detectorID].z-planes[tkl.hits[j].detectorID].z);
+				inter_local = position(tkl.hits[i], geometry::lrpossibility[k][0]) - slope_local*planes[tkl.hits[i].detectorID].z;
 				
 				if(fabs(slope_local) > planes[tkl.hits[i].detectorID].slope_max || fabs(inter_local) > planes[tkl.hits[i].detectorID].inter_max)continue;
 				
-				if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
-					calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
-				}else{
-					tx = tkl.tx;
-					x0 = tkl.x0;
-					err_x0 = tkl.err_x0;
-					err_tx = tkl.err_tx;
-				}
-				
-				slope_exp = planes[tkl.hits[i].detectorID].costheta*tx + planes[tkl.hits[i].detectorID].sintheta*tkl.ty;
-				err_slope = fabs(planes[tkl.hits[i].detectorID].costheta*err_tx) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_ty);
-				
-				inter_exp = planes[tkl.hits[i].detectorID].costheta*x0 + planes[tkl.hits[i].detectorID].sintheta*tkl.y0;
-				err_inter = fabs(planes[tkl.hits[i].detectorID].costheta*err_x0) + fabs(planes[tkl.hits[j].detectorID].sintheta*tkl.err_y0);
-				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
+#ifdef DEBUG
+				printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
+				printf("pull %1.4f\n", pull);
+#endif		
 				if(pull<pull_min){
 					indexmin = k;
 					pull_min = pull;

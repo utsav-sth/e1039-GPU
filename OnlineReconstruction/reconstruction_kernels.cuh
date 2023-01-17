@@ -907,6 +907,13 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 				for(int n = 0; n<nxhits; n++){
 					oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackXZ[i].hitlist[n]];
 				}
+				for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
+					oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[bestYZcand].hitlist[n-nxhits]];
+				}
+
+				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
+				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
+
 #ifdef DEBUG
 				if(oc[index].AllTracklets[oc[index].nTracklets].ty==0 || oc[index].AllTracklets[oc[index].nTracklets].y0==0){
 				printf("1- evt %d, bestYZcand %d, nYZ %d, chi2 %1.6f, nuhits = %d (%d+%d+%d), nvhits = %d (%d+%d+%d), x0 = %1.6f, y0 = %1.6f, tx = %1.6f, ty = %1.6f \n",
@@ -935,9 +942,6 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 				}
 #endif
 				
-				for(int n = nxhits; n<nxhits+oc[index].AllTracklets[oc[index].nTracklets].nUHits+oc[index].AllTracklets[oc[index].nTracklets].nVHits; n++){
-					oc[index].AllTracklets[oc[index].nTracklets].hits[n] = ic[index].AllHits[straighttrackbuilder[index].TrackYZ[bestYZcand].hitlist[n-nxhits]];
-				}
 				oc[index].nTracklets++;
 			}else{
 				//printf("evt %d: track XZ %d without YZ track: nuhits = (%d+%d+%d), nvhits = (%d+%d+%d)\n", ic[index].EventID, i, nu2, nu3p, nu3m, nv2, nv3p, nv3m);
@@ -1098,6 +1102,7 @@ __global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFull
 						oc[index].AllTracklets[N_tkl].hits[nhits_1] = ic[index].AllHits[fulltrackbuilder[index].hitlist[n]];
 						nhits_1++;
 					}
+					
 					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 75.);
 					resolve_leftright(oc[index].AllTracklets[N_tkl], planes, 150.);
 					
