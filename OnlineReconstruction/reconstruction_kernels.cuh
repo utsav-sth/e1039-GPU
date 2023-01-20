@@ -303,10 +303,19 @@ __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitAr
 
 
 
+// I would need to rewrite this function, reducing number of loops 
+__global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, const bool best_cand_yz_only = 
+{
+       int index = threadIdx.x + blockIdx.x * blockDim.x;
+       
+       oc[index].EventID = ic[index].EventID;
+       oc[index].nAH = ic[index].nAH;
+       oc[index].nTracklets = 0;
+
+              
+}
 
 
-
-// I would need to rewrite this function...
 //
 __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, const bool best_cand_yz_only = false)
 {
@@ -401,7 +410,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 			}
 
 			fit_2D_track(nhits_X3, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-			if(fabs(fitarrays[index].output_parameters[0])>2*X0_MAX || fabs(fitarrays[index].output_parameters[1])>2*TX_MAX)continue;
+			if(fabs(fitarrays[index].output_parameters[0])>1.05*X0_MAX || fabs(fitarrays[index].output_parameters[1])>1.05*TX_MAX)continue;
 			
 			//prop matching
 			nprop = 0;
@@ -953,9 +962,9 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	}// end loop on XZ tracks
 	
 	//reloop in tracklets to refit???
-	//for(int n = 0; n<oc[index].nTracklets; n++){
-	//	refit_backpartialtrack_with_drift(oc[index].AllTracklets[n], fitarrays[index], planes);
-	//}
+	for(int n = 0; n<oc[index].nTracklets; n++){
+		refit_backpartialtrack_with_drift(oc[index].AllTracklets[n], fitarrays[index], planes);
+	}
 
 }
 
