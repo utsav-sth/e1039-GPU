@@ -269,12 +269,12 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 	
 	float x_trk = x0+planes[ hit.detectorID ].z*tx;//x_trk is x_trk
 	
+	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	
 	// we build a virtual wire, parallel to the wire hit, at a distance driftDistance*hitsign from the wire
 	// the track will intersect this wire...
-	//y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
-	
-	y = p1y + (x_trk-p1x+hit.driftDistance*hitsign*planes[ hit.detectorID ].costheta) * planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
-	
+	//y = p1y + (x_trk-p1x+hit.driftDistance*hitsign*planes[ hit.detectorID ].costheta) * planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	    
 	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
 	if(hitsign==0){
 		if( x_trk-hit.driftDistance>p1x && x_trk-hit.driftDistance>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
