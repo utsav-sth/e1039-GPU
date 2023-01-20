@@ -15,7 +15,9 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
-const int TrackletSizeMax = 200;
+const int Track2DSizeMax = 1000;
+const int TrackletSizeMax = 500;
+const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
 const double TY_MAX = 0.1;
@@ -81,8 +83,8 @@ class gTracklet {
       float chisq_vtx;
 
       //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[nChamberPlanes];// array of all hits
-      short hitsign[nChamberPlanes];
+      gHit hits[MaxHitsPerTrack];// array of all hits
+      short hitsign[MaxHitsPerTrack];
       
       float tx;
       float ty;
@@ -97,7 +99,7 @@ class gTracklet {
       float err_invP;
       
       short charge;
-      float residual[nChamberPlanes];
+      float residual[MaxHitsPerTrack];
 };
 
 class gTrackXZ {
@@ -134,9 +136,6 @@ class gTrackYZ {
       int hitlist[8];
       short hitsign[8];
 
-      //float y_array[8];
-      //float err_y_array[8];
-
       float chisq;
 };
 
@@ -168,8 +167,8 @@ class gFullTrackBuilder{
 public:
 	gTrackXZ TrackXZ_st1;
 	
-      	int hitlist[18];
-      	short hitsign[18];
+      	int hitlist[MaxHitsPerTrack];
+      	short hitsign[MaxHitsPerTrack];
 	
 	thrust::pair<int, int> hitpairs_x1[100];
 	thrust::pair<int, int> hitpairs_u1[100];
@@ -186,9 +185,9 @@ public:
 class gStraightTrackBuilder{
 public:
 	int nTracksXZ;
-	gTrackXZ TrackXZ[TrackletSizeMax];
+	gTrackXZ TrackXZ[Track2DSizeMax];
 	int nTracksYZ;
-	gTrackYZ TrackYZ[TrackletSizeMax];
+	gTrackYZ TrackYZ[Track2DSizeMax];
 	
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
@@ -212,27 +211,27 @@ public:
 class gStraightFitArrays {
 public:
       int npoints;
-      float drift_dist[nChamberPlanes]; // hit drift distance
-      float resolution[nChamberPlanes]; // detector resolution
+      float drift_dist[MaxHitsPerTrack]; // hit drift distance
+      float resolution[MaxHitsPerTrack]; // detector resolution
       
-      float p1x[nChamberPlanes];// x bottom end point of the wire hit 
-      float p1y[nChamberPlanes];// y bottom end point of the wire hit 
-      float p1z[nChamberPlanes];// z bottom end point of the wire hit 
+      float p1x[MaxHitsPerTrack];// x bottom end point of the wire hit 
+      float p1y[MaxHitsPerTrack];// y bottom end point of the wire hit 
+      float p1z[MaxHitsPerTrack];// z bottom end point of the wire hit 
       
-      float deltapx[nChamberPlanes];// x distance between bottom and top end points of the wire hit 
-      float deltapy[nChamberPlanes];// y distance between bottom and top end points of the wire hit 
-      float deltapz[nChamberPlanes];// z distance between bottom and top end points of the wire hit 
+      float deltapx[MaxHitsPerTrack];// x distance between bottom and top end points of the wire hit 
+      float deltapy[MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
+      float deltapz[MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
       
       float output_parameters[5];
       float output_parameters_errors[5];
       float chi2_2d;
       float chi2;
 
-      float x_array[nChamberPlanes];// x position arrays
-      float y_array[nChamberPlanes];// y position arrays
-      float z_array[nChamberPlanes];// z position arrays
-      float dx_array[nChamberPlanes];// x position uncertainty
-      float dy_array[nChamberPlanes];// x position uncertainty
+      float x_array[MaxHitsPerTrack];// x position arrays
+      float y_array[MaxHitsPerTrack];// y position arrays
+      float z_array[MaxHitsPerTrack];// z position arrays
+      float dx_array[MaxHitsPerTrack];// x position uncertainty
+      float dy_array[MaxHitsPerTrack];// x position uncertainty
       
       float A[4];// matrix: max size 2x2
       float Ainv[4];// inverted matrix
