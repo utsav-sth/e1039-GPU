@@ -189,6 +189,8 @@ public:
 	int nTracksYZ;
 	gTrackYZ TrackYZ[Track2DSizeMax];
 	
+	//int hitlist[12];
+		
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
 	thrust::pair<int, int> hitpairs_u2[100];
@@ -253,7 +255,7 @@ public:
 	int EventID;
 	int nAH;
 	int nTracklets;
-	gTracklet AllTracklets[TrackletSizeMax];
+	gTracklet AllTracklets[TrackletSizeMax+1];//save one slot for a new candidate
 	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
 };
 

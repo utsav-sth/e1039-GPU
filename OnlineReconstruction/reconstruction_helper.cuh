@@ -296,8 +296,30 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 
 
 
+// ------------------------------------------------ //
+// convenience functions to avoid code duplications //
+// ------------------------------------------------ //
 
-__device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
+
+__device__ void FillFitArrays_X(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
+	fitarray.z_array[n] = planes[ hit.detectorID ].z;
+	fitarray.x_array[n] = hit.pos+hit.driftDistance*hitsign;
+	fitarray.dx_array[n] = planes[ hit.detectorID ].resolution;
+	if(hitsign==0){
+		fitarray.dx_array[n] = planes[ hit.detectorID ].spacing*3.4641f;
+	}
+}
+
+
+__device__ void FillFitArrays_UV(const int n, const gHit hit, gStraightFitArrays &fitarray, const gPlane* planes, const float y, const float dy){
+	fitarray.z_array[n] = planes[ hit.detectorID ].z;
+		
+	fitarray.y_array[n] = y;
+        fitarray.dy_array[n] = dy;
+}
+
+
+__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
 	fitarray.drift_dist[n] = hit.driftDistance*hitsign;
 	fitarray.resolution[n] = planes[ hit.detectorID ].resolution;
 	if(hitsign==0){
@@ -308,9 +330,6 @@ __device__ void FillFitArrays(const int n, const gHit hit, const short hitsign, 
 	fitarray.p1x[n] = x_bep( hit, planes[ hit.detectorID ]);
 	fitarray.p1y[n] = y_bep( hit, planes[ hit.detectorID ]);
 	fitarray.p1z[n] = z_bep( hit, planes[ hit.detectorID ]);
-	//fitarray.p1x[n] = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	//fitarray.p1y[n] = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	//fitarray.p1z[n] = planes[ hit.detectorID ].p1z_w1 + planes[ hit.detectorID ].dp1z * (hit.elementID-1);
 	
 	fitarray.deltapx[n] = planes[ hit.detectorID ].deltapx;
 	fitarray.deltapy[n] = planes[ hit.detectorID ].deltapy;

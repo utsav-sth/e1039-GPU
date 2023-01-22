@@ -121,7 +121,7 @@ int main(int argn, char * argv[]) {
 	// initialization: declaration of SRaw event, opening file/tree, affecting rawEvent object to input tree
 	// declaring array of gEvent;
 	auto start = std::chrono::system_clock::now();
-	clock_t cp1 = clock();
+	auto cp1 = std::chrono::system_clock::now();
 
 	TString inputFile;
 	TString inputGeom;
@@ -228,11 +228,6 @@ int main(int argn, char * argv[]) {
       		for(int j = 1; j <= plane[i].nelem; ++j){
           		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
 			wire_position[i][j] = pos;
-			//if(25<=i && i<=30){
-			//	 double p1x_ = plane[i].p1x_w1+plane[i].dp1x*(j-1);
-			//	 double p2x_ = p1x_+plane[i].deltapx;
-			//	 cout << i << " " << j << " " << pos << " " << p1x_ << " " << p2x_ << " " << (p1x_+p2x_)/2. << " " << (p1x_+p2x_)/2.-pos << endl;
-			//}
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
@@ -408,48 +403,33 @@ int main(int argn, char * argv[]) {
 		}
 	}
 	cout << "loaded events" << endl;
-	clock_t cp2 = clock();
-	
-//	for(int i = 0; i < nEvtMax; ++i) {
-//		thrust::stable_sort(host_gEvent[i].AllHits, host_gEvent[i].AllHits+host_gEvent[i].nAH, lessthan());
-//	}
+	auto cp2 = std::chrono::system_clock::now();
 
-	clock_t cp3 = clock();
+	auto evt_prep = cp2-cp1;
+	cout<<"Read/prepare events: "<<evt_prep.count()/1000000000.<<endl;
+
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
-	//size_t NBytesAllSearchWindow = EstnEvtMax * sizeof(gSW);
 	size_t NBytesAllOutputEvent = EstnEvtMax * sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
-	//size_t NBytesAllFitters = EstnEvtMax * sizeof(gFitArrays);
-	//size_t NBytesAllFitParam = sizeof(gFitParams)*3;// just to be sure: tracklets, back tracks, global tracks
-	//size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
 	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
 	size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	
 
-	//cout << NBytesAllEvent << " " << NBytesAllSearchWindow << " " << NBytesAllPlanes << " " << NBytesAllFitters << " " << NBytesAllFitParam << endl;
-	//cout << NBytesAllEvent+NBytesAllSearchWindow+NBytesAllPlanes+NBytesAllFitters+NBytesAllFitParam+NBytesStraightTrackBuilders << endl;
-	
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
 	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
 	     << "; fitter tools: " << NBytesFitterTools << "; planes info: " << NBytesAllPlanes << endl;  
 	
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
-	//gSW *host_output_TKL = (gSW*)malloc(NBytesAllSearchWindow);
 	gOutputEvent *host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
 	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent *device_gEvent;
-	// gEvent *device_output_eR;
-	// gEvent *device_input_TKL;
-	//gSW *device_output_TKL;
 	gOutputEvent *device_output_TKL;
 	gPlane *device_gPlane;
-	//gFitParams *device_gFitParams;
-	//gFitArrays *device_gFitArrays;
 	gStraightFitArrays *device_gFitArrays;
 	gStraightTrackBuilder *device_gStraightTrackBuilder;
 	gFullTrackBuilder *device_gFullTrackBuilder;
@@ -460,12 +440,9 @@ int main(int argn, char * argv[]) {
 	// copy of data from host to device: evaluate operation time 
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
-	//gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllSearchWindow));
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesAllFitters));
-	//gpuErrchk( cudaMalloc((void**)&device_gFitParams, NBytesAllFitParam));
 	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
 	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
 
@@ -478,155 +455,73 @@ int main(int argn, char * argv[]) {
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
-	//gpuErrchk( cudaMemcpy(device_gFitParams, fitparams, NBytesAllFitParam, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
-	clock_t cp4 = clock();
+	auto cp3 = std::chrono::system_clock::now();
+
+	auto cp_to_gpu = cp3-cp2;
+	cout<<"Copy to GPU: "<<cp_to_gpu.count()/1000000000.<<endl;
 		
 	// now data is transfered in the device: kernel function for event reconstruction called;
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
-	auto start_er = std::chrono::system_clock::now();
 	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
-	auto end_er = std::chrono::system_clock::now();
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	auto start_straight = std::chrono::system_clock::now();
+	auto cp4 = std::chrono::system_clock::now();
+	auto gpu_er = cp4-cp3;
+	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	gKernel_XZ_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	//gKernel_XZ_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	auto end_straight = std::chrono::system_clock::now();
-	
+	auto cp5 = std::chrono::system_clock::now();
+	auto gpu_st = cp5-cp4;
+	cout<<"GPU: straight tracking: "<<gpu_st.count()/1000000000.<<endl;
+
 	//release here the memory for straight track builders and straight track fitters	
 	cudaFree(device_gStraightTrackBuilder);
 	
 	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 	
-	auto start_global = std::chrono::system_clock::now();
-
 	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	auto end_global = std::chrono::system_clock::now();
-	
 	gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
 	
+	auto cp6 = std::chrono::system_clock::now();
+	auto gpu_gt = cp6-cp5;
+	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
 	//gpuErrchk( cudaPeekAtLastError() );
 	//gpuErrchk( cudaDeviceSynchronize() );
 	
-#ifdef KTRACKER_REC	
-	// copy result of event reconstruction from device_gEvent to device_input_TKL
-	// this input_tkl should be the information that the device uses to reconstruct the tracklets
-	// gpuErrchk( cudaMemcpy(device_input_TKL, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToDevice));
 
-	// shouldn't this function actually be called? should it be the function that puts together tracklets? and then call the fitting???
-	// gkernel_TKL<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_input_TKL, device_output_TKL);
+	auto cp7 = std::chrono::system_clock::now();
+	auto gpu_kf = cp7-cp6;
+	cout<<"GPU: kalman filtering: "<<gpu_gt.count()/1000000000.<<endl;
 
-	//for(int m = 1; m<=30; m++){
-	//	if(plane[m].u_win!=0)printf("plane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, plane[m].u_win, plane[m].costheta);
-	//	if(device_gPlane[m].u_win!=0)printf("device_gplane, m = %d, u_win = %1.6f, costheta = %1.6f\n", m, device_gPlane[m].u_win, device_gPlane[m].costheta);
-	//}
-	
-	auto start_tkl2 = std::chrono::system_clock::now();
-	// I first want to see if indeed we can reuse the "gEvent" pointer
-	int stID = 3;// to make explicit that we are requiring station 3
-	
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
-	auto end_tkl2 = std::chrono::system_clock::now();
-
-	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaDeviceSynchronize() );
-	
-	auto start_tkl3 = std::chrono::system_clock::now();
-	stID = 4;
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
-
-	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaDeviceSynchronize() );
-
-	stID = 5;
-	gkernel_TrackletinStation<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, stID, device_gPlane, device_gFitParams);
-	//cout << endl;
-	// check status of device and synchronize again;
-	auto end_tkl3 = std::chrono::system_clock::now();
-	
-	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaDeviceSynchronize() );
-	
-	gkernel_BackPartialTracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFitArrays, device_gPlane, device_gFitParams);
-	
-	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaDeviceSynchronize() );
-#endif
-	
-	
-	
-	clock_t cp5 = clock();
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
 	cudaFree(device_gEvent);
 	
-	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost));
 	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
 	cudaFree(device_output_TKL);
 
-	// thrust objects: C++ template library based on STL
-	// convert raw pointer device_gEvent to device_vector
-	// TODO: just don't use raw pointers to begin with
-	//thrust::device_ptr<gEvent> d_p_events(device_gEvent);
-	//thrust::device_vector<gEvent> d_events(d_p_events, d_p_events + nEvents);
-    	
-	//std::vector<gEvent> h_events(nEvents);
-	//std::copy(d_events.begin(), d_events.end(), h_events.begin());
+	auto cp8 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp8-cp7;
+	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 
-	//thrust::device_vector<float> d_hit_pos(nEvents);
-	// std::vector<float> h_hit_pos;
-
-	// copy hit pos from event vector to dedicated hit pos vector
-	// TODO: do this on the GPU instead (possibly using zip_iterator)
-	// for (auto j = h_events.begin(); j < h_events.begin() + 100; ++j) {
-	// 	// cout << "e " << j->EventID << endl;
-	// 	for (auto i = 0; i < EstnAHMax; ++i) {
-	// 		// float pos = static_cast<gEvent>(*j).AllHits[i].pos;
-	// 		float pos = static_cast<gEvent>(*j).AllHits[i].driftDistance;
-	// 		if (abs(pos) > Epsilon) {
-	// 			// h_hit_pos.push_back(pos);
-	// 			d_hit_pos.push_back(pos);
-	// 			// cout  << " " << pos << endl;
-	// 		}
-	// 	}
-	// }
-	// thrust::copy(h_hit_pos.begin(), h_hit_pos.end(), d_hit_pos.begin());
-
-
-	// thrust::transform(device_gEvent, device_gEvent + nEvents, d_hit_pos.begin(), get_first_event_hit_pos());
-	// cout << "First event positions (10 / " << d_hit_pos.size() << "):";
-	// thrust::copy(d_hit_pos.begin(), d_hit_pos.begin()+10, std::ostream_iterator<int>(std::cout, ", "));
-	// cout <<  endl;
-
-	// int NCheck = 10;
-	// for (int i = 0; i < NCheck; ++i) {
-	// 	gEvent& evt = (host_output_eR)[i];
-	// 	gSW& sw = (host_output_TKL)[i];
-	// 	cout <<  i << ". " << evt.EventID <<  ". " <<  evt.nAH << ", " << sw.EventID << ", " << sw.nAH << endl;
-	// }
-	
-	//TODO: need to check that host_gEvent is updated
-	//cudaMemcpy(host_gEvent, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost);
-
-	//cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllSearchWindow, cudaMemcpyDeviceToHost);
-	//cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost);
-	
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
@@ -656,71 +551,30 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-	
+
 	cout << tklctr << " straight tracks reconstructed" << endl;
 	//auto end_kernel = std::chrono::system_clock::now();
 
 
 	delete rawEvent;
 
-	TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
-	/*
-	//TTree* ORoutput_tree = new TTree("OR_out", "OR_out");
-	ORoutput_tree* output = new ORoutput_tree();
-	for(int i = 0; i < nEvtMax; ++i) {
-		output->Clear();
-		for(int k = 1; k<=nDetectors; k++ )output->fNhitsReduced[k] = host_output_eR[i].NHits[k];
-		//output->Write();
-	}
-	output->Write();
-	*/
-
-	// printouts for test
+	//TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
+	//ORoutput_tree* output = new ORoutput_tree();
 	//for(int i = 0; i < nEvtMax; ++i) {
-	//	//if(10000<host_gEvent[i].EventID && host_gEvent[i].EventID<10050){
-	//	if(host_gEvent[i].EventID==0){
-	//		printf("%d:\n ", host_gEvent[i].EventID);
-	//		for(int j = 0; j<=nChamberPlanes; j++){
-	//			printf("%d ", host_gEvent[i].NHits[j]);
-	//		}printf("; %d\n", host_gEvent[i].nAH);
-	//		for(int j = 0; j<=host_gEvent[i].nAH; j++){
-	//			//if(13<=host_gEvent[i].AllHits[j].detectorID&&host_gEvent[i].AllHits[j].detectorID<=18)
-	//			printf("%d, %1.3f; ", host_gEvent[i].AllHits[j].detectorID, host_gEvent[i].AllHits[j].pos);
-	//		}
-	//		printf("\n");
-	//	}
+	//	output->Clear();
+	//	for(int k = 1; k<=nDetectors; k++ )output->fNhitsReduced[k] = host_output_eR[i].NHits[k];
+	//	//output->Write();
 	//}
-		
-	//for(int i = 0; i < host_gEvent[0].nAH; ++i) {
-		//cout<<"D0_1st_wire:" << (host_gEvent[0].NHits[1])<<endl;
-		//cout<<"output: "<<(host_gEvent[0].nAH)<<endl;
-		//cout<<"output: "<<(device_output_eR)<<endl;
-		//cout<<"output: "<<(sizeof(int))<<endl;
-		//cout<<"size: "<<i<<endl;
-	//}
-	// printing the time required for all operations
-	clock_t cp6 = clock();
-	auto end = std::chrono::system_clock::now();
+	//output->Write();
 
-	auto evt_prep = cp2-cp1;
-	auto cp_to_gpu = cp4-cp3;
-	auto cp_from_gpu = cp6-cp5;
-	
-	auto gpu_er = end_er - start_er;
-	//auto er_tkl = start_tkl2-end_er;
-	//auto gpu_tkl2 = end_tkl2 - start_tkl2;
-	//auto tkl2_tkl3 = start_tkl3-end_tkl2;
-	//auto gpu_tkl3 = end_tkl3 - start_tkl3;
+	auto cp9 = std::chrono::system_clock::now();
+	auto write_output = cp9-cp8;
+	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
+
+	// printing the time required for all operations
+	auto end = std::chrono::system_clock::now();
 	auto overall = end - start;
-	cout<<"Read/prepare events: "<<evt_prep/1000000000.<<endl;
-	cout<<"Copy to GPU: "<<cp_to_gpu/1000000000.<<endl;
-	cout<<"Copy from GPU: "<<cp_from_gpu/1000000000.<<endl;
-	cout<<"event reducing: "<<(gpu_er.count())/1000000000.<<endl;
-	//cout<<" <-> : "<<(er_tkl.count())/1000000000.<<endl;
-	//cout<<"st2 trackletting: "<<(gpu_tkl2.count())/1000000000.<<endl;
-	//cout<<" <-> : "<<(tkl2_tkl3.count())/1000000000.<<endl;
-	//cout<<"st3 trackletting: "<<(gpu_tkl3.count())/1000000000.<<endl;
-	cout<<"Total time: "<<(overall.count())/1000000000.<<endl;
+	cout<<"Total time: "<<overall.count()/1000000000.<<endl;
 		
 	return 0;
 }
