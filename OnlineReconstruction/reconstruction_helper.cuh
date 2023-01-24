@@ -55,6 +55,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	
 	//declaring arrays for the hit lists
 	for(int i = 0; i<100; i++){
+		hitpairs[npairs] = thrust::make_pair(-1, -1);
 		hitidx1[i] = hitidx2[i] = 0;
 		hitflag1[i] = hitflag2[i] = 0;
 	}
@@ -123,6 +124,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	
 	//declaring arrays for the hit lists
 	for(int i = 0; i<100; i++){
+		hitpairs[npairs] = thrust::make_pair(-1, -1);
 		hitidx1[i] = hitidx2[i] = 0;
 		hitflag1[i] = hitflag2[i] = 0;
 	}
@@ -231,13 +233,25 @@ __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack
 	xmax = xmax + trackxz.x0+trackxz.err_x0+planes[detid1].spacing;
 }
 
+__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTracklet tkl, const short stID, const short projID, const gPlane* planes)
+{
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	
+	xmin = min(planes[detid1].z*(tkl.tx-tkl.err_tx), planes[detid2].z*(tkl.tx-tkl.err_tx));
+	xmax = max(planes[detid1].z*(tkl.tx+tkl.err_tx), planes[detid2].z*(tkl.tx+tkl.err_tx));
+	
+	xmin = xmin + tkl.x0-tkl.err_x0-planes[detid1].spacing;
+	xmax = xmax + tkl.x0+tkl.err_x0+planes[detid1].spacing;
+}
+
+
+
+
 __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const gTrackXZ trackxz, const gPlane* planes){
 	float p1x = x_bep( hit, planes[ hit.detectorID ]);
 	float p1y = y_bep( hit, planes[ hit.detectorID ]);
 	float p2x = x_tep( hit, planes[ hit.detectorID ]);
-	//float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	//float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	//float p2x = p1x+planes[ hit.detectorID ].deltapx;
 	
 	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx;
 
@@ -259,15 +273,44 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 	return true;
 }
 
+__device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const gTracklet tkl, const gPlane* planes){
+	float p1x = x_bep( hit, planes[ hit.detectorID ]);
+	float p1y = y_bep( hit, planes[ hit.detectorID ]);
+	float p2x = x_tep( hit, planes[ hit.detectorID ]);
+	
+	float x_trk = tkl.x0+planes[ hit.detectorID ].z*tkl.tx;
+	
+	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	
+	// we build a virtual wire, parallel to the wire hit, at a distance driftDistance*hitsign from the wire
+	// the track will intersect this wire...
+	//y = p1y + (x_trk-p1x+hit.driftDistance*hitsign*planes[ hit.detectorID ].costheta) * planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
+	    
+	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
+	if(hitsign==0){
+		if( x_trk-hit.driftDistance>p1x && x_trk-hit.driftDistance>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk+hit.driftDistance<p1x && x_trk+hit.driftDistance<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+
+		y = max(y, p1y);
+		y = min(y, p1y+planes[ hit.detectorID ].deltapy);
+
+	}else{
+		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+	}
+
+	err_y = hitsign==0? planes[ hit.detectorID ].spacing/3.4641f : planes[ hit.detectorID ].resolution; 
+	err_y*= fabs(planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx);
+
+	return true;
+}
+
 __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const float x0, const float tx, const gPlane* planes){
 	float p1x = x_bep( hit, planes[ hit.detectorID ]);
 	float p1y = y_bep( hit, planes[ hit.detectorID ]);
 	float p2x = x_tep( hit, planes[ hit.detectorID ]);
-	//float p1x = planes[ hit.detectorID ].p1x_w1 + planes[ hit.detectorID ].dp1x * (hit.elementID-1);
-	//float p1y = planes[ hit.detectorID ].p1y_w1 + planes[ hit.detectorID ].dp1y * (hit.elementID-1);
-	//float p2x = p1x+planes[ hit.detectorID ].deltapx;
 	
-	float x_trk = x0+planes[ hit.detectorID ].z*tx;//x_trk is x_trk
+	float x_trk = x0+planes[ hit.detectorID ].z*tx;
 	
 	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
 	
@@ -296,6 +339,7 @@ __device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const 
 
 
 
+
 // ------------------------------------------------ //
 // convenience functions to avoid code duplications //
 // ------------------------------------------------ //
@@ -313,7 +357,6 @@ __device__ void FillFitArrays_X(const int n, const gHit hit, const short hitsign
 
 __device__ void FillFitArrays_UV(const int n, const gHit hit, gStraightFitArrays &fitarray, const gPlane* planes, const float y, const float dy){
 	fitarray.z_array[n] = planes[ hit.detectorID ].z;
-		
 	fitarray.y_array[n] = y;
         fitarray.dy_array[n] = dy;
 }

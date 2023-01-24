@@ -490,7 +490,7 @@ int main(int argn, char * argv[]) {
 	
 	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 	
-	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
+	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -525,8 +525,13 @@ int main(int argn, char * argv[]) {
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
+	long nEvtsTotal = 0;
+	long nEvtsPass = 0;
 	for(int n = 0; n<nEvtMax; n++){
 		if(host_output_eR[n].nAH==0)continue;
+		nEvtsTotal++;
+		if(host_output_eR[n].HasTooManyHits)continue;
+		nEvtsPass++;
 		out<<n<<" "<< host_output_eR[n].nAH <<" "<< host_output_TKL[n].nTracklets<<endl;
 		tklctr+= host_output_TKL[n].nTracklets;
 		for(int k = 1; k<=nDetectors; k++ ){
@@ -552,7 +557,8 @@ int main(int argn, char * argv[]) {
 		
 	}
 
-	cout << tklctr << " straight tracks reconstructed" << endl;
+	cout << tklctr << " total tracks reconstructed" << endl;
+	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
 
 

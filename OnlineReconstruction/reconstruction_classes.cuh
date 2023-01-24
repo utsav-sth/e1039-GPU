@@ -15,7 +15,7 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
-const int Track2DSizeMax = 1000;
+const int Track2DSizeMax = 1;
 const int TrackletSizeMax = 500;
 const int MaxHitsPerTrack = 18;
 
@@ -132,7 +132,9 @@ class gTrackYZ {
 
       float err_ty;
       float err_y0;
-
+      
+      //we will keep both temporarily...
+      gHit hits[8];
       int hitlist[8];
       short hitsign[8];
 
@@ -161,6 +163,7 @@ class gEvent {
 	int nTH; // size of TriggerHits
 	gHit AllHits[EstnAHMax]; // array of all hits
 	gHit TriggerHits[EstnTHMax]; // array of trigger hits
+	bool HasTooManyHits;//bool to flag an event with too many hits
 };
 
 class gFullTrackBuilder{
@@ -189,7 +192,7 @@ public:
 	int nTracksYZ;
 	gTrackYZ TrackYZ[Track2DSizeMax];
 	
-	//int hitlist[12];
+	int hitlist[12];
 		
 	//pairs in station 2
 	thrust::pair<int, int> hitpairs_x2[100];
@@ -254,6 +257,7 @@ class gOutputEvent {
 public:
 	int EventID;
 	int nAH;
+	bool HasTooManyHits;//bool to flag an event with too many hits
 	int nTracklets;
 	gTracklet AllTracklets[TrackletSizeMax+1];//save one slot for a new candidate
 	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
