@@ -15,8 +15,8 @@ int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
-const int Track2DSizeMax = 1;
-const int TrackletSizeMax = 500;
+const int Track2DSizeMax = 100;
+const int TrackletSizeMax = 200;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -102,9 +102,28 @@ class gTracklet {
       float residual[MaxHitsPerTrack];
 };
 
-class gTrackXZ {
+class gTrack2D {
       public:
 
+      float tx;
+      float x0;
+
+      float err_tx;
+      float err_x0;
+      
+      float chisq;
+            
+      gHit hits[MaxHitsPerTrack];
+      int hitlist[MaxHitsPerTrack];
+      short hitsign[MaxHitsPerTrack];
+      
+};
+
+class gTrackXZ {
+      public:
+      
+      bool d3p;
+      
       short nXHits;
 
       float tx;
@@ -168,6 +187,7 @@ class gEvent {
 
 class gFullTrackBuilder{
 public:
+	//gTrack2D TrackXZ_st1;
 	gTrackXZ TrackXZ_st1;
 	
       	int hitlist[MaxHitsPerTrack];
@@ -187,10 +207,13 @@ public:
 
 class gStraightTrackBuilder{
 public:
+	
 	int nTracksXZ;
 	gTrackXZ TrackXZ[Track2DSizeMax];
 	int nTracksYZ;
 	gTrackYZ TrackYZ[Track2DSizeMax];
+	
+	gTrack2D track2D;
 	
 	int hitlist[12];
 		
