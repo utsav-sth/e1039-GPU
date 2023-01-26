@@ -350,7 +350,8 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	short nhits_v2;
 	
 	short stid, projid;
-	
+
+#ifdef OLDCODE
         // 1- get X pairs in st2, st3:
 	projid = 0;
 	//D2: stid = 3-1
@@ -538,7 +539,7 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 						}
 						nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
 						if(nhits_u2==0)continue;
-						/*
+
 						for(i_v2 = 0; i_v2<nv2; i_v2++){
 							nhits_uv = nhits_u3+nhits_v3+nhits_u2;
 							
@@ -559,7 +560,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 							nhits_v2 = nhits_uv-nhits_u3-nhits_v3;
 							if(nhits_v2==0)continue;
 						}//end loop on v2 hits
-						*/
 					}//end loop on u2 hits
 				}//end loop on v3 hits
 			}//end loop on u3 hits
@@ -624,7 +624,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 						}
 						nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
 						if(nhits_u2==0)continue;
-						/*
 						for(i_v2 = 0; i_v2<nv2; i_v2++){
 							nhits_uv = nhits_u3+nhits_v3+nhits_u2;
 							
@@ -645,13 +644,11 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 							nhits_v2 = nhits_uv-nhits_u3-nhits_v3;
 							if(nhits_v2==0)continue;
 						}//end loop on v2 hits
-						*/
 					}//end loop on u2 hits
 				}//end loop on v3 hits
 			}//end loop on u3 hits
 		}
 		
-		/*
 		//printf("evt%d, ncomb_x =%d, ncomb_uv = %d, ncomb_uv2 = %d\n", oc[index].EventID, ncomb_x, ncomb_uv, ncomb_uv2);
 		
 		projid = 1;
@@ -848,7 +845,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				}
 			}
 		}
-		*/
 		
 		if(ntkl>=TrackletSizeMax){
 			printf("evt%d: reached max number of tracklets %d\n", oc[index].EventID, k);
@@ -876,9 +872,11 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	
 	oc[index].nTracklets = ntkl;
 	//printf("ntracklets: %d\n", oc[index].nTracklets);
+#endif
 }
 
 
+#ifdef OLDCODE
 //
 __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTrackBuilder* straighttrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, const bool best_cand_yz_only = false)
 {
@@ -1538,6 +1536,7 @@ __global__ void gKernel_XZ_YZ_tracking(gEvent* ic, gOutputEvent* oc, gStraightTr
 	}
 
 }
+#endif
 
 
 // ------------------------------
@@ -1612,10 +1611,10 @@ __global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFull
 			
 			fit_2D_track(nhits_X1+1, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 			
-			fulltrackbuilder[index].TrackXZ_st1.x0 = fitarrays[index].output_parameters[0];
-			fulltrackbuilder[index].TrackXZ_st1.err_x0 = fitarrays[index].output_parameters[0];
-			fulltrackbuilder[index].TrackXZ_st1.tx = fitarrays[index].output_parameters[1];
-			fulltrackbuilder[index].TrackXZ_st1.err_tx = fitarrays[index].output_parameters[1];
+			fulltrackbuilder[index].TrackXZ_st1.x_0 = fitarrays[index].output_parameters[0];
+			fulltrackbuilder[index].TrackXZ_st1.err_x_0 = fitarrays[index].output_parameters[0];
+			fulltrackbuilder[index].TrackXZ_st1.tx_ = fitarrays[index].output_parameters[1];
+			fulltrackbuilder[index].TrackXZ_st1.err_tx_ = fitarrays[index].output_parameters[1];
 			
 			for(int k = 0; k<nu1; k++){
 				nhits_U1 = nhits_X1;
@@ -1756,10 +1755,10 @@ __global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFull
 			
 			fit_2D_track(nhits_X1+1, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 			
-			fulltrackbuilder[index].TrackXZ_st1.x0 = fitarrays[index].output_parameters[0];
-			fulltrackbuilder[index].TrackXZ_st1.err_x0 = fitarrays[index].output_parameters[0];
-			fulltrackbuilder[index].TrackXZ_st1.tx = fitarrays[index].output_parameters[1];
-			fulltrackbuilder[index].TrackXZ_st1.err_tx = fitarrays[index].output_parameters[1];
+			fulltrackbuilder[index].TrackXZ_st1.x_0 = fitarrays[index].output_parameters[0];
+			fulltrackbuilder[index].TrackXZ_st1.err_x_0 = fitarrays[index].output_parameters[0];
+			fulltrackbuilder[index].TrackXZ_st1.tx_ = fitarrays[index].output_parameters[1];
+			fulltrackbuilder[index].TrackXZ_st1.err_tx_ = fitarrays[index].output_parameters[1];
 
 			projid = 1;
 			find_xmin_xmax_in_chamber(xmin, xmax, fulltrackbuilder[index].TrackXZ_st1, stid, projid, planes);
