@@ -350,52 +350,82 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	short nhits_v2;
 	
 	short stid, projid;
-
-#ifdef OLDCODE
-        // 1- get X pairs in st2, st3:
+	
+        // 1- get hit pairs in bins in st2, st3:
+	// the pairs for st3p and st3m are now in the same array. to allow for parallelization of d3p/d3m if needed;
 	projid = 0;
 	//D2: stid = 3-1
 	stid = 2;
-	int nx2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_x2, straighttrackbuilder[index].nhitpairs_x2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
 	//D3p: stid = 4-1
 	stid = 3;
-	int nx3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_x3, straighttrackbuilder[index].nhitpairs_x3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 
 	//D3p: stid = 5-1
 	stid = 4;
-	int nx3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_x3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_x3, straighttrackbuilder[index].nhitpairs_x3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 
 	projid = 1;
 	stid = 2;
-	int nu2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].nhitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
 	stid = 3;
-	int nu3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_u3, straighttrackbuilder[index].nhitpairs_u3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
 	stid = 4;
-	int nu3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_u3, straighttrackbuilder[index].nhitpairs_u3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
 	projid = 2;
 	stid = 2;
-	int nv2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].nhitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
 	stid = 3;
-	int nv3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_v3, straighttrackbuilder[index].nhitpairs_v3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 		
 	stid = 4;
-	int nv3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
-		
-	int ncomb_x = nx2*(nx3p+nx3m);
-	int ncomb_2 = nu2*nv2;
-	int ncomb_3p = nu3p*nv3p;
-	int ncomb_3m = nu3m*nv3m;
-	int ncomb_3, nu3, nv3;
-
-	int i_x2, i_x3;
-	int i_u2, i_u3, i_v2, i_v3;
+	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_v3, straighttrackbuilder[index].nhitpairs_v3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
 	
-	bool d3p;
+	bool bin_overflows = false;
+	for(int bin = 0; bin<28; bin++){
+		if(straighttrackbuilder[index].nhitpairs_x2[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
+		//printf("evt %d bin %d nhits x2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x2[bin]);}
+		if(straighttrackbuilder[index].nhitpairs_u2[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
+		//printf("evt %d bin %d nhits u2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u2[bin]);}
+		if(straighttrackbuilder[index].nhitpairs_v2[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
+		//printf("evt %d bin %d nhits v2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v2[bin]);}
+	}
+	for(int bin = 0; bin<58; bin++){
+		if(straighttrackbuilder[index].nhitpairs_x3[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
+		//printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x3[bin]);}
+		if(straighttrackbuilder[index].nhitpairs_u3[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
+		//printf("evt %d bin %d nhits u3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u3[bin]);}
+		if(straighttrackbuilder[index].nhitpairs_v3[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
+		//printf("evt %d bin %d nhits v3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v3[bin]);}
+	}
+	if(bin_overflows){
+		printf("Evt %d discarded, too many hits\n", ic[index].EventID);
+		return;
+	}
+	
+	// declare variables useful for the loop 
+	
+	const short nbins_st2 = geometry::N_WCHitsBins[1];
+	const short nbins_st3 = geometry::N_WCHitsBins[2]+geometry::N_WCHitsBins[3];
+	// if parallel:
+	// const short nbins_st3 = geometry::N_WCHitsBins[2];
+	const short nbins_total = nbins_st2*nbins_st3;
+	short bin2, bin3;
+	
+	int nx2, nu2, nv2;
+	int nx3, nu3, nv3;
+	
+	int ncomb_x, ncomb_u, ncomb_v;
+	
+	short i_x2, i_x3;
+	short i_u2, i_u3, i_v2, i_v3;
+	
+	short i_x, i_u, i_v;
 	
 	float x0, tx;
 	float y, err_y;
@@ -403,80 +433,88 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	
 	float chi2min = 1000000.f;
 	
-	for(int k = 0; k<ncomb_x; k++){
-		//k = i_x3*nx2+i_x2;
-		i_x2 = k%nx2;
-		i_x3 = (k-i_x2)/nx2;
-		
-		nhits_x = 0;
-		
-		if(straighttrackbuilder[index].hitpairs_x2[i_x2].first>=0){
-			straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x2[i_x2].first;
-			FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-			nhits_x++;
-		}
-		if(straighttrackbuilder[index].hitpairs_x2[i_x2].second>=0){
-			straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x2[i_x2].second;
-			FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-			nhits_x++;
-		}
-		
-		if(i_x3<nx3p){
-			d3p = true;
-			if(straighttrackbuilder[index].hitpairs_x3p[i_x3].first>=0){
-				//oc[index].AllTracklets[ntkl].hits[nhits_x] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3p[i_x3].first];
-				//oc[index].AllTracklets[ntkl].nXHits++;
-				//FillFitArrays_X(nhits_x, oc[index].AllTracklets[ntkl].hits[nhits_x], 0, fitarrays[index], planes);
-				//FillChi2Arrays(nhits_x, oc[index].AllTracklets[ntkl].hits[nhits_x], 0, fitarrays[index], planes);
+	//loop on bins FIRST
+	for(short i = 0; i<nbins_total; i++){
+		bin2 = i%nbins_st2;
+		bin3 = (i-bin2)/nbins_st2;
+		// if parallel:
+		// bin3+=nbins_st3*i_thread;
 
-				straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3p[i_x3].first;
-				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-				nhits_x++;
-			}
-			if(straighttrackbuilder[index].hitpairs_x3p[i_x3].second>=0){
-				straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3p[i_x3].second;
-				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-				nhits_x++;
-			}
-		}else{
-			d3p = false;
-			i_x3-= nx3p;
-			if(straighttrackbuilder[index].hitpairs_x3m[i_x3].first>=0){
-				straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3m[i_x3].first;
-				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-				nhits_x++;
-			}
-			if(straighttrackbuilder[index].hitpairs_x3m[i_x3].second>=0){
-				straighttrackbuilder[index].hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3m[i_x3].second;
-				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x]], 0, fitarrays[index], planes);
-				nhits_x++;
-			}
-		}
+		nx2 = straighttrackbuilder[index].nhitpairs_x2[bin2];
+		nx3 = straighttrackbuilder[index].nhitpairs_x3[bin3];
+		if(nx2 == 0 || nx3==0) continue;
 		
-		fit_2D_track(nhits_x, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-		if(fabs(fitarrays[index].output_parameters[0])>1.05*X0_MAX || fabs(fitarrays[index].output_parameters[1])>1.05*TX_MAX)continue;
+		nu2 = straighttrackbuilder[index].nhitpairs_u2[bin2];
+		nu3 = straighttrackbuilder[index].nhitpairs_u3[bin3];
+		if(nu2 == 0 || nu3==0) continue;
 		
-		x0 = fitarrays[index].output_parameters[0];
-		tx = fitarrays[index].output_parameters[1];
+		nv2 = straighttrackbuilder[index].nhitpairs_v2[bin2];
+		nv3 = straighttrackbuilder[index].nhitpairs_v3[bin3];
+		if(nv2 == 0 || nv3==0) continue;
 		
-		//prop matching
-		nprop = 0;
-		for(short ip = 0; ip<4; ip++){
-			iprop = 48+ip;
-			xExp = tx*planes[iprop].z+x0;
-			//loop on hits to find prop
-			for(int n = 0; n<ic[index].nAH; n++){
-				if(ic[index].AllHits[k].detectorID==iprop){
-					if(fabs(ic[index].AllHits[n].pos-xExp)<5.08f){
-						nprop++;
-						break;
+		// evaluating the number of combinations;
+		ncomb_x = nx2*nx3;
+		ncomb_u = nu2*nu3;
+		ncomb_v = nv2*nv3;
+		
+		for(int i_x = 0; i_x<ncomb_x; i_x++){
+			i_x2 = i_x%nx3;
+			i_x3 = (i_x-i_x2)/nx3;
+			
+			nhits_x = 0;
+					
+			if(straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].first>=0){
+				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].first;
+				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
+				nhits_x++;
+			}
+			if(straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].second>=0){
+				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].second;
+				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
+				nhits_x++;
+			}
+			
+			if(straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].first>=0){
+				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].first;
+				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
+				nhits_x++;
+			}
+			if(straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].second>=0){
+				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].second;
+				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
+				nhits_x++;
+			}
+			
+			fit_2D_track(nhits_x, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
+			if(fabs(fitarrays[index].output_parameters[0])>1.05*X0_MAX || fabs(fitarrays[index].output_parameters[1])>1.05*TX_MAX)continue;
+			
+			straighttrackbuilder[index].trackXZ.x_0 = fitarrays[index].output_parameters[0];
+			straighttrackbuilder[index].trackXZ.tx_ = fitarrays[index].output_parameters[1];
+
+			//prop matching
+			nprop = 0;
+			for(short ip = 0; ip<4; ip++){
+				iprop = 48+ip;
+				xExp = tx*planes[iprop].z+x0;
+				//loop on hits to find prop
+				for(int n = 0; n<ic[index].nAH; n++){
+					if(ic[index].AllHits[n].detectorID==iprop){
+						if(fabs(ic[index].AllHits[n].pos-xExp)<5.08f){
+							nprop++;
+							break;
+						}
 					}
 				}
+				if(nprop>0)break;
 			}
-			if(nprop>0)break;
+			if(nprop==0)continue;
 		}
-		if(nprop==0)continue;
-			
+	
+	}
+		
+	
+#ifdef OLDCODE
+
 		if(d3p){
 			for(i_u3 = 0;i_u3<nu3p;i_u3++){
 				nhits_uv = 0;

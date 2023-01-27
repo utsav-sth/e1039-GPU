@@ -41,7 +41,6 @@ __device__ float position(const gHit hit, const short sign)
 	return (hit.pos+sign*hit.driftDistance);
 }
 
-
 // ---------------------------------------------------
 
 // function to make the hit pairs in station;
@@ -214,12 +213,25 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 }
 
 
-__device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>** hitpairs, short* npairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
+__device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>* hitpairs, int* npairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
 	// I think we assume that by default we want to know where we are
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
-
+	
+	short bin0 = 0;
+	if(stID==4)bin0 = geometry::N_WCHitsBins[stID-1];
+	
 	short bin;
-	for(bin = 0; bin<32; bin++){
+	const short Nbins = geometry::N_WCHitsBins[stID-1];
+	const short MaxHits = geometry::MaxHitsProj[projID];
+#ifdef DEBUG
+	if(ic[index].EventID==1){
+		printf("evt %d STID %d projID %d NBins: %d \n", ic[index].EventID, stID, projID, Nbins);
+		for(bin = 0; bin<Nbins; bin++){
+		printf("bin %d low bin limit %d high bin limit %d\n", bin,  geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin]);
+		}
+	}
+#endif
+	for(bin = 0; bin<Nbins; bin++){
 		npairs[bin] = 0;
 	}
 		
@@ -259,12 +271,11 @@ __device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>
 				continue;
 			}
 			
-			for(bin = 0; bin<32; bin++){
-				if( geometry::WCHitsBins[stID][projID][0][bin] <= ic[index].AllHits[ hitidx1[idx1] ].elementID && 
-				    ic[index].AllHits[ hitidx1[idx1] ].elementID <= geometry::WCHitsBins[stID][projID][0][bin]){
-					hitpairs[bin][npairs[bin]] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= ic[index].AllHits[ hitidx1[idx1] ].elementID && 
+				    ic[index].AllHits[ hitidx1[idx1] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
 					npairs[bin]++;
-					if(projID==0)break;
 				}
 			}
 			hitflag1[idx1] = 1;
@@ -276,29 +287,27 @@ __device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>
 	// (but they still have to be paired to be used in the trackletteing)
 	for(int i = 0; i<hitctr1; i++){
 		if(hitflag1[i]<1){
-			for(bin = 0; bin<32; bin++){
-				if( geometry::WCHitsBins[stID][projID][0][bin] <= ic[index].AllHits[ hitidx1[i] ].elementID && 
-				    ic[index].AllHits[ hitidx1[i] ].elementID <= geometry::WCHitsBins[stID][projID][0][bin]){
-					hitpairs[bin][npairs[bin]] = thrust::make_pair(hitidx1[i], -1);
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= ic[index].AllHits[ hitidx1[i] ].elementID && 
+				    ic[index].AllHits[ hitidx1[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[i], -1);
 					npairs[bin]++;
-					if(projID==0)break;
 				}
 			}
 		}
 	}
 	for(int i = 0; i<hitctr2; i++){
 		if(hitflag2[i]<1){
-			for(bin = 0; bin<32; bin++){
-				if( geometry::WCHitsBins[stID][projID][0][bin] <= ic[index].AllHits[ hitidx2[i] ].elementID && 
-				    ic[index].AllHits[ hitidx2[i] ].elementID <= geometry::WCHitsBins[stID][projID][0][bin]){
-					hitpairs[bin][npairs[bin]] = thrust::make_pair(hitidx2[i], -1);
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= ic[index].AllHits[ hitidx2[i] ].elementID && 
+				    ic[index].AllHits[ hitidx2[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[i], -1);
 					npairs[bin]++;
-					if(projID==0)break;
 				}
 			}
 		 }
 	}
-	   
+	
 	//return npairs;
 }
 

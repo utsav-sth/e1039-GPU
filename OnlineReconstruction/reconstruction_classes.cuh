@@ -44,7 +44,8 @@ namespace geometry{
 	__device__ constexpr float PT_KICK_KMAG = 0.4016;
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
-	__device__ constexpr short NWCHitsBin[4] = {32, 28, 29, 29};
+	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 29, 29};
+	__device__ constexpr short MaxHitsProj[3] = {10, 40, 40};
 	__device__ constexpr short WCHitsBins[4][3][2][32] = {
         	{{{1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146, 151, 156}, 
 		  {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160}}, // d0x
@@ -143,7 +144,7 @@ class gTrack2D {
       
       float chisq;
               
-      gHit hits[MaxHitsPerTrack];
+      //gHit hits[MaxHitsPerTrack];
       int hitlist[MaxHitsPerTrack];
       short hitsign[MaxHitsPerTrack];
       
@@ -193,30 +194,25 @@ public:
 
 class gStraightTrackBuilder{
 public:
-	gTrack2D track2D[2];//0: XZ; 1: YZ; 
+	gTrack2D trackXZ;
+	gTrack2D trackYZ;
 	
         //pairs in station 2
-        thrust::pair<int, int> hitpairs_x2[28][5];
-        thrust::pair<int, int> hitpairs_u2[28][5];
-        thrust::pair<int, int> hitpairs_v2[28][5];
+        thrust::pair<int, int> hitpairs_x2[280];//28*10
+        thrust::pair<int, int> hitpairs_u2[1120];//28*40
+        thrust::pair<int, int> hitpairs_v2[1120];
         //pairs in station 3
-        thrust::pair<int, int> hitpairs_x3p[29][30];
-        thrust::pair<int, int> hitpairs_u3p[29][30];
-        thrust::pair<int, int> hitpairs_v3p[29][30];
-        thrust::pair<int, int> hitpairs_x3m[29][30];
-        thrust::pair<int, int> hitpairs_u3m[29][30];
-        thrust::pair<int, int> hitpairs_v3m[29][30];
+        thrust::pair<int, int> hitpairs_x3[580];//29*10*2
+        thrust::pair<int, int> hitpairs_u3[2320];//29*40*2
+        thrust::pair<int, int> hitpairs_v3[2320];
 	
-	int nhitspairs_x2[28];
-	int nhitspairs_u2[28];
-	int nhitspairs_v2[28];
+	int nhitpairs_x2[28];
+	int nhitpairs_u2[28];
+	int nhitpairs_v2[28];
 	
-	int nhitspairs_x3p[29];
-	int nhitspairs_u3p[29];
-	int nhitspairs_v3p[29];
-	int nhitspairs_x3m[29];
-	int nhitspairs_u3m[29];
-	int nhitspairs_v3m[29];
+	int nhitpairs_x3[58];
+	int nhitpairs_u3[58];
+	int nhitpairs_v3[58];
 	
 	//util arrays for pair making
 	int hitidx1[100];
