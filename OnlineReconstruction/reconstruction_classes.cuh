@@ -16,7 +16,7 @@ const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 const int Track2DSizeMax = 100;
-const int TrackletSizeMax = 200;
+const int TrackletSizeMax = 500;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -144,7 +144,7 @@ class gTrack2D {
       
       float chisq;
               
-      //gHit hits[MaxHitsPerTrack];
+      short nhits;
       int hitlist[MaxHitsPerTrack];
       short hitsign[MaxHitsPerTrack];
       
@@ -196,6 +196,7 @@ class gStraightTrackBuilder{
 public:
 	gTrack2D trackXZ;
 	gTrack2D trackYZ;
+	gTrack2D besttrackYZ;
 	
         //pairs in station 2
         thrust::pair<int, int> hitpairs_x2[280];//28*10
@@ -235,8 +236,8 @@ public:
       float deltapy[MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
       float deltapz[MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
       
-      float output_parameters[5];
-      float output_parameters_errors[5];
+      float output_parameters[4];
+      float output_parameters_errors[4];
       float chi2_2d;
       float chi2;
 

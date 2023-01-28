@@ -281,11 +281,9 @@ __device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEven
 
 
 __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitArrays& fitarray, const gPlane* planes){
+
 	//X hits are stored first, so we fit them first;
 	for(int i = 0; i<tkl.nXHits; i++){
-		//fitarray.x_array[i] = tkl.hits[i].pos+tkl.hits[i].driftDistance*tkl.hitsign[i];
-		//fitarray.dx_array[i] = planes[tkl.hits[i].detectorID].resolution;
-		//fitarray.z_array[i] = planes[tkl.hits[i].detectorID].z;
 		FillFitArrays_X(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
 		FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
 	}
@@ -301,9 +299,6 @@ __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitAr
 	
 	for(int i = tkl.nXHits; i<tkl.nXHits+tkl.nUHits+tkl.nVHits; i++){
 		if( calculate_y_uvhit(y, err_y, tkl.hits[i], tkl.hitsign[i], tkl, planes) ){
-			//fitarray.y_array[i-tkl.nXHits] = y;
-			//fitarray.dy_array[i-tkl.nXHits] = err_y;
-			//fitarray.z_array[i-tkl.nXHits] = planes[tkl.hits[i].detectorID].z;
 			FillFitArrays_UV(i-tkl.nXHits, tkl.hits[i], fitarray, planes, y, err_y);
 			FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
 		}
@@ -315,6 +310,11 @@ __device__ void refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitAr
 	
 	tkl.ty = fitarray.output_parameters[1];
 	tkl.err_ty = fitarray.output_parameters_errors[1];
+
+	fitarray.output_parameters[0] = tkl.x0;
+	fitarray.output_parameters[1] = tkl.y0;
+	fitarray.output_parameters[2] = tkl.tx;
+	fitarray.output_parameters[3] = tkl.ty;
 
 	chi2_straight(tkl.nXHits+tkl.nUHits+tkl.nVHits, fitarray.drift_dist, fitarray.resolution,
 			fitarray.p1x, fitarray.p1y, fitarray.p1z,
@@ -336,21 +336,12 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	oc[index].nTracklets = 0;
 	
 	//if(oc[index].HasTooManyHits)return;
-	
-	int ntkl = 0;
-	
-	//for the time being, declare in function;
-	short nprop, iprop;
-	REAL xExp;
-	short nhits_x;
-	short nhits_uv;
-	short nhits_u3;
-	short nhits_v3;
-	short nhits_u2;
-	short nhits_v2;
+
+	const short nbins_st2 = geometry::N_WCHitsBins[1];
+	const short nbins_st3 = geometry::N_WCHitsBins[2]+geometry::N_WCHitsBins[3];
 	
 	short stid, projid;
-	
+
         // 1- get hit pairs in bins in st2, st3:
 	// the pairs for st3p and st3m are now in the same array. to allow for parallelization of d3p/d3m if needed;
 	projid = 0;
@@ -365,7 +356,19 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	//D3p: stid = 5-1
 	stid = 4;
 	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_x3, straighttrackbuilder[index].nhitpairs_x3, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
-
+	
+#ifdef DEBUG
+	for(int bin = 0; bin<58; bin++){
+	if(straighttrackbuilder[index].nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x3[bin]);
+	for(int i = 0; i<straighttrackbuilder[index].nhitpairs_x3[bin]; i++){
+		if(straighttrackbuilder[index].hitpairs_x3[bin+28*i].first>-1)printf(" evt %d bin %d  i %d detid1 %d elid1 %d\n", ic[index].EventID, bin, i, 
+				ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3[bin+29*i].first].detectorID, ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3[bin+29*i].first].elementID);
+		if(straighttrackbuilder[index].hitpairs_x3[bin+28*i].second>-1)printf(" evt %d bin %d i %d detid2 %d elid2 %d\n", ic[index].EventID, bin, i, 
+				ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3[bin+29*i].second].detectorID, ic[index].AllHits[straighttrackbuilder[index].hitpairs_x3[bin+29*i].second].elementID);
+	}
+	}
+#endif
+	
 	projid = 1;
 	stid = 2;
 	make_hitpairs_in_station_bins(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].nhitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid);
@@ -389,19 +392,19 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	bool bin_overflows = false;
 	for(int bin = 0; bin<28; bin++){
 		if(straighttrackbuilder[index].nhitpairs_x2[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
-		//printf("evt %d bin %d nhits x2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x2[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_x2[bin])printf("evt %d bin %d nhits x2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x2[bin]);
 		if(straighttrackbuilder[index].nhitpairs_u2[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
-		//printf("evt %d bin %d nhits u2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u2[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_u2[bin])printf("evt %d bin %d nhits u2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u2[bin]);
 		if(straighttrackbuilder[index].nhitpairs_v2[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
-		//printf("evt %d bin %d nhits v2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v2[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_v2[bin])printf("evt %d bin %d nhits v2 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v2[bin]);
 	}
 	for(int bin = 0; bin<58; bin++){
 		if(straighttrackbuilder[index].nhitpairs_x3[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
-		//printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x3[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_x3[bin]);
 		if(straighttrackbuilder[index].nhitpairs_u3[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
-		//printf("evt %d bin %d nhits u3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u3[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_u3[bin])printf("evt %d bin %d nhits u3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_u3[bin]);
 		if(straighttrackbuilder[index].nhitpairs_v3[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
-		//printf("evt %d bin %d nhits v3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v3[bin]);}
+		//if(straighttrackbuilder[index].nhitpairs_v3[bin])printf("evt %d bin %d nhits v3 = %d\n", ic[index].EventID, bin, straighttrackbuilder[index].nhitpairs_v3[bin]);
 	}
 	if(bin_overflows){
 		printf("Evt %d discarded, too many hits\n", ic[index].EventID);
@@ -409,9 +412,19 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	}
 	
 	// declare variables useful for the loop 
+	int ntkl = 0;
 	
-	const short nbins_st2 = geometry::N_WCHitsBins[1];
-	const short nbins_st3 = geometry::N_WCHitsBins[2]+geometry::N_WCHitsBins[3];
+	//for the time being, declare in function;
+	short nprop, iprop;
+	REAL xExp;
+	short nhits_x;
+	short nhits_uv;
+	short nhits_v;
+	
+	short nhits_x2, nhits_x3;
+	short nhits_u2, nhits_u3;
+	short nhits_v2, nhits_v3;
+	
 	// if parallel:
 	// const short nbins_st3 = geometry::N_WCHitsBins[2];
 	const short nbins_total = nbins_st2*nbins_st3;
@@ -420,49 +433,61 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	int nx2, nu2, nv2;
 	int nx3, nu3, nv3;
 	
-	int ncomb_x, ncomb_u, ncomb_v;
+	int ncomb_x, ncomb_uv;
 	
 	short i_x2, i_x3;
 	short i_u2, i_u3, i_v2, i_v3;
 	
 	short i_x, i_u, i_v;
 	
-	float x0, tx;
 	float y, err_y;
 	float ty;
 	
-	float chi2min = 1000000.f;
+	float chi2min = 10000.1f;
 	
+	int n_goodxz;
+
 	//loop on bins FIRST
 	for(short i = 0; i<nbins_total; i++){
 		bin2 = i%nbins_st2;
 		bin3 = (i-bin2)/nbins_st2;
+		//printf("bin %d %d\n", bin2, bin3);
 		// if parallel:
 		// bin3+=nbins_st3*i_thread;
 
 		nx2 = straighttrackbuilder[index].nhitpairs_x2[bin2];
 		nx3 = straighttrackbuilder[index].nhitpairs_x3[bin3];
+		
+		//printf("nx %d %d \n", nx2, nx3);
 		if(nx2 == 0 || nx3==0) continue;
 		
 		nu2 = straighttrackbuilder[index].nhitpairs_u2[bin2];
 		nu3 = straighttrackbuilder[index].nhitpairs_u3[bin3];
+
+		//printf("nu %d %d \n", nu2, nu3);
 		if(nu2 == 0 || nu3==0) continue;
 		
 		nv2 = straighttrackbuilder[index].nhitpairs_v2[bin2];
 		nv3 = straighttrackbuilder[index].nhitpairs_v3[bin3];
+
+		//printf("nv %d %d \n", nv2, nv3);
 		if(nv2 == 0 || nv3==0) continue;
 		
 		// evaluating the number of combinations;
 		ncomb_x = nx2*nx3;
-		ncomb_u = nu2*nu3;
-		ncomb_v = nv2*nv3;
+		ncomb_uv = nu2*nu3*nv2*nv3;
 		
-		for(int i_x = 0; i_x<ncomb_x; i_x++){
+		n_goodxz = 0;
+				
+		int i_x, i_uv, i_hit;
+
+		for(i_x = 0; i_x<ncomb_x; i_x++){
 			i_x2 = i_x%nx3;
 			i_x3 = (i_x-i_x2)/nx3;
 			
+			nhits_v = -1;
 			nhits_x = 0;
-					
+			
 			if(straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].first>=0){
 				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x2[bin2+nbins_st2*i_x2].first;
 				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
@@ -473,6 +498,9 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				FillFitArrays_X(nhits_x, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[nhits_x]], 0, fitarrays[index], planes);
 				nhits_x++;
 			}
+			
+			nhits_x2 = nhits_x;
+			if(nhits_x2==0) continue;
 			
 			if(straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].first>=0){
 				straighttrackbuilder[index].trackXZ.hitlist[nhits_x] = straighttrackbuilder[index].hitpairs_x3[bin3+nbins_st3*i_x3].first;
@@ -485,17 +513,25 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				nhits_x++;
 			}
 			
+			nhits_x3 = nhits_x-nhits_x2;
+			if(nhits_x3==0) continue;
+			
 			fit_2D_track(nhits_x, fitarrays[index].x_array, fitarrays[index].z_array, fitarrays[index].dx_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
 			if(fabs(fitarrays[index].output_parameters[0])>1.05*X0_MAX || fabs(fitarrays[index].output_parameters[1])>1.05*TX_MAX)continue;
 			
 			straighttrackbuilder[index].trackXZ.x_0 = fitarrays[index].output_parameters[0];
+			straighttrackbuilder[index].trackXZ.err_x_0 = fitarrays[index].output_parameters_errors[0];
 			straighttrackbuilder[index].trackXZ.tx_ = fitarrays[index].output_parameters[1];
-
+			straighttrackbuilder[index].trackXZ.err_tx_ = fitarrays[index].output_parameters_errors[1];
+			straighttrackbuilder[index].trackXZ.nhits = nhits_x;
+			
+			n_goodxz++;
+			
 			//prop matching
 			nprop = 0;
 			for(short ip = 0; ip<4; ip++){
 				iprop = 48+ip;
-				xExp = tx*planes[iprop].z+x0;
+				xExp = straighttrackbuilder[index].trackXZ.tx_*planes[iprop].z+straighttrackbuilder[index].trackXZ.x_0;
 				//loop on hits to find prop
 				for(int n = 0; n<ic[index].nAH; n++){
 					if(ic[index].AllHits[n].detectorID==iprop){
@@ -508,409 +544,176 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				if(nprop>0)break;
 			}
 			if(nprop==0)continue;
-		}
-	
-	}
-		
-	
-#ifdef OLDCODE
 
-		if(d3p){
-			for(i_u3 = 0;i_u3<nu3p;i_u3++){
+			//partially fill the tracklet xz info:
+			oc[index].AllTracklets[ntkl].x0 = straighttrackbuilder[index].trackXZ.x_0;
+			oc[index].AllTracklets[ntkl].err_x0 = straighttrackbuilder[index].trackXZ.err_x_0;
+			oc[index].AllTracklets[ntkl].tx = straighttrackbuilder[index].trackXZ.tx_;
+			oc[index].AllTracklets[ntkl].err_tx = straighttrackbuilder[index].trackXZ.err_tx_;
+
+			for(i_hit = 0; i_hit<nhits_x; i_hit++){
+				FillChi2Arrays(i_hit, ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[i_hit]], 0, fitarrays[index], planes);
+				oc[index].AllTracklets[ntkl].hits[i_hit] = ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[i_hit]];
+			}
+			oc[index].AllTracklets[ntkl].nXHits = nhits_x;
+						
+#ifdef DEBUG		
+			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
 				nhits_uv = 0;
-				ty = 0;
+				i_u2 = i_uv%nu2;
+				i_v2 = ((i_uv-i_u2)/nu2)%nv2;
+				i_u3 = (((i_uv-i_u2)/nu2-i_v2)/nv2)%nu3;
+				i_v3 = ((((i_uv-i_u2)/nu2)-i_v2)/nv2-i_u3)/nu3;
 				
- 				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].first], 0, x0, tx, planes)){
-					straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u3p[i_u3].first;
-					FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
+				if(straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
 					nhits_uv++;
 					}
 				}
-				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].second], 0, x0, tx, planes)){
-					straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u3p[i_u3].second;
-					FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
+				if(straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].second>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].second], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].second;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
 					nhits_uv++;
 					}
 				}
-				if(nhits_uv==0)continue;
 				
-				nhits_u3 = nhits_uv;
+				nhits_u2 = nhits_uv;
+				if(nhits_u2==0) continue;
 				
-				for(i_v3 = 0;i_v3<nv3p;i_v3++){
-					nhits_uv = nhits_u3;
-					
- 					if(straighttrackbuilder[index].hitpairs_v3p[i_v3].first>=0){
-						if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].first], 0, x0, tx, planes)){
-						straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v3p[i_v3].first;
-						FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-						}
+				if(straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
 					}
-					if(straighttrackbuilder[index].hitpairs_v3p[i_v3].second>=0){
-						if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].second], 0, x0, tx, planes)){
-						straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v3p[i_v3].second;
-						FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-						}
+				}
+				if(straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].second>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].second], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].second;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
 					}
-					nhits_v3 = nhits_uv-nhits_u3;
-					if(nhits_v3==0)continue;
-					
-					for(i_u2 = 0; i_u2<nu2; i_u2++){
-						nhits_uv = nhits_u3+nhits_v3;
+				}
+
+				nhits_v2 = nhits_uv-nhits_u2;
+				if(nhits_v2==0) continue;
+				
+				if(straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].first>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].first], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].first;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
+					}
+				}
+				if(straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].second>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].second], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].second;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
+					}
+				}
+
+				nhits_u3 = nhits_uv-nhits_u2-nhits_v2;
+				if(nhits_u3==0) continue;
+
+				if(straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].first>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].first], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].first;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
+					}
+				}
+				if(straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].second>=0){
+					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].second], 0, straighttrackbuilder[index].trackXZ, planes)){
+					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_v3[bin3+nbins_st3*i_v3].second;
+					FillFitArrays_UV(nhits_x+nhits_uv, ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[nhits_uv]], fitarrays[index], planes, y, err_y);
+					nhits_uv++;
+					}
+				}
+
+				nhits_v3 = nhits_uv-nhits_u2-nhits_v2-nhits_u3;
+				if(nhits_v3==0) continue;
+				
+				fit_2D_track(nhits_uv, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
+				
+				straighttrackbuilder[index].trackYZ.x_0 = fitarrays[index].output_parameters[0];
+				straighttrackbuilder[index].trackYZ.err_x_0 = fitarrays[index].output_parameters_errors[0];
+				straighttrackbuilder[index].trackYZ.tx_ = fitarrays[index].output_parameters[1];
+				straighttrackbuilder[index].trackYZ.err_tx_ = fitarrays[index].output_parameters_errors[1];
+				straighttrackbuilder[index].trackYZ.nhits = nhits_uv;
+				
+				// now evaluate the back track candidate.
+				oc[index].AllTracklets[ntkl].y0 = straighttrackbuilder[index].trackYZ.x_0;
+				oc[index].AllTracklets[ntkl].err_y0 = straighttrackbuilder[index].trackYZ.err_x_0;
+				oc[index].AllTracklets[ntkl].ty = straighttrackbuilder[index].trackYZ.tx_;
+				oc[index].AllTracklets[ntkl].err_ty = straighttrackbuilder[index].trackYZ.err_tx_;
+				
+				// filter with hodoscope matching before evaluating chi2.
+				if(!match_tracklet_to_hodo(oc[index].AllTracklets[ntkl], 2, ic, planes))continue;
+				if(!match_tracklet_to_hodo(oc[index].AllTracklets[ntkl], 3, ic, planes) &&
+				   !match_tracklet_to_hodo(oc[index].AllTracklets[ntkl], 4, ic, planes))continue;
+				
+				//chi2_straight(nhits_x+nhits_uv, fitarrays[index].drift_dist, fitarrays[index].resolution,
+				//	fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z,
+				//	fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
+				//	fitarrays[index].output_parameters, fitarrays[index].chi2);
+				
+				for(i_hit = nhits_x; i_hit<nhits_x+nhits_uv; i_hit++){
+					oc[index].AllTracklets[ntkl].hits[i_hit] = ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[i_hit-nhits_x]];
+				}
+				oc[index].AllTracklets[ntkl].nUHits = nhits_u2+nhits_u3;
+				oc[index].AllTracklets[ntkl].nVHits = nhits_v2+nhits_v3;
+				
+				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
+				resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
+				resolve_single_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes);
+			
+				refit_backpartialtrack_with_drift(oc[index].AllTracklets[ntkl], fitarrays[index], planes);
+				for(i_hit = 0; i_hit<nhits_x; i_hit++){
+					straighttrackbuilder[index].trackXZ.hitsign[i_hit] = oc[index].AllTracklets[ntkl].hitsign[i_hit];
+				}
+				for(i_hit = nhits_x; i_hit<nhits_x+nhits_uv; i_hit++){
+					straighttrackbuilder[index].trackYZ.hitsign[i_hit-nhits_x] = oc[index].AllTracklets[ntkl].hitsign[i_hit];
+				}
+				
+				if(fitarrays[index].chi2<chi2min){
+					chi2min = fitarrays[index].chi2;
+					straighttrackbuilder[index].besttrackYZ.x_0 = straighttrackbuilder[index].trackYZ.x_0;
+					straighttrackbuilder[index].besttrackYZ.err_x_0 = straighttrackbuilder[index].trackYZ.err_x_0;
+					straighttrackbuilder[index].besttrackYZ.tx_ = straighttrackbuilder[index].trackYZ.tx_;
+					straighttrackbuilder[index].besttrackYZ.err_tx_ = straighttrackbuilder[index].trackYZ.err_tx_;
+					straighttrackbuilder[index].besttrackYZ.nhits = nhits_uv;
+					for(i_hit = 0; i_hit<nhits_uv; i_hit++){
+						straighttrackbuilder[index].besttrackYZ.hitlist[i_hit] = straighttrackbuilder[index].trackYZ.hitlist[i_hit];
+						straighttrackbuilder[index].besttrackYZ.hitsign[i_hit] = straighttrackbuilder[index].trackYZ.hitsign[i_hit];
+					}
+				}
+				
+			}// end loop on uv hits
 						
- 						if(straighttrackbuilder[index].hitpairs_u2[i_u2].first>=0){
-							if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].first], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u2[i_u2].first;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-							}
-						}
-						if(straighttrackbuilder[index].hitpairs_u2[i_u2].second>=0){
-							if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].second], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u2[i_u2].second;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-							}
-						}
-						nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
-						if(nhits_u2==0)continue;
-
-						for(i_v2 = 0; i_v2<nv2; i_v2++){
-							nhits_uv = nhits_u3+nhits_v3+nhits_u2;
-							
- 							if(straighttrackbuilder[index].hitpairs_v2[i_v2].first>=0){
-								if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].first], 0, x0, tx, planes)){
-								straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v2[i_v2].first;
-								FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-								nhits_uv++;
-								}
-							}
-							if(straighttrackbuilder[index].hitpairs_v2[i_v2].second>=0){
-								if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].second], 0, x0, tx, planes)){
-								straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v2[i_v2].second;
-								FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-								nhits_uv++;
-								}
-							}
-							nhits_v2 = nhits_uv-nhits_u3-nhits_v3;
-							if(nhits_v2==0)continue;
-						}//end loop on v2 hits
-					}//end loop on u2 hits
-				}//end loop on v3 hits
-			}//end loop on u3 hits
-		}else{
-			for(i_u3 = 0;i_u3<nu3m;i_u3++){
-				nhits_uv = 0;
-				
- 				if(straighttrackbuilder[index].hitpairs_u3m[i_u3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[i_u3].first], 0, x0, tx, planes)){
-						straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u3m[i_u3].first;
-						FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(straighttrackbuilder[index].hitpairs_u3m[i_u3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3m[i_u3].second], 0, x0, tx, planes)){
-						straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u3m[i_u3].second;
-						FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(nhits_uv==0)continue;
-				
-				nhits_u3 = nhits_uv;
-				
-				for(i_v3 = 0;i_v3<nv3m;i_v3++){
-					nhits_uv = nhits_u3;
-					
- 					if(straighttrackbuilder[index].hitpairs_v3m[i_v3].first>=0){
-						if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[i_v3].first], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v3m[i_v3].first;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-						}
-					}
-					if(straighttrackbuilder[index].hitpairs_v3m[i_v3].second>=0){
-						if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3m[i_v3].second], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v3m[i_v3].second;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-						}
-					}
-					nhits_v3 = nhits_uv-nhits_u3;
-					if(nhits_v3==0)continue;
-					
-					for(i_u2 = 0; i_u2<nu2; i_u2++){
-						nhits_uv = nhits_u3+nhits_v3;
-						
- 						if(straighttrackbuilder[index].hitpairs_u2[i_u2].first>=0){
-							if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].first], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u2[i_u2].first;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-							}
-						}
-						if(straighttrackbuilder[index].hitpairs_u2[i_u2].second>=0){
-							if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].second], 0, x0, tx, planes)){
-							straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_u2[i_u2].second;
-							FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-							nhits_uv++;
-							}
-						}
-						nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
-						if(nhits_u2==0)continue;
-						for(i_v2 = 0; i_v2<nv2; i_v2++){
-							nhits_uv = nhits_u3+nhits_v3+nhits_u2;
-							
- 							if(straighttrackbuilder[index].hitpairs_v2[i_v2].first>=0){
-								if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].first], 0, x0, tx, planes)){
-								straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v2[i_v2].first;
-								FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-								nhits_uv++;
-								}
-							}
-							if(straighttrackbuilder[index].hitpairs_v2[i_v2].second>=0){
-								if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].second], 0, x0, tx, planes)){
-								straighttrackbuilder[index].hitlist[nhits_x+nhits_uv] = straighttrackbuilder[index].hitpairs_v2[i_v2].second;
-								FillFitArrays_UV(nhits_uv, ic[index].AllHits[straighttrackbuilder[index].hitlist[nhits_x+nhits_uv]], fitarrays[index], planes, y, err_y);
-								nhits_uv++;
-								}
-							}
-							nhits_v2 = nhits_uv-nhits_u3-nhits_v3;
-							if(nhits_v2==0)continue;
-						}//end loop on v2 hits
-					}//end loop on u2 hits
-				}//end loop on v3 hits
-			}//end loop on u3 hits
-		}
-		
-		//printf("evt%d, ncomb_x =%d, ncomb_uv = %d, ncomb_uv2 = %d\n", oc[index].EventID, ncomb_x, ncomb_uv, ncomb_uv2);
-		
-		projid = 1;
-		stid = 2;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nu2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-
-		stid = 3;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nu3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-
-		stid = 4;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nu3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_u3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-		
-		projid = 2;
-		stid = 2;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nv2 = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v2, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-		
-		stid = 3;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nv3p = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3p, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-		
-		stid = 4;
-		find_xmin_xmax_in_chamber(xmin, xmax, oc[index].AllTracklets[ntkl], stid, projid, planes);
-		nv3m = make_hitpairs_in_station(ic, straighttrackbuilder[index].hitpairs_v3m, straighttrackbuilder[index].hitidx1, straighttrackbuilder[index].hitidx2, straighttrackbuilder[index].hitflag1, straighttrackbuilder[index].hitflag2, stid, projid, planes, xmin, xmax);
-		
-		if(nu2==0 || nv2==0 || nu3p+nu3m==0 || nv3p+nv3m==0) continue;
-		
-		ncomb_uv = nu2*nv2*(nu3p+nu3m)*(nv3p+nv3m);
-		
-		for(int l = 0; l<ncomb_uv; l++){
-			nhits_uv = 0;
-			i_u2 = l%nu2;
-			i_v2 = ((l-i_u2)/nu2)%nv2;
-			i_u3 = (((l-i_u2)/nu2-i_v2)/nv2)%(nu3p+nu3m);
-			i_v3 = ((((l-i_u2)/nu2)-i_v2)/nv2-i_u3)/(nu3p+nu3m);
+			if(nhits_v<0 || chi2min>=10000.f)continue;
 			
-			
-			if(straighttrackbuilder[index].hitpairs_u2[i_u2].first>=0){
-				if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].first], 0, oc[index].AllTracklets[ntkl], planes)){
-					oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].first];
-					oc[index].AllTracklets[ntkl].nUHits++;
-					FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-					FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-					nhits_uv++;
-				}
-			}
-			if(straighttrackbuilder[index].hitpairs_u2[i_u2].second>=0){
-				if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].second], 0, oc[index].AllTracklets[ntkl], planes)){
-					oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[i_u2].second];
-					oc[index].AllTracklets[ntkl].nUHits++;
-					FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-					FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-					nhits_uv++;
-				}
-			}
-			if(straighttrackbuilder[index].hitpairs_v2[i_v2].first>=0){
-				if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].first], 0, oc[index].AllTracklets[ntkl], planes)){
-					oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].first];
-					oc[index].AllTracklets[ntkl].nVHits++;
-					FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-					FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-					nhits_uv++;
-				}
-			}
-			if(straighttrackbuilder[index].hitpairs_v2[i_v2].second>=0){
-				if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].second], 0, oc[index].AllTracklets[ntkl], planes)){
-					oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[i_v2].second];
-					oc[index].AllTracklets[ntkl].nVHits++;
-					FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-					FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-					nhits_uv++;
-				}
-			}
-			if(i_u3<nu3p){
-				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].first], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].first];
-						oc[index].AllTracklets[ntkl].nUHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].second], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].second];
-						oc[index].AllTracklets[ntkl].nUHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-			}else{
-				i_u3-= nu3p;
-				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].first], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].first];
-						oc[index].AllTracklets[ntkl].nUHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(straighttrackbuilder[index].hitpairs_u3p[i_u3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].second], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3p[i_u3].second];
-						oc[index].AllTracklets[ntkl].nUHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-			}
-						
-			if(i_v3<nv3p){
-				if(straighttrackbuilder[index].hitpairs_v3p[i_v3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].first], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].first];
-						oc[index].AllTracklets[ntkl].nVHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(straighttrackbuilder[index].hitpairs_v3p[i_v3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].second], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].second];
-						oc[index].AllTracklets[ntkl].nVHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-			}else{
-				i_v3-= nv3p;
-				if(straighttrackbuilder[index].hitpairs_v3p[i_v3].first>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].first], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].first];
-						oc[index].AllTracklets[ntkl].nVHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-				if(straighttrackbuilder[index].hitpairs_v3p[i_v3].second>=0){
-					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].second], 0, oc[index].AllTracklets[ntkl], planes)){
-						oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv] = ic[index].AllHits[straighttrackbuilder[index].hitpairs_v3p[i_v3].second];
-						oc[index].AllTracklets[ntkl].nVHits++;
-						FillChi2Arrays(nhits_x+nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], 0, fitarrays[index], planes);
-						FillFitArrays_UV(nhits_uv, oc[index].AllTracklets[ntkl].hits[nhits_x+nhits_uv], fitarrays[index], planes, y, err_y);
-						nhits_uv++;
-					}
-				}
-			}
-
-			fit_2D_track(nhits_uv, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-			
-			oc[index].AllTracklets[ntkl].y0 = fitarrays[index].output_parameters[0];
-			oc[index].AllTracklets[ntkl].err_y0 = fitarrays[index].output_parameters_errors[0];
-			oc[index].AllTracklets[ntkl].ty = fitarrays[index].output_parameters[1];
-			oc[index].AllTracklets[ntkl].err_ty = fitarrays[index].output_parameters_errors[1];
-			
-			chi2_straight(nhits_x+nhits_uv, fitarrays[index].drift_dist, fitarrays[index].resolution,
-					fitarrays[index].p1x, fitarrays[index].p1y, fitarrays[index].p1z,
-					fitarrays[index].deltapx, fitarrays[index].deltapy, fitarrays[index].deltapz,
-					fitarrays[index].output_parameters, fitarrays[index].chi2);
-
-			resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 40.);
-			resolve_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes, 150.);
-			resolve_single_leftright(oc[index].AllTracklets[oc[index].nTracklets], planes);
-			
-			refit_backpartialtrack_with_drift(oc[index].AllTracklets[ntkl], fitarrays[index], planes);
-						
-			if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 2, ic, planes))continue;
-			if(!match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 3, ic, planes) &&
-			   !match_tracklet_to_hodo(oc[index].AllTracklets[oc[index].nTracklets], 4, ic, planes))continue;
-			
-			if(fitarrays[index].chi2<chi2min){
-				chi2min = fitarrays[index].chi2;
-				
-				//copy the hitlist and parameters in a yz track:
-				straighttrackbuilder[index].TrackYZ[0].y0 = oc[index].AllTracklets[ntkl].y0;
-				straighttrackbuilder[index].TrackYZ[0].err_y0 = oc[index].AllTracklets[ntkl].err_y0;
-				straighttrackbuilder[index].TrackYZ[0].ty = oc[index].AllTracklets[ntkl].ty;
-				straighttrackbuilder[index].TrackYZ[0].err_ty = oc[index].AllTracklets[ntkl].err_ty;
-				
-				straighttrackbuilder[index].TrackYZ[0].nUHits = oc[index].AllTracklets[ntkl].nUHits;
-				straighttrackbuilder[index].TrackYZ[0].nVHits = oc[index].AllTracklets[ntkl].nVHits;
-				for(short m = 0; m<nhits_uv; m++){
-					straighttrackbuilder[index].TrackYZ[0].hits[m] = oc[index].AllTracklets[ntkl].hits[nhits_x+m];
-				}
-			}
-		}
-		
-		if(ntkl>=TrackletSizeMax){
-			printf("evt%d: reached max number of tracklets %d\n", oc[index].EventID, k);
-			//RankTrackletByChi2();
-			break;
-		}else if(chi2min<10000.f){
-			//then we do the reverse operation
-			//printf[]
 			oc[index].AllTracklets[ntkl].chisq = chi2min;
-				
-			//copy back the hitlist and parameters from the "best" yz track back to the tracklet:
-			oc[index].AllTracklets[ntkl].y0 = straighttrackbuilder[index].TrackYZ[0].y0;
-			oc[index].AllTracklets[ntkl].err_y0 = straighttrackbuilder[index].TrackYZ[0].err_y0;
-			oc[index].AllTracklets[ntkl].ty = straighttrackbuilder[index].TrackYZ[0].ty;
-			oc[index].AllTracklets[ntkl].err_ty = straighttrackbuilder[index].TrackYZ[0].err_ty;
-				
-			oc[index].AllTracklets[ntkl].nUHits = straighttrackbuilder[index].TrackYZ[0].nUHits;
-			oc[index].AllTracklets[ntkl].nVHits = straighttrackbuilder[index].TrackYZ[0].nVHits;
-			for(short m = 0; m<oc[index].AllTracklets[ntkl].nUHits+oc[index].AllTracklets[ntkl].nVHits; m++){
-				oc[index].AllTracklets[ntkl].hits[nhits_x+m] = straighttrackbuilder[index].TrackYZ[0].hits[m]; 
+			oc[index].AllTracklets[ntkl].y0 = straighttrackbuilder[index].besttrackYZ.x_0;
+			oc[index].AllTracklets[ntkl].err_y0= straighttrackbuilder[index].besttrackYZ.err_x_0;
+			oc[index].AllTracklets[ntkl].ty = straighttrackbuilder[index].besttrackYZ.tx_;
+			oc[index].AllTracklets[ntkl].err_ty = straighttrackbuilder[index].besttrackYZ.err_tx_;
+			
+			nhits_uv = straighttrackbuilder[index].trackYZ.nhits;
+			
+			for(i_hit = 0; i_hit<nhits_uv; i_hit++){
+				oc[index].AllTracklets[ntkl].hits[i_hit+nhits_x] = ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[i_hit]];
 			}
-			ntkl++;
-		}
-	}
-	
-	oc[index].nTracklets = ntkl;
-	//printf("ntracklets: %d\n", oc[index].nTracklets);
 #endif
+			ntkl++;	
+		}// end loop on x hits
+		//if(n_goodxz==0)printf("bin2 %d bin3 %d\n", bin2, bin3);
+	}//end loop on bins
+		
+	oc[index].nTracklets = ntkl;
 }
 
 
