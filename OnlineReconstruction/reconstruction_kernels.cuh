@@ -439,16 +439,22 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	short i_x2, i_x3;
 	short i_u2, i_u3, i_v2, i_v3;
 	
-	short i_x, i_u, i_v;
-	
 	float y, err_y;
 	float ty;
 	
 	float chi2min = 10000.1f;
 	
+	int i_x, i_uv, i_hit;
+
 	int n_goodxz;
-	//int hitidx;
-	//gHit hit;
+
+	int hitidx;
+	gHit hit;
+	int detid;
+	
+	float z_array[8];
+	float y_array[8];
+	float dy_array[8];
 	
 	//loop on bins FIRST
 	for(short i = 0; i<nbins_total; i++){
@@ -482,8 +488,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 		
 		n_goodxz = 0;
 				
-		int i_x, i_uv, i_hit;
-
 		for(i_x = 0; i_x<ncomb_x; i_x++){
 			i_x2 = i_x%nx3;
 			i_x3 = (i_x-i_x2)/nx3;
@@ -532,12 +536,13 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 			
 			//prop matching
 			nprop = 0;
-			for(short ip = 0; ip<4; ip++){
-				iprop = 48+ip;
-				xExp = straighttrackbuilder[index].trackXZ.tx_*planes[iprop].z+straighttrackbuilder[index].trackXZ.x_0;
-				//loop on hits to find prop
-				for(int n = 0; n<ic[index].nAH; n++){
-					if(ic[index].AllHits[n].detectorID==iprop){
+			//loop on hits to find prop
+			for(int n = 0; n<ic[index].nAH; n++){
+				detid = ic[index].AllHits[n].detectorID;
+				for(short ip = 0; ip<4; ip++){
+					iprop = 48+ip;
+					xExp = straighttrackbuilder[index].trackXZ.tx_*planes[iprop].z+straighttrackbuilder[index].trackXZ.x_0;
+					if(detid==iprop){
 						if(fabs(ic[index].AllHits[n].pos-xExp)<5.08f){
 							nprop++;
 							break;
@@ -566,21 +571,119 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				i_v2 = ((i_uv-i_u2)/nu2)%nv2;
 				i_u3 = (((i_uv-i_u2)/nu2-i_v2)/nv2)%nu3;
 				i_v3 = ((((i_uv-i_u2)/nu2)-i_v2)/nv2-i_u3)/nu3;
-				
-#ifdef DEBUG
-				hitidx = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first;
-				hit = ic[index].AllHits[hitidx];
 
+				// checking station 3 hits first!
+				hitidx = straighttrackbuilder[index].hitpairs_u3[bin2+nbins_st2*i_u3].first;
 				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
 					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
-					//straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = hitidx;
-					//FillFitArrays_UV(nhits_x+nhits_uv, hit, fitarrays[index], planes, y, err_y);
-					fitarrays[index].y_array[nhits_x+nhits_uv] = y;
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
 					nhits_uv++;
 					}
 				}
-#endif
+
+				hitidx = straighttrackbuilder[index].hitpairs_u3[bin2+nbins_st2*i_u3].second;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
 				
+				nhits_u3 = nhits_uv-nhits_u3-nhits_v3;
+				if(nhits_u2==0) continue;
+
+				hitidx = straighttrackbuilder[index].hitpairs_v3[bin2+nbins_st2*i_v3].first;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+
+				hitidx = straighttrackbuilder[index].hitpairs_v3[bin2+nbins_st2*i_v3].second;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+				
+				nhits_v3 = nhits_uv-nhits_u3;
+				if(nhits_v3==0) continue;
+				
+				
+				// then checking station 2 hits:				
+				hitidx = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+
+				hitidx = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].second;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+				
+				nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
+				if(nhits_u2==0) continue;
+
+				hitidx = straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+
+				hitidx = straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].second;
+				if(hitidx>=0){
+					hit = ic[index].AllHits[hitidx];
+					detid = hit.detectorID;
+					if(calculate_y_uvhit(y, err_y, hit, 0, straighttrackbuilder[index].trackXZ, planes)){
+					z_array[nhits_uv] = planes[detid].z;
+					y_array[nhits_uv] = y;
+					dy_array[nhits_uv] = err_y;
+					nhits_uv++;
+					}
+				}
+				
+				nhits_v2 = nhits_uv-nhits_u3-nhits_v3-nhits_u2;
+				if(nhits_v2==0) continue;
+
+#ifdef DEBUG
 				if(straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
 					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first], 0, straighttrackbuilder[index].trackXZ, planes)){
 					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first;
@@ -597,8 +700,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 					}
 				}
 				
-				nhits_u2 = nhits_uv;
-				if(nhits_u2==0) continue;
 				
 				if(straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first>=0){
 					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_v2[bin2+nbins_st2*i_v2].first], 0, straighttrackbuilder[index].trackXZ, planes)){
@@ -615,8 +716,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 					}
 				}
 
-				nhits_v2 = nhits_uv-nhits_u2;
-				if(nhits_v2==0) continue;
 				
 				if(straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].first>=0){
 					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u3[bin3+nbins_st3*i_u3].first], 0, straighttrackbuilder[index].trackXZ, planes)){
@@ -650,7 +749,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 					nhits_uv++;
 					}
 				}
-
 				nhits_v3 = nhits_uv-nhits_u2-nhits_v2-nhits_u3;
 				if(nhits_v3==0) continue;
 				
@@ -714,6 +812,7 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				}else{
 					ntkl++;
 				}
+#endif
 			}// end loop on uv hits
 
 			if(nhits_v<0 || chi2min>=10000.f)continue;
