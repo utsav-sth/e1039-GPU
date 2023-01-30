@@ -435,12 +435,11 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	int nx3, nu3, nv3;
 	
 	int ncomb_x, ncomb_uv;
-	
+		
 	short i_x2, i_x3;
 	short i_u2, i_u3, i_v2, i_v3;
 	
 	float y, err_y;
-	float ty;
 	
 	float chi2min = 10000.1f;
 	
@@ -455,7 +454,13 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	float z_array[8];
 	float y_array[8];
 	float dy_array[8];
-	
+	float A_[4], B_[2], Ainv_[4], OutputPar[4], OutputParErrors[4];
+	float chi2_2d_;
+
+
+	float x0, tx, err_x0, err_tx;
+	float y0, ty, err_y0, err_ty;
+			
 	//loop on bins FIRST
 	for(short i = 0; i<nbins_total; i++){
 		bin2 = i%nbins_st2;
@@ -566,6 +571,7 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 			oc[index].AllTracklets[ntkl].nXHits = nhits_x;
 			
 			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
+#ifdef OLDCODE
 				nhits_uv = 0;
 				i_u2 = i_uv%nu2;
 				i_v2 = ((i_uv-i_u2)/nu2)%nv2;
@@ -683,7 +689,15 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				nhits_v2 = nhits_uv-nhits_u3-nhits_v3-nhits_u2;
 				if(nhits_v2==0) continue;
 
-#ifdef DEBUG
+				fit_2D_track(nhits_uv, y_array, z_array, dy_array, A_, Ainv_, B_, OutputPar, OutputParErrors, chi2_2d_);
+				
+				y0 = OutputPar[0];
+				err_y0 = OutputParErrors[0];
+				ty = OutputPar[1];
+				err_ty = OutputParErrors[1];
+
+
+#ifdef OLDCODE
 				if(straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
 					if(calculate_y_uvhit(y, err_y, ic[index].AllHits[straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first], 0, straighttrackbuilder[index].trackXZ, planes)){
 					straighttrackbuilder[index].trackYZ.hitlist[nhits_uv] = straighttrackbuilder[index].hitpairs_u2[bin2+nbins_st2*i_u2].first;
@@ -753,7 +767,7 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				if(nhits_v3==0) continue;
 				
 				fit_2D_track(nhits_uv, fitarrays[index].y_array, fitarrays[index].z_array, fitarrays[index].dy_array, fitarrays[index].A, fitarrays[index].Ainv, fitarrays[index].B, fitarrays[index].output_parameters, fitarrays[index].output_parameters_errors, fitarrays[index].chi2_2d);
-				
+
 				straighttrackbuilder[index].trackYZ.x_0 = fitarrays[index].output_parameters[0];
 				straighttrackbuilder[index].trackYZ.err_x_0 = fitarrays[index].output_parameters_errors[0];
 				straighttrackbuilder[index].trackYZ.tx_ = fitarrays[index].output_parameters[1];
