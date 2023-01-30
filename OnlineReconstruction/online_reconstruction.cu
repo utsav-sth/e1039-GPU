@@ -41,10 +41,11 @@
 #include "OROutput.h"
 #include "reconstruction_kernels.cuh"
 
+#ifdef E1039
 #include "SQEvent_v1.h"
 #include "SQHit_v1.h"
 #include "SQHitVector_v1.h"
-
+#endif
 
 // function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -131,8 +132,8 @@ int main(int argn, char * argv[]) {
 	outputFile = argv[3];
 
 	//by default we should use e1039 
-	bool e906data = false;
-	if(argn>4)e906data = atoi(argv[4]);
+	bool e906data = true;
+	//if(argn>4)e906data = atoi(argv[4]);
 	
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
@@ -262,14 +263,16 @@ int main(int argn, char * argv[]) {
 	Int_t     _qie_turn_id = 0;
 	Int_t     _qie_rf_id = 0;
 	Int_t     _qie_rf_inte[33];
-	
+
+#ifdef E1039
 	std::vector<SQHit*> hit_vec;
-	
+#endif
 	
 	if(e906data){
 		dataTree = (TTree *)dataFile->Get("save");
 		dataTree->SetBranchAddress("rawEvent", &rawEvent);
 	}else{
+#ifdef E1039
 		//default option: e1039
 		dataTree = (TTree *)dataFile->Get("T");
 		dataTree->SetMakeClass(1); //this is necessary to get the tree to read the branch correctly
@@ -295,6 +298,7 @@ int main(int argn, char * argv[]) {
 		
 		dataTree->SetBranchStatus("DST.SQHitVector._vector", 1);
 		dataTree->SetBranchAddress("DST.SQHitVector._vector", &hit_vec);
+#endif
 	}
 	int nEvtMax = dataTree->GetEntries();
 	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
@@ -357,6 +361,7 @@ int main(int argn, char * argv[]) {
 			//	}printf("\n");
 			//}
 		}else{
+#ifdef E1039
 			//Default option: e1039
 			//if(_event_id<20)cout << " evt: " << _event_id << " nhits = " << hit_vec.size() << endl; 
 			host_gEvent[i].RunID = _run_id;
@@ -400,6 +405,7 @@ int main(int argn, char * argv[]) {
 				}
 			}
 			host_gEvent[i].nTH = ntrighits;
+#endif
 		}
 	}
 	cout << "loaded events" << endl;
