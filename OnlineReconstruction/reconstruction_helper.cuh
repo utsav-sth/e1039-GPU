@@ -41,7 +41,6 @@ __device__ float position(const gHit hit, const short sign)
 	return (hit.pos+sign*hit.driftDistance);
 }
 
-
 // ---------------------------------------------------
 
 // function to make the hit pairs in station;
@@ -113,7 +112,6 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   	   
 	return npairs;
 }
-
 
 
 __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const REAL xmin, const REAL xmax){
@@ -215,22 +213,127 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 }
 
 
+__device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>* hitpairs, int* npairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
+	// I think we assume that by default we want to know where we are
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	short bin0 = 0;
+	if(stID==4)bin0 = geometry::N_WCHitsBins[stID-1];
+	
+	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
+	
+	short bin;
+	const short Nbins = geometry::N_WCHitsBins[stID-1];
+	const short MaxHits = geometry::MaxHitsProj[projID];
+#ifdef DEBUG
+	if(ic[index].EventID==1){
+		printf("evt %d STID %d projID %d NBins: %d \n", ic[index].EventID, stID, projID, Nbins);
+		for(bin = 0; bin<Nbins; bin++){
+		printf("bin %d low bin limit %d high bin limit %d\n", bin,  geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin]);
+		}
+	}
+#endif
+	for(bin = bin0; bin<bin0+Nbins; bin++){
+		npairs[bin] = 0;
+	}
+		
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitidx1[i] = hitidx2[i] = 0;
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	int superdetid = geometry::detsuperid[stID][projID];
+	int hitctr1 = 0, hitctr2 = 0;
+	for(int i = 0; i<ic[index].nAH; i++){
+		if(ic[index].AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
+			hitctr1++;
+		}
+		if(ic[index].AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
+			hitctr2++;
+		}
+	}
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<hitctr1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<hitctr2; j++){
+			idx2++;
+			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx1[idx1] ].elementID && 
+				    ic[index].AllHits[ hitidx1[idx1] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx2[i] ].elementID, ic[index].AllHits[ hitidx2[idx2] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+					npairs[bin]++;
+				}
+			}
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<hitctr1; i++){
+		if(hitflag1[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ hitidx1[i] ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx1[i] ].elementID && 
+				    ic[index].AllHits[ hitidx1[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx1[i] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[i], -1);
+					npairs[bin]++;
+				}
+			}
+		}
+	}
+	for(int i = 0; i<hitctr2; i++){
+		if(hitflag2[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ hitidx2[i] ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx2[i] ].elementID && 
+				    ic[index].AllHits[ hitidx2[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx2[i] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx2[i], -1);
+					npairs[bin]++;
+				}
+			}
+		 }
+	}
+	//return npairs;
+}
+
+
 // ------------------------------------------------------------- //
 // functions to evaluate the hit selection window for a 2D track //
 // and to calculate y from u, v hits given x                     //
 // ------------------------------------------------------------- //
 
 
-__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrackXZ trackxz, const short stID, const short projID, const gPlane* planes)
+__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack2D track2d, const short stID, const short projID, const gPlane* planes)
 {
 	int detid1 = geometry::detsuperid[stID][projID]*2;
 	int detid2 = geometry::detsuperid[stID][projID]*2-1;
 	
-	xmin = min(planes[detid1].z*(trackxz.tx-trackxz.err_tx), planes[detid2].z*(trackxz.tx-trackxz.err_tx));
-	xmax = max(planes[detid1].z*(trackxz.tx+trackxz.err_tx), planes[detid2].z*(trackxz.tx+trackxz.err_tx));
+	xmin = min(planes[detid1].z*(track2d.tx_-track2d.err_tx_), planes[detid2].z*(track2d.tx_-track2d.err_tx_));
+	xmax = max(planes[detid1].z*(track2d.tx_+track2d.err_tx_), planes[detid2].z*(track2d.tx_+track2d.err_tx_));
 	
-	xmin = xmin + trackxz.x0-trackxz.err_x0-planes[detid1].spacing;
-	xmax = xmax + trackxz.x0+trackxz.err_x0+planes[detid1].spacing;
+	xmin = xmin + track2d.x_0-track2d.err_x_0-planes[detid1].spacing;
+	xmax = xmax + track2d.x_0+track2d.err_x_0+planes[detid1].spacing;
 }
 
 __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTracklet tkl, const short stID, const short projID, const gPlane* planes)
@@ -248,12 +351,12 @@ __device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack
 
 
 
-__device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const gTrackXZ trackxz, const gPlane* planes){
+__device__ bool calculate_y_uvhit(float &y, float &err_y, const gHit hit, const short hitsign, const gTrack2D track2d, const gPlane* planes){
 	float p1x = x_bep( hit, planes[ hit.detectorID ]);
 	float p1y = y_bep( hit, planes[ hit.detectorID ]);
 	float p2x = x_tep( hit, planes[ hit.detectorID ]);
 	
-	float x_trk = trackxz.x0+planes[ hit.detectorID ].z*trackxz.tx;
+	float x_trk = track2d.x_0+planes[ hit.detectorID ].z*track2d.tx_;
 
 	y = p1y + (x_trk-p1x) *  planes[ hit.detectorID ].deltapy/planes[ hit.detectorID ].deltapx;
 	
@@ -402,12 +505,12 @@ __device__ void calculate_x0_tx_st1_with_errors(const gTracklet tkl, float &x0, 
 }
 
 
-__device__ void calculate_invP(gTracklet& tkl, const gTrackXZ tkl_st1)
+__device__ void calculate_invP(gTracklet& tkl, const gTrack2D tkl_st1)
 {
 // invP = ( tx_st1 - tx ) / ( PT_KICK_KMAG*Charge );
 //      = ( ( tx*Z_KMAG_BEND + x0 - x0_st1 )/Z_KMAG_BEND - tx ) / ( PT_KICK_KMAG*Charge );
 	
-	tkl.invP = ( tkl_st1.tx - tkl.tx )/( geometry::PT_KICK_KMAG );
+	tkl.invP = ( tkl_st1.tx_ - tkl.tx )/( geometry::PT_KICK_KMAG );
 	if(tkl.invP<0){
 		tkl.charge = -1;
 		tkl.invP*= tkl.charge;
@@ -418,7 +521,7 @@ __device__ void calculate_invP(gTracklet& tkl, const gTrackXZ tkl_st1)
 //Error: err_invP = err_kick/PT_KICK_KMAG
 //                = (err_tx_st1 - err_tx)/PT_KICK_KMAG
 	
-	tkl.err_invP = ( tkl_st1.err_tx - tkl.err_tx )/( geometry::PT_KICK_KMAG );
+	tkl.err_invP = ( tkl_st1.err_tx_ - tkl.err_tx )/( geometry::PT_KICK_KMAG );
 }
 
 __device__ float calculate_invP(float tx, float tx_st1)

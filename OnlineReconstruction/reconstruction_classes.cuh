@@ -16,7 +16,7 @@ const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 const int Track2DSizeMax = 100;
-const int TrackletSizeMax = 200;
+const int TrackletSizeMax = 500;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -44,6 +44,34 @@ namespace geometry{
 	__device__ constexpr float PT_KICK_KMAG = 0.4016;
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 29, 29};
+	__device__ constexpr short MaxHitsProj[3] = {10, 40, 40};
+	__device__ constexpr short WCHitsBins[4][3][2][32] = {
+        	{{{1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146, 151, 156}, 
+		  {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160}}, // d0x
+        	 {{1, 1, 1, 1, 4, 9, 13, 18, 23, 28, 33, 38, 43, 47, 52, 57, 62, 67, 72, 76, 81, 86, 91, 96, 101, 106, 110, 115, 120, 125, 130, 135}, 
+		  {66, 71, 76, 81, 86, 91, 95, 100, 105, 110, 115, 120, 124, 129, 134, 139, 144, 149, 154, 158, 163, 168, 173, 178, 183, 188, 192, 197, 201, 201, 201, 201}}, // d0u
+        	 {{1, 1, 1, 3, 8, 13, 18, 22, 27, 32, 37, 42, 47, 52, 56, 61, 66, 71, 76, 81, 86, 90, 95, 100, 105, 110, 115, 120, 124, 129, 134, 139, }, 
+		  {63, 68, 73, 78, 83, 87, 92, 97, 102, 107, 112, 117, 121, 126, 131, 136, 141, 146, 151, 155, 160, 165, 170, 175, 180, 184, 189, 194, 199, 201, 201, 201}}}, // d0v
+        	{{{1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, -1, -1, -1, -1}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, -1, -1, -1, -1}}, // d2x
+        	 {{1, 1, 1, 1, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, -1, -1, -1, -1}, 
+		  {31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127, 128, 128, 128, -1, -1, -1, -1}}, // d2u
+        	 {{1, 1, 1, 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, -1, -1, -1, -1}, 
+		  {31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127, 128, 128, 128, -1, -1, -1, -1, }}}, // d2v
+        	{{{1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, -1, -1, -1}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, -1, -1, -1}}, // d3px
+        	 {{1, 4, 7, 11, 15, 19, 23, 27, 31, 35, 38, 42, 46, 50, 54, 58, 62, 66, 70, 73, 77, 81, 85, 89, 93, 97, 101, 104, 108, -1, -1, -1}, 
+		  {26, 30, 34, 38, 42, 46, 50, 53, 57, 61, 65, 69, 73, 77, 81, 84, 88, 92, 96, 100, 104, 108, 112, 115, 119, 123, 127, 131, 134, -1, -1, -1}}, // d3pu
+        	 {{1, 4, 7, 11, 15, 19, 23, 27, 31, 35, 38, 42, 46, 50, 54, 58, 62, 66, 70, 73, 77, 81, 85, 89, 93, 97, 101, 104, 108, -1, -1, -1}, 
+		  {26, 30, 34, 38, 42, 46, 49, 53, 57, 61, 65, 69, 73, 77, 80, 84, 88, 92, 96, 100, 104, 108, 112, 115, 119, 123, 127, 131, 134, -1, -1, -1}}}, // d3pv
+        	{{{1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, -1, -1, -1}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, -1, -1, -1}}, // d3px
+        	 {{1, 4, 8, 11, 15, 19, 23, 27, 31, 35, 39, 43, 46, 50, 54, 58, 62, 66, 70, 74, 77, 81, 85, 89, 93, 97, 101, 105, 109, -1, -1, -1}, 
+		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 96, 100, 104, 108, 112, 116, 120, 124, 128, 131, 134, -1, -1, -1}}, // d3pu
+        	 {{1, 4, 8, 12, 16, 20, 24, 28, 31, 35, 39, 43, 47, 51, 55, 59, 62, 66, 70, 74, 78, 82, 86, 90, 94, 97, 101, 105, 109, -1, -1, -1}, 
+		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 97, 100, 104, 108, 112, 116, 120, 124, 128, 131, 134, -1, -1, -1}}} // d3pv
+        	};
 }
 
 //clone of LoadEvent::Hit:
@@ -73,7 +101,10 @@ class gTracklet {
       gTracklet(){
 	nXHits = nUHits = nVHits = 0;
       }
-      
+      short nHits(){
+        return nXHits + nUHits + nVHits;
+      } 
+            
       short stationID;
       short nXHits;
       short nUHits;
@@ -104,63 +135,20 @@ class gTracklet {
 
 class gTrack2D {
       public:
-
-      float tx;
-      float x0;
-
-      float err_tx;
-      float err_x0;
+      // note: x_ is to be understood as either x or y...
+      float tx_;
+      float x_0;
+      
+      float err_tx_;
+      float err_x_0;
       
       float chisq;
-            
-      gHit hits[MaxHitsPerTrack];
+              
+      short nhits;
       int hitlist[MaxHitsPerTrack];
       short hitsign[MaxHitsPerTrack];
       
 };
-
-class gTrackXZ {
-      public:
-      
-      bool d3p;
-      
-      short nXHits;
-
-      float tx;
-      float x0;
-
-      float err_tx;
-      float err_x0;
-
-      int hitlist[4];
-      short hitsign[4];
-      
-      float chisq;
-};
-
-class gTrackYZ {
-      public:
-      //YZ tracks cannot extist without XZ tracks
-      //int trackXZindex;
-      
-      short nUHits;
-      short nVHits;
-
-      float ty;
-      float y0;
-
-      float err_ty;
-      float err_y0;
-      
-      //we will keep both temporarily...
-      gHit hits[8];
-      int hitlist[8];
-      short hitsign[8];
-
-      float chisq;
-};
-
-
 
 class gEvent {
 	public:
@@ -187,8 +175,7 @@ class gEvent {
 
 class gFullTrackBuilder{
 public:
-	//gTrack2D TrackXZ_st1;
-	gTrackXZ TrackXZ_st1;
+	gTrack2D TrackXZ_st1;
 	
       	int hitlist[MaxHitsPerTrack];
       	short hitsign[MaxHitsPerTrack];
@@ -207,28 +194,27 @@ public:
 
 class gStraightTrackBuilder{
 public:
+	gTrack2D trackXZ;
+	gTrack2D trackYZ;
+	gTrack2D besttrackYZ;
 	
-	int nTracksXZ;
-	gTrackXZ TrackXZ[Track2DSizeMax];
-	int nTracksYZ;
-	gTrackYZ TrackYZ[Track2DSizeMax];
+        //pairs in station 2
+        thrust::pair<int, int> hitpairs_x2[280];//28*10
+        thrust::pair<int, int> hitpairs_u2[1120];//28*40
+        thrust::pair<int, int> hitpairs_v2[1120];
+        //pairs in station 3
+        thrust::pair<int, int> hitpairs_x3[580];//29*10*2
+        thrust::pair<int, int> hitpairs_u3[2320];//29*40*2
+        thrust::pair<int, int> hitpairs_v3[2320];
 	
-	gTrack2D track2D;
+	int nhitpairs_x2[28];
+	int nhitpairs_u2[28];
+	int nhitpairs_v2[28];
 	
-	int hitlist[12];
-		
-	//pairs in station 2
-	thrust::pair<int, int> hitpairs_x2[100];
-	thrust::pair<int, int> hitpairs_u2[100];
-	thrust::pair<int, int> hitpairs_v2[100];
-	//pairs in station 3
-	thrust::pair<int, int> hitpairs_x3p[100];
-	thrust::pair<int, int> hitpairs_u3p[100];
-	thrust::pair<int, int> hitpairs_v3p[100];
-	thrust::pair<int, int> hitpairs_x3m[100];
-	thrust::pair<int, int> hitpairs_u3m[100];
-	thrust::pair<int, int> hitpairs_v3m[100];
-
+	int nhitpairs_x3[58];
+	int nhitpairs_u3[58];
+	int nhitpairs_v3[58];
+	
 	//util arrays for pair making
 	int hitidx1[100];
 	int hitidx2[100];
@@ -250,8 +236,8 @@ public:
       float deltapy[MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
       float deltapz[MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
       
-      float output_parameters[5];
-      float output_parameters_errors[5];
+      float output_parameters[4];
+      float output_parameters_errors[4];
       float chi2_2d;
       float chi2;
 
@@ -283,7 +269,6 @@ public:
 	bool HasTooManyHits;//bool to flag an event with too many hits
 	int nTracklets;
 	gTracklet AllTracklets[TrackletSizeMax+1];//save one slot for a new candidate
-	short nTKL_stID[7];//0: D0; 1: D1; 2: D2; 3: D3p; 4: D3m; 5: back partial; 6: global
 };
 
 //geometry carrier

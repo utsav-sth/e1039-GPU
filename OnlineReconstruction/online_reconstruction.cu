@@ -304,6 +304,7 @@ int main(int argn, char * argv[]) {
 	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
 	
 	static gEvent host_gEvent[EstnEvtMax];
+	//static gStraightTrackBuilder host_gStraightTrackBuilder[EstnEvtMax];
 	
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
@@ -407,6 +408,9 @@ int main(int argn, char * argv[]) {
 			host_gEvent[i].nTH = ntrighits;
 #endif
 		}
+		//for(short bin = 0; bin<28; bin++){
+		//	host_gStraightTrackBuilder[i].hitpairs_x2[bin] = new thrust::pair<int, int>[5];
+		//}
 	}
 	cout << "loaded events" << endl;
 	auto cp2 = std::chrono::system_clock::now();
@@ -421,16 +425,19 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
 	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
+	//size_t NBytesStraightTrackBuilders = sizeof(host_gStraightTrackBuilder);
 	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
 	size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
-	
 
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
 	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
-	     << "; fitter tools: " << NBytesFitterTools << "; planes info: " << NBytesAllPlanes << endl;  
-	
+	     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
+	     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
+	     << "; planes info: " << NBytesAllPlanes << endl;  
+		
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gOutputEvent *host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
+	
 	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent *device_gEvent;
@@ -456,12 +463,14 @@ int main(int argn, char * argv[]) {
 	std::size_t total_bytes;
 
 	CUDA_CHECK_STATUS(cudaMemGetInfo(&free_bytes, &total_bytes));
-    	cout << free_bytes << " / " << total_bytes << endl;
+    	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
+	//gpuErrchk( cudaMemcpy(device_gStraightTrackBuilder, host_gStraightTrackBuilder, NBytesStraightTrackBuilders, cudaMemcpyHostToDevice));
+	
 	auto cp3 = std::chrono::system_clock::now();
 
 	auto cp_to_gpu = cp3-cp2;
@@ -481,8 +490,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	gKernel_XZ_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
-	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane, false);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -495,6 +503,8 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gStraightTrackBuilder);
 	
 	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
+
+	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
 	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
