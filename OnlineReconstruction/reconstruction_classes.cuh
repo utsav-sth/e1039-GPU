@@ -98,10 +98,10 @@ namespace extrapolation_tools{
 
 class gTracklet {
       public:
-      gTracklet(){
+      __device__ gTracklet(){
 	nXHits = nUHits = nVHits = 0;
       }
-      short nHits(){
+      __device__ short nHits(){
         return nXHits + nUHits + nVHits;
       } 
             
