@@ -482,6 +482,24 @@ __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign,
 	fitarray.deltapz[n] = planes[ hit.detectorID ].deltapz;
 }
 
+__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, float* drift_dist, float* resolution, float* p1x, float* p1y, float* p1z, float* deltapx, float* deltapy, float* deltapz, const gPlane* planes){
+	drift_dist[n] = hit.driftDistance*hitsign;
+	resolution[n] = planes[ hit.detectorID ].resolution;
+	if(hitsign==0){
+		resolution[n] = planes[ hit.detectorID ].spacing*3.4641f;
+	}else{
+		resolution[n] = planes[ hit.detectorID ].resolution;
+	}	       
+	p1x[n] = x_bep( hit, planes[ hit.detectorID ]);
+	p1y[n] = y_bep( hit, planes[ hit.detectorID ]);
+	p1z[n] = z_bep( hit, planes[ hit.detectorID ]);
+	
+	deltapx[n] = planes[ hit.detectorID ].deltapx;
+	deltapy[n] = planes[ hit.detectorID ].deltapy;
+	deltapz[n] = planes[ hit.detectorID ].deltapz;
+}
+
+
 
 // --------------------------------------------- //
 // functions to calculate x0 and tx in station 1 //
