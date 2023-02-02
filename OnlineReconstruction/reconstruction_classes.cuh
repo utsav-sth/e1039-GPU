@@ -16,7 +16,7 @@ const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 const int Track2DSizeMax = 100;
-const int TrackletSizeMax = 500;
+const int TrackletSizeMax = 10;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -192,11 +192,12 @@ public:
 };
 
 
+#ifdef OLDCODE
 class gStraightTrackBuilder{
 public:
-	gTrack2D trackXZ;
-	gTrack2D trackYZ;
-	gTrack2D besttrackYZ;
+	//gTrack2D trackXZ;
+	//gTrack2D trackYZ;
+	//gTrack2D besttrackYZ;
 	
         //pairs in station 2
         thrust::pair<int, int> hitpairs_x2[280];//28*10
@@ -222,7 +223,6 @@ public:
 	short hitflag2[100];
 };
 
-#ifdef OLDCODE
 class gStraightFitArrays {
 public:
       int npoints;

@@ -424,14 +424,16 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllOutputEvent = EstnEvtMax * sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
 	//size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
-	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
+	//size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
 	//size_t NBytesStraightTrackBuilders = sizeof(host_gStraightTrackBuilder);
-	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
+	//size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
 	//size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes << endl;
-	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
-	     << "; full track builders: " << NBytesFullTrackBuilders << "; planes info: " << NBytesAllPlanes << endl;  
+	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent
+	     //<< "; straight track builder tools: " << NBytesStraightTrackBuilders
+	     //<< "; full track builders: " << NBytesFullTrackBuilders
+	     << "; planes info: " << NBytesAllPlanes << endl;  
 		
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gOutputEvent *host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
@@ -442,8 +444,8 @@ int main(int argn, char * argv[]) {
 	gOutputEvent *device_output_TKL;
 	gPlane *device_gPlane;
 	//gStraightFitArrays *device_gFitArrays;
-	gStraightTrackBuilder *device_gStraightTrackBuilder;
-	gFullTrackBuilder *device_gFullTrackBuilder;
+	//gStraightTrackBuilder *device_gStraightTrackBuilder;
+	//gFullTrackBuilder *device_gFullTrackBuilder;
 	//gKalmanFitArrays *device_gKalmanFitArrays;
 
 	//printDeviceStatus();
@@ -455,7 +457,7 @@ int main(int argn, char * argv[]) {
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
 	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
-	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
+	//gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
 	
 	std::size_t free_bytes;
 	std::size_t total_bytes;
@@ -489,7 +491,7 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
 	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
-	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gPlane);
+	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -506,7 +508,7 @@ int main(int argn, char * argv[]) {
 	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
 	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
-	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gPlane, true);
+	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gPlane, true);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -518,7 +520,7 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane, true);
-	gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gPlane);
+	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gPlane);
 
 	//gpuErrchk( cudaPeekAtLastError() );
 	//gpuErrchk( cudaDeviceSynchronize() );
