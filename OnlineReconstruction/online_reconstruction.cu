@@ -423,16 +423,16 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
 	size_t NBytesAllOutputEvent = EstnEvtMax * sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
-	//size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
-	//size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
+	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
+	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
 	//size_t NBytesStraightTrackBuilders = sizeof(host_gStraightTrackBuilder);
-	//size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
-	//size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
+	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
+	size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
 
-	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes << endl;
-	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent
-	     //<< "; straight track builder tools: " << NBytesStraightTrackBuilders
-	     //<< "; full track builders: " << NBytesFullTrackBuilders
+	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
+	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
+	     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
+	     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
 	     << "; planes info: " << NBytesAllPlanes << endl;  
 		
 	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
@@ -443,10 +443,10 @@ int main(int argn, char * argv[]) {
 	gEvent *device_gEvent;
 	gOutputEvent *device_output_TKL;
 	gPlane *device_gPlane;
-	//gStraightFitArrays *device_gFitArrays;
-	//gStraightTrackBuilder *device_gStraightTrackBuilder;
-	//gFullTrackBuilder *device_gFullTrackBuilder;
-	//gKalmanFitArrays *device_gKalmanFitArrays;
+	gStraightFitArrays *device_gFitArrays;
+	gStraightTrackBuilder *device_gStraightTrackBuilder;
+	gFullTrackBuilder *device_gFullTrackBuilder;
+	gKalmanFitArrays *device_gKalmanFitArrays;
 
 	//printDeviceStatus();
 
@@ -456,9 +456,9 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
-	//gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
-	
+	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
+	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
+
 	std::size_t free_bytes;
 	std::size_t total_bytes;
 
@@ -490,8 +490,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
-	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gPlane);
+	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -501,26 +500,24 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: straight tracking: "<<gpu_st.count()/1000000000.<<endl;
 
 	//release here the memory for straight track builders and straight track fitters	
-	//cudaFree(device_gStraightTrackBuilder);
+	cudaFree(device_gStraightTrackBuilder);
 	
-	//gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
+	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 
 	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
-	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
-	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gPlane, true);
+	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	//gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
+	gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_gt = cp6-cp5;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
-	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane, true);
-	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gPlane);
+	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
 	//gpuErrchk( cudaPeekAtLastError() );
 	//gpuErrchk( cudaDeviceSynchronize() );
@@ -540,7 +537,7 @@ int main(int argn, char * argv[]) {
 	auto cp8 = std::chrono::system_clock::now();
 	auto cp_to_cpu = cp8-cp7;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
-#ifdef FULLCODE
+
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
@@ -579,7 +576,7 @@ int main(int argn, char * argv[]) {
 	cout << tklctr << " total tracks reconstructed" << endl;
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
-#endif
+
 
 	delete rawEvent;
 

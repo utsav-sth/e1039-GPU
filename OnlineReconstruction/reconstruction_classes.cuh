@@ -16,7 +16,7 @@ const int EstnAHMax = 5000;
 const int EstnTHMax = 200;
 const int ClusterSizeMax = 100;
 const int Track2DSizeMax = 100;
-const int TrackletSizeMax = 10;
+const int TrackletSizeMax = 500;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -192,12 +192,11 @@ public:
 };
 
 
-#ifdef OLDCODE
 class gStraightTrackBuilder{
 public:
-	//gTrack2D trackXZ;
-	//gTrack2D trackYZ;
-	//gTrack2D besttrackYZ;
+	gTrack2D trackXZ;
+	gTrack2D trackYZ;
+	gTrack2D besttrackYZ;
 	
         //pairs in station 2
         thrust::pair<int, int> hitpairs_x2[280];//28*10
@@ -262,7 +261,6 @@ public:
 	float KCResKt[25];// matrix 5x5, result of tensor product of K*K
 	float chi2;// chi2
 };
-#endif
 
 class gOutputEvent {
 public:
@@ -270,7 +268,7 @@ public:
 	int nAH;
 	bool HasTooManyHits;//bool to flag an event with too many hits
 	int nTracklets;
-	gTracklet AllTracklets[TrackletSizeMax];//save one slot for a new candidate
+	gTracklet AllTracklets[TrackletSizeMax+1];//save one slot for a new candidate
 };
 
 //geometry carrier
