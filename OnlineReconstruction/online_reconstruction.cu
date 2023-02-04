@@ -124,6 +124,17 @@ int main(int argn, char * argv[]) {
 	auto start = std::chrono::system_clock::now();
 	auto cp1 = std::chrono::system_clock::now();
 
+	cout << " sizeof gHit " << sizeof(gHit) << endl
+	     << " sizeof gTracklet " << sizeof(gTracklet) << endl
+	     << " sizeof gTrack2D " << sizeof(gTrack2D) << endl
+	     << " sizeof gEvent " << sizeof(gEvent) << endl
+	     << " sizeof gFullTrackBuilder " << sizeof(gFullTrackBuilder) << endl
+	     << " sizeof gStraightTrackBuilder " << sizeof(gStraightTrackBuilder) << endl
+	     << " sizeof gStraightFitArrays " << sizeof(gStraightFitArrays) << endl
+	     << " sizeof gKalmanFitArrays " << sizeof(gKalmanFitArrays) << endl
+	     << " sizeof gOutputEvent " << sizeof(gOutputEvent) << endl
+	     << " sizeof gPlane " << sizeof(gPlane) << endl;
+	     
 	TString inputFile;
 	TString inputGeom;
 	TString outputFile;
@@ -537,7 +548,7 @@ int main(int argn, char * argv[]) {
 	auto cp8 = std::chrono::system_clock::now();
 	auto cp_to_cpu = cp8-cp7;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
-
+#ifdef FULLCODE
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
@@ -572,10 +583,10 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-
 	cout << tklctr << " total tracks reconstructed" << endl;
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
+#endif
 
 
 	delete rawEvent;
