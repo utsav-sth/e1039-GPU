@@ -467,7 +467,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
+	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
 	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
 
 	std::size_t free_bytes;
@@ -501,7 +501,8 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, //device_gStraightTrackBuilder, //device_gFitArrays,
+	device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );

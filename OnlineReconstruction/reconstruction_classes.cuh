@@ -48,6 +48,9 @@ namespace geometry{
 //clone of LoadEvent::Hit:
 class __align__(8) gHit {
 	public:
+	__device__ gHit(){
+	index = -1;
+	}
 	int index; // global hit index in the hit array
 	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
 	short elementID; // ID of the element in the detector: wire/slat/tube number
@@ -117,6 +120,7 @@ class __align__(8) gTrack2D {
       float chisq;
               
       short nhits;
+      gHit hits[MaxHitsPerTrack];
       int hitlist[MaxHitsPerTrack];
       short hitsign[MaxHitsPerTrack];
       
