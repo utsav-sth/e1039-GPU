@@ -46,83 +46,11 @@ __device__ float position(const gHit hit, const short sign)
 // function to make the hit pairs in station;
 // I assume it will only be called by the tracklet builder
 // (not by the main function), so I can make it a "device" function. 
-__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<gHit, gHit>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
-	// I think we assume that by default we want to know where we are
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	
-	int npairs = 0;
-	
-	int bin0 = 0;
-	if(stID==4)bin0=1;
-	
-	//declaring arrays for the hit lists
-	for(int i = 0; i<100; i++){
-		hitidx1[i] = hitidx2[i] = 0;
-		hitflag1[i] = hitflag2[i] = 0;
-	}
-	
-	//building the lists of hits for each detector plane
-	int detid1 = geometry::detsuperid[stID][projID]*2;
-	int detid2 = geometry::detsuperid[stID][projID]*2-1;
-	int superdetid = geometry::detsuperid[stID][projID];
-	int hitctr1 = 0, hitctr2 = 0;
-	for(int i = 0; i<ic[index].nAH; i++){
-		if(ic[index].AllHits[i].detectorID==detid1){
-			hitidx1[hitctr1] = i;
-			hitctr1++;
-		}
-		if(ic[index].AllHits[i].detectorID==detid2){
-			hitidx2[hitctr2] = i;
-			hitctr2++;
-		}
-	}
-	
-	// pair the hits by position:
-	// if one hit on e.g. x and one hit on x' are closer than
-	// the "spacing" defined for the planes, then the hits can be paired together.
-	int idx1 = -1;
-	int idx2 = -1;
-	for(int i = 0; i<hitctr1; i++){
-		idx1++;
-		idx2 = -1;
-		for(int j = 0; j<hitctr2; j++){
-			idx2++;
-			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
-				continue;
-			}
-			
-			hitpairs[bin0*100+npairs] = thrust::make_pair(ic[index].AllHits[hitidx1[idx1]], ic[index].AllHits[hitidx2[idx2]]);
-			npairs++;
-			hitflag1[idx1] = 1;
-			hitflag2[idx2] = 1;
-		}
-	}
-	// here the hits that cannot be paired to another hit are paired to "nothing"
-	// (but they still have to be paired to be used in the trackletteing)
-	for(int i = 0; i<hitctr1; i++){
-		if(hitflag1[i]<1){
-			hitpairs[bin0*100+npairs] = thrust::make_pair(ic[index].AllHits[hitidx1[i]], gHit());
-			npairs++;
-		}
-	}
-	for(int i = 0; i<hitctr2; i++){
-		if(hitflag2[i]<1){
-			hitpairs[bin0*100+npairs] = thrust::make_pair(ic[index].AllHits[hitidx2[i]], gHit());
-			npairs++;
-		   }
-	}
-	   	   
-	return npairs;
-}
-
 __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
 	// I think we assume that by default we want to know where we are
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	
 	int npairs = 0;
-	
-	int bin0 = 0;
-	if(stID==4)bin0=1;
 	
 	//declaring arrays for the hit lists
 	for(int i = 0; i<100; i++){
@@ -161,7 +89,7 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 				continue;
 			}
 			
-			hitpairs[bin0*150+npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
 			npairs++;
 			hitflag1[idx1] = 1;
 			hitflag2[idx2] = 1;
@@ -171,13 +99,13 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	// (but they still have to be paired to be used in the trackletteing)
 	for(int i = 0; i<hitctr1; i++){
 		if(hitflag1[i]<1){
-			hitpairs[bin0*150+npairs] = thrust::make_pair(hitidx1[i], -1);
+			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
 			npairs++;
 		}
 	}
 	for(int i = 0; i<hitctr2; i++){
 		if(hitflag2[i]<1){
-			hitpairs[bin0*150+npairs] = thrust::make_pair(hitidx2[i], -1);
+			hitpairs[npairs] = thrust::make_pair(hitidx2[i], -1);
 			npairs++;
 		   }
 	}
@@ -283,6 +211,112 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	   	   
 	return npairs;
 }
+
+
+__device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>* hitpairs, int* npairs, int* hitidx1, int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID){
+	// I think we assume that by default we want to know where we are
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	short bin0 = 0;
+	if(stID==4)bin0 = geometry::N_WCHitsBins[stID-1];
+	
+	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
+	
+	short bin;
+	const short Nbins = geometry::N_WCHitsBins[stID-1];
+	const short MaxHits = geometry::MaxHitsProj[projID];
+#ifdef DEBUG
+	if(ic[index].EventID==1){
+		printf("evt %d STID %d projID %d NBins: %d \n", ic[index].EventID, stID, projID, Nbins);
+		for(bin = 0; bin<Nbins; bin++){
+		printf("bin %d low bin limit %d high bin limit %d\n", bin,  geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin]);
+		}
+	}
+#endif
+	for(bin = bin0; bin<bin0+Nbins; bin++){
+		npairs[bin] = 0;
+	}
+		
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitidx1[i] = hitidx2[i] = 0;
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	int detid1 = geometry::detsuperid[stID][projID]*2;
+	int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	int superdetid = geometry::detsuperid[stID][projID];
+	int hitctr1 = 0, hitctr2 = 0;
+	for(int i = 0; i<ic[index].nAH; i++){
+		if(ic[index].AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
+			hitctr1++;
+		}
+		if(ic[index].AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
+			hitctr2++;
+		}
+	}
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<hitctr1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<hitctr2; j++){
+			idx2++;
+			if( abs(ic[index].AllHits[ hitidx1[idx1] ].pos - ic[index].AllHits[ hitidx2[idx2] ].pos) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx1[idx1] ].elementID && 
+				    ic[index].AllHits[ hitidx1[idx1] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx2[i] ].elementID, ic[index].AllHits[ hitidx2[idx2] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+					npairs[bin]++;
+				}
+			}
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<hitctr1; i++){
+		if(hitflag1[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ hitidx1[i] ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx1[i] ].elementID && 
+				    ic[index].AllHits[ hitidx1[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx1[i] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx1[i], -1);
+					npairs[bin]++;
+				}
+			}
+		}
+	}
+	for(int i = 0; i<hitctr2; i++){
+		if(hitflag2[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ hitidx2[i] ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin-bin0] <= ic[index].AllHits[ hitidx2[i] ].elementID && 
+				    ic[index].AllHits[ hitidx2[i] ].elementID <= geometry::WCHitsBins[stID-1][projID][1][bin-bin0]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ hitidx2[i] ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin]<=MaxHits)hitpairs[bin+npairs[bin]*Nbins] = thrust::make_pair(hitidx2[i], -1);
+					npairs[bin]++;
+				}
+			}
+		 }
+	}
+	//return npairs;
+}
+
 
 // ------------------------------------------------------------- //
 // functions to evaluate the hit selection window for a 2D track //
@@ -423,11 +457,13 @@ __device__ void FillFitArrays_X(const int n, const gHit hit, const short hitsign
 	}
 }
 
+
 __device__ void FillFitArrays_UV(const int n, const gHit hit, gStraightFitArrays &fitarray, const gPlane* planes, const float y, const float dy){
 	fitarray.z_array[n] = planes[ hit.detectorID ].z;
 	fitarray.y_array[n] = y;
         fitarray.dy_array[n] = dy;
 }
+
 
 __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays &fitarray, const gPlane* planes){
 	fitarray.drift_dist[n] = hit.driftDistance*hitsign;
@@ -446,23 +482,6 @@ __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign,
 	fitarray.deltapz[n] = planes[ hit.detectorID ].deltapz;
 }
 
-
-__device__ void FillFitArrays_X(const int n, const gHit hit, const short hitsign, float* x_array, float* z_array, float* dx_array, const gPlane* planes){
-	z_array[n] = planes[ hit.detectorID ].z;
-	x_array[n] = hit.pos+hit.driftDistance*hitsign;
-	dx_array[n] = planes[ hit.detectorID ].resolution;
-	if(hitsign==0){
-		dx_array[n] = planes[ hit.detectorID ].spacing*3.4641f;
-	}
-}
-
-
-__device__ void FillFitArrays_UV(const int n, const gHit hit, float* y_array, float* z_array, float* dy_array, const gPlane* planes, const float y, const float dy){
-	z_array[n] = planes[ hit.detectorID ].z;
-	y_array[n] = y;
-        dy_array[n] = dy;
-}
-
 __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, float* drift_dist, float* resolution, float* p1x, float* p1y, float* p1z, float* deltapx, float* deltapy, float* deltapz, const gPlane* planes){
 	drift_dist[n] = hit.driftDistance*hitsign;
 	resolution[n] = planes[ hit.detectorID ].resolution;
@@ -479,7 +498,6 @@ __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign,
 	deltapy[n] = planes[ hit.detectorID ].deltapy;
 	deltapz[n] = planes[ hit.detectorID ].deltapz;
 }
-
 
 
 
