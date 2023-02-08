@@ -717,15 +717,29 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 				if(nhits_v<0 || chi2min>=10000.f)continue;
 			
 				oc[index].AllTracklets[ntkl].chisq = chi2min;
+				oc[index].AllTracklets[ntkl].x0 = straighttrackbuilder[index].trackXZ.x_0;
+				oc[index].AllTracklets[ntkl].err_x0 = straighttrackbuilder[index].trackXZ.err_x_0;
+				oc[index].AllTracklets[ntkl].tx = straighttrackbuilder[index].trackXZ.tx_;
+				oc[index].AllTracklets[ntkl].err_tx = straighttrackbuilder[index].trackXZ.err_tx_;
+				
 				oc[index].AllTracklets[ntkl].y0 = straighttrackbuilder[index].besttrackYZ.x_0;
 				oc[index].AllTracklets[ntkl].err_y0= straighttrackbuilder[index].besttrackYZ.err_x_0;
 				oc[index].AllTracklets[ntkl].ty = straighttrackbuilder[index].besttrackYZ.tx_;
 				oc[index].AllTracklets[ntkl].err_ty = straighttrackbuilder[index].besttrackYZ.err_tx_;
-			
+				
 				nhits_uv = straighttrackbuilder[index].trackYZ.nhits;
+
+				oc[index].AllTracklets[ntkl].nXHits = nhits_x;
+				oc[index].AllTracklets[ntkl].nUHits = nhits_uv-nhits_v;
+				oc[index].AllTracklets[ntkl].nVHits = nhits_v;
 			
+				for(i_hit = 0; i_hit<nhits_x; i_hit++){
+					oc[index].AllTracklets[ntkl].hits[i_hit] = ic[index].AllHits[straighttrackbuilder[index].trackXZ.hitlist[i_hit]];
+					oc[index].AllTracklets[ntkl].hitsign[i_hit] = straighttrackbuilder[index].trackXZ.hitsign[i_hit];
+				}
 				for(i_hit = 0; i_hit<nhits_uv; i_hit++){
-					oc[index].AllTracklets[ntkl].hits[i_hit+nhits_x] = ic[index].AllHits[straighttrackbuilder[index].trackYZ.hitlist[i_hit]];
+					oc[index].AllTracklets[ntkl].hits[i_hit+nhits_x] = ic[index].AllHits[straighttrackbuilder[index].besttrackYZ.hitlist[i_hit]];
+					oc[index].AllTracklets[ntkl].hitsign[i_hit+nhits_x] = straighttrackbuilder[index].besttrackYZ.hitsign[i_hit];
 				}
 				if(ntkl<TrackletSizeMax)ntkl++;	
 			}
