@@ -12,11 +12,11 @@ using namespace std;
 const int EstnEvtMax = 10240;
 const int THREADS_PER_BLOCK = 512;
 int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
-const int EstnAHMax = 5000;
-const int EstnTHMax = 200;
-const int ClusterSizeMax = 100;
-const int Track2DSizeMax = 100;
-const int TrackletSizeMax = 500;
+const int EstnAHMax = 4096;
+const int EstnTHMax = 256;
+const int ClusterSizeMax = 128;
+const int Track2DSizeMax = 256;
+const int TrackletSizeMax = 256;
 const int MaxHitsPerTrack = 18;
 
 const double TX_MAX = 0.15;
@@ -74,8 +74,15 @@ namespace geometry{
         	};
 }
 
+namespace datasizes{
+	__device__ constexpr int NMaxHitPairsChambers = 100;
+	__device__ constexpr int NMaxHitsHodoscopes = 24;
+	__device__ constexpr int NMaxHitsPropTubes = 72;
+
+}
+
 //clone of LoadEvent::Hit:
-class gHit {
+struct gHit {
 	public:
 	int index; // global hit index in the hit array
 	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
@@ -96,7 +103,7 @@ namespace extrapolation_tools{
 }
 
 
-class gTracklet {
+struct gTracklet {
       public:
       __device__ gTracklet(){
 	nXHits = nUHits = nVHits = 0;
@@ -133,7 +140,7 @@ class gTracklet {
       float residual[MaxHitsPerTrack];
 };
 
-class gTrack2D {
+struct gTrack2D {
       public:
       // note: x_ is to be understood as either x or y...
       float tx_;
@@ -145,12 +152,12 @@ class gTrack2D {
       float chisq;
               
       short nhits;
-      int hitlist[MaxHitsPerTrack];
-      short hitsign[MaxHitsPerTrack];
+      int hitlist[8];
+      short hitsign[8];
       
 };
 
-class gEvent {
+struct gEvent {
 	public:
 	gEvent(){
 		RunID = EventID = SpillID = -1;
@@ -173,7 +180,28 @@ class gEvent {
 	bool HasTooManyHits;//bool to flag an event with too many hits
 };
 
-class gFullTrackBuilder{
+struct gChamberHitColl{
+	public:
+	int stID;
+	int projID;//X: 0, U: 1, V: 2
+	thrust::pair<gHit, gHit> hitpairs[datasizes::NMaxHitPairsChambers];
+};
+
+struct gHodoHitColl{
+	public:
+	int stID;
+	int projID;//X, 0; Y: 1
+	gHit Hits[datasizes::NMaxHitsHodoscopes];
+};
+
+struct gPropHitColl{
+	public:
+	int stID;
+	int projID;//X, 0; Y: 1
+	gHit Hits[datasizes::NMaxHitsPropTubes];
+};
+
+struct gFullTrackBuilder{
 public:
 	gTrack2D TrackXZ_st1;
 	
@@ -192,7 +220,7 @@ public:
 };
 
 
-class gStraightTrackBuilder{
+struct gStraightTrackBuilder{
 public:
 	gTrack2D trackXZ;
 	gTrack2D trackYZ;
@@ -222,7 +250,7 @@ public:
 	short hitflag2[100];
 };
 
-class gStraightFitArrays {
+struct gStraightFitArrays {
 public:
       int npoints;
       float drift_dist[MaxHitsPerTrack]; // hit drift distance
@@ -252,7 +280,7 @@ public:
       float B[2];// input vector
 };
 
-class gKalmanFitArrays{
+struct gKalmanFitArrays{
 public:
 	float state[5];// 5-vector: x0, y0, tx, ty, invP
 	float Cov[25];// symmetric 5x5 matrix: C00 = err_x0, C11 = err_y0, C22 = err_tx, C33 = err_ty, C44 = err_invP
@@ -262,7 +290,7 @@ public:
 	float chi2;// chi2
 };
 
-class gOutputEvent {
+struct gOutputEvent {
 public:
 	int EventID;
 	int nAH;
@@ -272,7 +300,7 @@ public:
 };
 
 //geometry carrier
-class gPlane {
+struct gPlane {
       public:
       float z;
       int nelem;
