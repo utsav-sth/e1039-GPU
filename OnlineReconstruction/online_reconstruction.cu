@@ -142,8 +142,8 @@ int main(int argn, char * argv[]) {
 	
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
-	gPlane plane[nChamberPlanes+nHodoPlanes+nPropPlanes+1];
-
+	gPlane plane;
+	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
 	int ipl, nelem;
@@ -154,49 +154,49 @@ int main(int argn, char * argv[]) {
 	      std::istringstream iss;
 	      iss.str(buffer);
 	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      plane[ipl].z = z;
-	      plane[ipl].nelem = nelem;
-	      plane[ipl].cellwidth = cellwidth;
-	      plane[ipl].spacing = spacing;
-	      plane[ipl].xoffset = xoffset;
-	      plane[ipl].scalex = scalex;
-	      plane[ipl].x0 = x0;
-	      plane[ipl].x1 = x1;
-	      plane[ipl].x1 = x2;
-	      plane[ipl].costheta = costheta;
-	      plane[ipl].scaley = scaley;
-	      plane[ipl].y0 = y0;
-	      plane[ipl].y1 = y1;
-	      plane[ipl].y2 = y2;
-	      plane[ipl].sintheta = sintheta;
-	      plane[ipl].resolution = resolution;
-	      plane[ipl].p1x_w1 = p1x;
-	      plane[ipl].p1y_w1 = p1y;
-	      plane[ipl].p1z_w1 = p1z;
-	      plane[ipl].deltapx = deltapx;
-	      plane[ipl].deltapy = deltapy;
-	      plane[ipl].deltapz = deltapz;
-	      plane[ipl].dp1x = dp1x;
-	      plane[ipl].dp1y = dp1y;
-	      plane[ipl].dp1z = dp1z;
+	      plane.z[ipl] = z;
+	      plane.nelem[ipl] = nelem;
+	      plane.cellwidth[ipl] = cellwidth;
+	      plane.spacing[ipl] = spacing;
+	      plane.xoffset[ipl] = xoffset;
+	      plane.scalex[ipl] = scalex;
+	      plane.x0[ipl] = x0;
+	      plane.x1[ipl] = x1;
+	      plane.x2[ipl] = x2;
+	      plane.costheta[ipl] = costheta;
+	      plane.scaley[ipl] = scaley;
+	      plane.y0[ipl] = y0;
+	      plane.y1[ipl] = y1;
+	      plane.y2[ipl] = y2;
+	      plane.sintheta[ipl] = sintheta;
+	      plane.resolution[ipl] = resolution;
+	      plane.p1x_w1[ipl] = p1x;
+	      plane.p1y_w1[ipl] = p1y;
+	      plane.p1z_w1[ipl] = p1z;
+	      plane.deltapx[ipl] = deltapx;
+	      plane.deltapy[ipl] = deltapy;
+	      plane.deltapz[ipl] = deltapz;
+	      plane.dp1x[ipl] = dp1x;
+	      plane.dp1y[ipl] = dp1y;
+	      plane.dp1z[ipl] = dp1z;
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
-			plane[ipl].deltaW_[k] = deltaW_;
+			plane.deltaW_[ipl*9+k] = deltaW_;
 		}
 	      }else{
 		iss >> deltaW_;
-		plane[ipl].deltaW_[0] = deltaW_;
+		plane.deltaW_[ipl*9] = deltaW_;
 	      }
-	      plane[ipl].slope_max = costheta*TX_MAX+sintheta*TY_MAX;
-	      plane[ipl].inter_max = costheta*X0_MAX+sintheta*Y0_MAX;
+	      plane.slope_max[ipl] = costheta*TX_MAX+sintheta*TY_MAX;
+	      plane.inter_max[ipl] = costheta*X0_MAX+sintheta*Y0_MAX;
 	      if(ipl%2==0 && ipl>1){
-		double dslope = (plane[ipl].resolution+plane[ipl-1].resolution)/(plane[ipl].z-plane[ipl-1].z);
-		double dinter = dslope*plane[ipl].z;
-		plane[ipl].slope_max+= dslope;
-		plane[ipl].inter_max+= dinter;
-		plane[ipl-1].slope_max+= dslope;
-		plane[ipl-1].inter_max+= dinter;
+		double dslope = (plane.resolution[ipl]+plane.resolution[ipl-1])/(plane.z[ipl]-plane.z[ipl-1]);
+		double dinter = dslope*plane.z[ipl];
+		plane.slope_max[ipl]+= dslope;
+		plane.inter_max[ipl]+= dinter;
+		plane.slope_max[ipl-1]+= dslope;
+		plane.inter_max[ipl-1]+= dinter;
 	      }
 	      ipl++;
 	}
@@ -207,48 +207,48 @@ int main(int argn, char * argv[]) {
 		int x_idx = i*6+3;
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j+1;
-			plane[idx].z_mean = j%2==0 ? 0.5*(plane[idx].z+plane[idx+1].z):0.5*(plane[idx].z+plane[idx-1].z);
+			plane.z_mean[idx] = j%2==0 ? 0.5*(plane.z[idx]+plane.z[idx+1]):0.5*(plane.z[idx]+plane.z[idx-1]);
 			
-			plane[idx].v_win_fac1 = plane[idx].spacing*2*plane[u_idx].costheta;
-			plane[idx].v_win_fac2 = plane[u_idx].costheta*TX_MAX;
-			plane[idx].v_win_fac3 = plane[u_idx].sintheta*TY_MAX;
+			plane.v_win_fac1[idx] = plane.spacing[idx]*2*plane.costheta[u_idx];
+			plane.v_win_fac2[idx] = plane.costheta[u_idx]*TX_MAX;
+			plane.v_win_fac3[idx] = plane.sintheta[u_idx]*TY_MAX;
 		}
 		
 		for(int j = 0; j<6; j++){
 			int idx = i*6+j+1;
-			plane[idx].u_win = fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) + TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) + TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) + 2.*plane[u_idx].spacing + u_factor[i];
+			plane.u_win[idx] = fabs(0.5*plane.scaley[u_idx]*plane.sintheta[u_idx]) + TX_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.costheta[u_idx]) + TY_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.sintheta[u_idx]) + 2.*plane.spacing[u_idx] + u_factor[i];
 		}
-		cout << u_idx << " " << plane[u_idx].u_win << " = " << fabs(0.5*plane[u_idx].scaley*plane[u_idx].sintheta) << " + " << TX_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].costheta) << " + " << TY_MAX*fabs((plane[u_idx].z_mean - plane[x_idx].z_mean)*plane[u_idx].sintheta) << " + " << 2.*plane[u_idx].spacing + u_factor[i] << endl;
-		cout << " u costheta " << plane[u_idx].costheta << " u sintheta " << plane[u_idx].sintheta << " x_span " << plane[u_idx].scaley << " spacing " << plane[u_idx].spacing << " z plane_u " << plane[u_idx].z_mean << " z plane_x " << plane[x_idx].z_mean << endl;  
+		cout << u_idx << " " << plane.u_win[u_idx] << " = " << fabs(0.5*plane.scaley[u_idx]*plane.sintheta[u_idx]) << " + " << TX_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.costheta[u_idx]) << " + " << TY_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.sintheta[u_idx]) << " + " << 2.*plane.spacing[u_idx] + u_factor[i] << endl;
+		cout << " u costheta " << plane.costheta[u_idx] << " u sintheta " << plane.sintheta[u_idx] << " x_span " << plane.scaley[u_idx] << " spacing " << plane.spacing[u_idx] << " z plane_u " << plane.z_mean[u_idx] << " z plane_x " << plane.z_mean[x_idx] << endl;  
 	}
 	cout << "Geometry file read out" << endl;
 	
 	double wire_position[55][400];//Let's keep this: simpler, more robust
 	for(int i = 1; i <= nChamberPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-      		for(int j = 1; j <= plane[i].nelem; ++j){
-          		double pos = (j - (plane[i].nelem+1.)/2.)*plane[i].spacing + plane[i].xoffset + plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].deltaW_[0];
+      		for(int j = 1; j <= plane.nelem[i]; ++j){
+          		double pos = (j - (plane.nelem[i]+1.)/2.)*plane.spacing[i] + plane.xoffset[i] + plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
-          		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
+	      	for(int j = 1; j <= plane.nelem[i]; ++j){
+          		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes+1; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
 		//cout << plane[i].nelem << endl;
-	      	for(int j = 1; j <= plane[i].nelem; ++j){
+	      	for(int j = 1; j <= plane.nelem[i]; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
-             		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[moduleID];
+             		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9+moduleID];
 			wire_position[i][j] = pos;
 		}
 		
 	}
-		
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
@@ -302,10 +302,9 @@ int main(int argn, char * argv[]) {
 	}
 	int nEvtMax = dataTree->GetEntries();
 	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
-	
-	static gEvent host_gEvent[EstnEvtMax];
-	//static gStraightTrackBuilder host_gStraightTrackBuilder[EstnEvtMax];
-	
+
+	static gEvent host_gEvent;
+	int nAH, nTH;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -314,42 +313,42 @@ int main(int argn, char * argv[]) {
 		
 		//cout<<"Converting "<<i<<"/"<<nEvtMax<<endl;
 		if(e906data){
-			host_gEvent[i].RunID = rawEvent->fRunID;
-			host_gEvent[i].EventID = rawEvent->fEventID;
-			host_gEvent[i].SpillID = rawEvent->fSpillID;
-			host_gEvent[i].TriggerBits = rawEvent->fTriggerBits;
-			host_gEvent[i].TargetPos = rawEvent->fTargetPos;
-			host_gEvent[i].TurnID = rawEvent->fTurnID;
-			host_gEvent[i].RFID = rawEvent->fRFID;
+			host_gEvent.RunID[i] = rawEvent->fRunID;
+			host_gEvent.EventID[i] = rawEvent->fEventID;
+			host_gEvent.SpillID[i] = rawEvent->fSpillID;
+			host_gEvent.TriggerBits[i] = rawEvent->fTriggerBits;
+			host_gEvent.TargetPos[i] = rawEvent->fTargetPos;
+			host_gEvent.TurnID[i] = rawEvent->fTurnID;
+			host_gEvent.RFID[i] = rawEvent->fRFID;
 			for(int j=0; j<33; j++) {
-				host_gEvent[i].Intensity[j] = rawEvent->fIntensity[j];
+				host_gEvent.Intensity[i*33+j] = rawEvent->fIntensity[j];
 			}
-			host_gEvent[i].TriggerEmu = rawEvent->fTriggerEmu;
+			host_gEvent.TriggerEmu[i] = rawEvent->fTriggerEmu;
 			for(int k=0; k<4; k++) {
-				host_gEvent[i].NRoads[k] = rawEvent->fNRoads[k];
+				host_gEvent.NRoads[i*4+k] = rawEvent->fNRoads[k];
 			}
-			for(int l=0; l<(nChamberPlanes+nHodoPlanes+nPropPlanes+1); l++) {
-				host_gEvent[i].NHits[l] = rawEvent->fNHits[l];
+			for(int l=0; l<nDetectors; l++) {
+				host_gEvent.NHits[i*nDetectors+l] = rawEvent->fNHits[l];
 			}
-			host_gEvent[i].nAH = rawEvent->fAllHits.size();
-			host_gEvent[i].nTH = rawEvent->fTriggerHits.size();
+			host_gEvent.nAH[i] = rawEvent->fAllHits.size();
+			host_gEvent.nTH[i] = rawEvent->fTriggerHits.size();
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
-				host_gEvent[i].AllHits[m].index=(rawEvent->fAllHits[m]).index;
-				host_gEvent[i].AllHits[m].detectorID=(rawEvent->fAllHits[m]).detectorID;
-				host_gEvent[i].AllHits[m].elementID=(rawEvent->fAllHits[m]).elementID;
-				host_gEvent[i].AllHits[m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
-				host_gEvent[i].AllHits[m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				host_gEvent[i].AllHits[m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
-				host_gEvent[i].AllHits[m].flag=(rawEvent->fAllHits[m]).flag;
+				host_gEvent.AllHits[i*EstnAHMax+m].index=(rawEvent->fAllHits[m]).index;
+				host_gEvent.AllHits[i*EstnAHMax+m].detectorID=(rawEvent->fAllHits[m]).detectorID;
+				host_gEvent.AllHits[i*EstnAHMax+m].elementID=(rawEvent->fAllHits[m]).elementID;
+				host_gEvent.AllHits[i*EstnAHMax+m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
+				host_gEvent.AllHits[i*EstnAHMax+m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
+				host_gEvent.AllHits[i*EstnAHMax+m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				host_gEvent.AllHits[i*EstnAHMax+m].flag=(rawEvent->fAllHits[m]).flag;
 			}
 			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
-				host_gEvent[i].TriggerHits[n].index=(rawEvent->fTriggerHits[n]).index;
-				host_gEvent[i].TriggerHits[n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
-				host_gEvent[i].TriggerHits[n].elementID=(rawEvent->fTriggerHits[n]).elementID;
-				host_gEvent[i].TriggerHits[n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
-				host_gEvent[i].TriggerHits[n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				host_gEvent[i].TriggerHits[n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
-				host_gEvent[i].TriggerHits[n].flag=(rawEvent->fTriggerHits[n]).flag;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].index=(rawEvent->fTriggerHits[n]).index;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].elementID=(rawEvent->fTriggerHits[n]).elementID;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
+				host_gEvent.TriggerHits[i*EstnTHMax+n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				host_gEvent.TriggerHits[i*EstnTHMax+n].flag=(rawEvent->fTriggerHits[n]).flag;
 			}
 			// printouts for test
 			//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
@@ -365,52 +364,49 @@ int main(int argn, char * argv[]) {
 #ifdef E1039
 			//Default option: e1039
 			//if(_event_id<20)cout << " evt: " << _event_id << " nhits = " << hit_vec.size() << endl; 
-			host_gEvent[i].RunID = _run_id;
-			host_gEvent[i].SpillID = _spill_id;
-			host_gEvent[i].EventID = _event_id;
-			host_gEvent[i].TriggerBits = _trigger;
-			//for(int k = 0; k<4; k++)host_gEvent[i].NRoads[k] = _qie_presums[k];
-			host_gEvent[i].TurnID = _qie_turn_id;
-			host_gEvent[i].RFID = _qie_rf_id;
-			//for(int k = 0; k<33; k++)host_gEvent[i].Intensity[k] = _qie_rf_inte[k];
+			host_gEvent.RunID[i] = _run_id;
+			host_gEvent.SpillID[i] = _spill_id;
+			host_gEvent.EventID[i] = _event_id;
+			host_gEvent.TriggerBits[i] = _trigger;
+			//for(int k = 0; k<4; k++)host_gEvent[i].NRoads[i*4+k] = _qie_presums[k];
+			host_gEvent.TurnID[i] = _qie_turn_id;
+			host_gEvent.RFID[i] = _qie_rf_id;
+			//for(int k = 0; k<33; k++)host_gEvent.Intensity[i*33+k] = _qie_rf_inte[k];
 			
 			for(int k = 0; k<nDetectors; k++)host_gEvent[i].NHits[k] = 0;//we will increment those in the vector hit loop
 			int ntrighits = 0;
-			host_gEvent[i].nAH = 0;//hit_vec.size();
+			host_gEvent.nAH[i] = 0;//hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
 				if(hit_vec[m]->get_detector_id()>54){
 					//if(_event_id<20)cout << " dark photon plane hit! " << hit_vec[m]->get_detector_id() << endl;
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
-				host_gEvent[i].nAH++;
-				host_gEvent[i].NHits[hit_vec[m]->get_detector_id()]++;
-				host_gEvent[i].AllHits[m].index=hit_vec[m]->get_hit_id();
-				host_gEvent[i].AllHits[m].detectorID=hit_vec[m]->get_detector_id();
-				host_gEvent[i].AllHits[m].elementID=hit_vec[m]->get_element_id();
-				host_gEvent[i].AllHits[m].tdcTime=hit_vec[m]->get_tdc_time();
-				host_gEvent[i].AllHits[m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-				host_gEvent[i].AllHits[m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
-				host_gEvent[i].AllHits[m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
-				host_gEvent[i].AllHits[m].flag=(1<<hit_vec[m]->is_in_time());
-				//if(host_gEvent[i].EventID<20)cout << " det " << host_gEvent[i].AllHits[m].detectorID << " elem " << host_gEvent[i].AllHits[m].elementID << " time " << host_gEvent[i].AllHits[m].tdcTime << " dd " << host_gEvent[i].AllHits[m].driftDistance << " pos " << host_gEvent[i].AllHits[m].pos << endl;
+				host_gEvent.nAH[i]++;
+				host_gEvent.NHits[i*nDetectors+hit_vec[m]->get_detector_id()]++;
+				host_gEvent.AllHits[i+EstnAHMax*m].index=hit_vec[m]->get_hit_id();
+				host_gEvent.AllHits[i+EstnAHMax*m].detectorID=hit_vec[m]->get_detector_id();
+				host_gEvent.AllHits[i+EstnAHMax*m].elementID=hit_vec[m]->get_element_id();
+				host_gEvent.AllHits[i+EstnAHMax*m].tdcTime=hit_vec[m]->get_tdc_time();
+				host_gEvent.AllHits[i+EstnAHMax*m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+				host_gEvent.AllHits[i+EstnAHMax*m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
+				host_gEvent.AllHits[i+EstnAHMax*m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
+				host_gEvent.AllHits[i+EstnAHMax*m].flag=(1<<hit_vec[m]->is_in_time());
+				
 				if(hit_vec[m]->is_trigger_mask()){
-					host_gEvent[i].TriggerHits[ntrighits].index=hit_vec[m]->get_hit_id();
-					host_gEvent[i].TriggerHits[ntrighits].detectorID=hit_vec[m]->get_detector_id();
-					host_gEvent[i].TriggerHits[ntrighits].elementID=hit_vec[m]->get_element_id();
-					host_gEvent[i].TriggerHits[ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
-					host_gEvent[i].TriggerHits[ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-					host_gEvent[i].TriggerHits[ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
-					host_gEvent[i].TriggerHits[ntrighits].flag=(1<<hit_vec[m]->is_in_time());
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].index=hit_vec[m]->get_hit_id();
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].detectorID=hit_vec[m]->get_detector_id();
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].elementID=hit_vec[m]->get_element_id();
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
+					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].flag=(1<<hit_vec[m]->is_in_time());
 					ntrighits++;
 				}
 			}
-			host_gEvent[i].nTH = ntrighits;
+			host_gEvent.nTH[i] = ntrighits;
 #endif
 		}
-		//for(short bin = 0; bin<28; bin++){
-		//	host_gStraightTrackBuilder[i].hitpairs_x2[bin] = new thrust::pair<int, int>[5];
-		//}
 	}
 	cout << "loaded events" << endl;
 	auto cp2 = std::chrono::system_clock::now();
@@ -420,33 +416,32 @@ int main(int argn, char * argv[]) {
 
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
-	size_t NBytesAllEvent = EstnEvtMax * sizeof(gEvent);
-	size_t NBytesAllOutputEvent = EstnEvtMax * sizeof(gOutputEvent);
-	size_t NBytesAllPlanes =  nDetectors * sizeof(gPlane);
-	size_t NBytesFitterTools = EstnEvtMax * sizeof(gStraightFitArrays);
-	size_t NBytesStraightTrackBuilders = EstnEvtMax * sizeof(gStraightTrackBuilder);
-	//size_t NBytesStraightTrackBuilders = sizeof(host_gStraightTrackBuilder);
-	size_t NBytesFullTrackBuilders = EstnEvtMax * sizeof(gFullTrackBuilder);
-	size_t NBytesKalmanFilterTools = EstnEvtMax * sizeof(gStraightFitArrays);
-
+	size_t NBytesAllEvent = sizeof(gEvent);
+	size_t NBytesAllOutputEvent = sizeof(gOutputEvent);
+	size_t NBytesAllPlanes =  sizeof(gPlane);
+	size_t NBytesFitterTools = sizeof(gStraightFitArrays);
+	size_t NBytesStraightTrackBuilders = sizeof(gStraightTrackBuilder);
+	size_t NBytesFullTrackBuilders = sizeof(gFullTrackBuilder);
+	size_t NBytesKalmanFilterTools = sizeof(gStraightFitArrays);
+	
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
 	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
 	     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
 	     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
 	     << "; planes info: " << NBytesAllPlanes << endl;  
 		
-	gEvent *host_output_eR = (gEvent*)malloc(NBytesAllEvent);
-	gOutputEvent *host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
-	
+	gEvent* host_output_eR = (gEvent*)malloc(NBytesAllEvent);
+	gOutputEvent* host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
 	
 	// declaring gEvent objects for the device (GPU) to use.
-	gEvent *device_gEvent;
-	gOutputEvent *device_output_TKL;
-	gPlane *device_gPlane;
-	gStraightFitArrays *device_gFitArrays;
-	gStraightTrackBuilder *device_gStraightTrackBuilder;
-	gFullTrackBuilder *device_gFullTrackBuilder;
-	gKalmanFitArrays *device_gKalmanFitArrays;
+	gEvent* device_gEvent;
+	gOutputEvent* device_output_TKL;
+	gPlane* device_gPlane;
+	gStraightFitArrays* device_gFitArrays;
+	gStraightTrackBuilder* device_gStraightTrackBuilder;
+	gFullTrackBuilder* device_gFullTrackBuilder;
+	gKalmanFitArrays* device_gKalmanFitArrays;
+
 
 	//printDeviceStatus();
 
@@ -458,7 +453,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
 	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
 	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
-
+	
 	std::size_t free_bytes;
 	std::size_t total_bytes;
 
@@ -467,10 +462,9 @@ int main(int argn, char * argv[]) {
 	
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
-	gpuErrchk( cudaMemcpy(device_gPlane, plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
-	gpuErrchk( cudaMemcpy(device_gEvent, host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
-	//gpuErrchk( cudaMemcpy(device_gStraightTrackBuilder, host_gStraightTrackBuilder, NBytesStraightTrackBuilders, cudaMemcpyHostToDevice));
-	
+	gpuErrchk( cudaMemcpy(device_gPlane, &plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gEvent, &host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
+		
 	auto cp3 = std::chrono::system_clock::now();
 
 	auto cp_to_gpu = cp3-cp2;
@@ -490,7 +484,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -500,13 +494,13 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: straight tracking: "<<gpu_st.count()/1000000000.<<endl;
 
 	//release here the memory for straight track builders and straight track fitters	
-	cudaFree(device_gStraightTrackBuilder);
+	cudaFree( device_gStraightTrackBuilder );
 	
 	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 
 	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
-	gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
+	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -537,37 +531,38 @@ int main(int argn, char * argv[]) {
 	auto cp8 = std::chrono::system_clock::now();
 	auto cp_to_cpu = cp8-cp7;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
-
+//#define TEST 1
+#ifdef TEST	
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
 	for(int n = 0; n<nEvtMax; n++){
-		if(host_output_eR[n].nAH==0)continue;
+		if(host_output_eR->nAH[n]==0)continue;
 		nEvtsTotal++;
-		if(host_output_eR[n].HasTooManyHits)continue;
+		if(host_output_eR->HasTooManyHits[n])continue;
 		nEvtsPass++;
-		out<<n<<" "<< host_output_eR[n].nAH <<" "<< host_output_TKL[n].nTracklets<<endl;
-		tklctr+= host_output_TKL[n].nTracklets;
+		out<<n<<" "<< host_output_eR->nAH[n] <<" "<< host_output_TKL->nTracklets[n] <<endl;
+		tklctr+= host_output_TKL->nTracklets[n];
 		for(int k = 1; k<=nDetectors; k++ ){
-			out << host_output_eR[n].NHits[k] << " ";
+			out << host_output_eR->NHits[n*EstnAHMax+k] << " ";
 		}out<<endl;
 		
-		for(int k = 0; k<host_output_eR[n].nAH; k++ ){
-			out << host_output_eR[n].AllHits[k].detectorID << " " << host_output_eR[n].AllHits[k].elementID << " " << host_output_eR[n].AllHits[k].driftDistance*host_output_eR[n].AllHits[k].sign_mc << endl;
+		for(int k = 0; k<host_output_eR->nAH[n]; k++ ){
+			out << host_output_eR->AllHits[n*EstnAHMax+k].detectorID << " " << host_output_eR->AllHits[n*EstnAHMax+k].elementID << " " << host_output_eR->AllHits[k].driftDistance*host_output_eR->AllHits[n*EstnAHMax+k].sign_mc << endl;
 		}
 		
-		for(int k = 0; k<host_output_TKL[n].nTracklets; k++ ){
-			if(isnan(host_output_TKL[n].AllTracklets[k].x0))host_output_TKL[n].AllTracklets[k].x0 = -1000;
-			if(isnan(host_output_TKL[n].AllTracklets[k].y0))host_output_TKL[n].AllTracklets[k].y0 = -1000;
-			if(isnan(host_output_TKL[n].AllTracklets[k].invP))host_output_TKL[n].AllTracklets[k].invP = -1.0;
-			if(isnan(host_output_TKL[n].AllTracklets[k].tx))host_output_TKL[n].AllTracklets[k].tx = -1.0;
-			if(isnan(host_output_TKL[n].AllTracklets[k].ty))host_output_TKL[n].AllTracklets[k].ty = -1.0;
-			out << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].x0 << " " << host_output_TKL[n].AllTracklets[k].y0 << " " << host_output_TKL[n].AllTracklets[k].tx << " " << host_output_TKL[n].AllTracklets[k].ty << " " << host_output_TKL[n].AllTracklets[k].invP << " " << host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits << endl;
+		for(int k = 0; k<host_output_TKL->nTracklets[n]; k++ ){
+			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0 = -1000;
+			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0 = -1000;
+			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP = -1.0;
+			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx = -1.0;
+			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty = -1.0;
+			out << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].stationID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0 << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0 << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nXHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nUHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nVHits << endl;
 			//if(n<100 && host_output_TKL[n].nTracklets>1)cout << n << " " << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].nXHits<< " " <<host_output_TKL[n].AllTracklets[k].nUHits<< " " <<host_output_TKL[n].AllTracklets[k].nVHits << endl;
-			for(int l = 0; l<host_output_TKL[n].AllTracklets[k].nXHits+host_output_TKL[n].AllTracklets[k].nUHits+host_output_TKL[n].AllTracklets[k].nVHits; l++){
-				out << host_output_TKL[n].AllTracklets[k].hits[l].detectorID << " " << host_output_TKL[n].AllTracklets[k].hits[l].elementID << " " << host_output_TKL[n].AllTracklets[k].hits[l].driftDistance*host_output_TKL[n].AllTracklets[k].hitsign[l] << " " << host_output_TKL[n].AllTracklets[k].hits[l].pos << endl;
+			for(int l = 0; l<host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nXHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nUHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nVHits; l++){
+				out << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].detectorID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].elementID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].driftDistance*host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hitsign[l] << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].pos << endl;
 			}
 		}
 		
@@ -577,6 +572,7 @@ int main(int argn, char * argv[]) {
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
 
+#endif		
 
 	delete rawEvent;
 
@@ -597,6 +593,5 @@ int main(int argn, char * argv[]) {
 	auto end = std::chrono::system_clock::now();
 	auto overall = end - start;
 	cout<<"Total time: "<<overall.count()/1000000000.<<endl;
-		
 	return 0;
 }

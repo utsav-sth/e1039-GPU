@@ -1,7 +1,7 @@
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
-#define nDetectors (nChamberPlanes+nHodoPlanes+nPropPlanes)
+#define nDetectors (nChamberPlanes+nHodoPlanes+nPropPlanes+1)
 #define Epsilon 0.00001f
 
 #define triggerBit(n) (1 << (n))
@@ -10,7 +10,7 @@
 using namespace std;
 
 const int EstnEvtMax = 10240;
-const int THREADS_PER_BLOCK = 512;
+const int THREADS_PER_BLOCK = 256;
 int BLOCKS_NUM = EstnEvtMax/THREADS_PER_BLOCK;
 const int EstnAHMax = 4096;
 const int EstnTHMax = 256;
@@ -159,25 +159,22 @@ struct gTrack2D {
 
 struct gEvent {
 	public:
-	gEvent(){
-		RunID = EventID = SpillID = -1;
-	}
-	int RunID; // Run Number
-	int EventID; // Event number
-	int SpillID; // Spill number
-	int TriggerBits; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
-	short TargetPos; // target position: proxy for target ID?
-	int TurnID; // => related to beam intensity
-	int RFID; // => related to beam intensity
-	int Intensity[33]; //  16 before, one onset, and 16 after
-	short TriggerEmu; // 1 if MC event
-	short NRoads[4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
-	int NHits[nDetectors+1]; // number of hits in each detector plane
-	int nAH; // size of AllHits
-	int nTH; // size of TriggerHits
-	gHit AllHits[EstnAHMax]; // array of all hits
-	gHit TriggerHits[EstnTHMax]; // array of trigger hits
-	bool HasTooManyHits;//bool to flag an event with too many hits
+	int RunID[EstnEvtMax]; // Run Number
+	int EventID[EstnEvtMax]; // Event number
+	int SpillID[EstnEvtMax]; // Spill number
+	int TriggerBits[EstnEvtMax]; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
+	short TargetPos[EstnEvtMax]; // target position: proxy for target ID?
+	int TurnID[EstnEvtMax]; // => related to beam intensity
+	int RFID[EstnEvtMax]; // => related to beam intensity
+	int Intensity[EstnEvtMax*33]; //  16 before, one onset, and 16 after
+	short TriggerEmu[EstnEvtMax]; // 1 if MC event
+	short NRoads[EstnEvtMax*4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
+	int NHits[EstnEvtMax*nDetectors]; // number of hits in each detector plane
+	int nAH[EstnEvtMax]; // size of AllHits
+	int nTH[EstnEvtMax]; // size of TriggerHits
+	gHit AllHits[EstnEvtMax*EstnAHMax]; // array of all hits
+	gHit TriggerHits[EstnEvtMax*EstnTHMax]; // array of trigger hits
+	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
 };
 
 struct gChamberHitColl{
@@ -203,136 +200,136 @@ struct gPropHitColl{
 
 struct gFullTrackBuilder{
 public:
-	gTrack2D TrackXZ_st1;
+	gTrack2D TrackXZ_st1[EstnEvtMax];
 	
-      	int hitlist[MaxHitsPerTrack];
-      	short hitsign[MaxHitsPerTrack];
+      	int hitlist[EstnEvtMax*MaxHitsPerTrack];
+      	short hitsign[EstnEvtMax*MaxHitsPerTrack];
 	
-	thrust::pair<int, int> hitpairs_x1[100];
-	thrust::pair<int, int> hitpairs_u1[100];
-	thrust::pair<int, int> hitpairs_v1[100];
+	thrust::pair<int, int> hitpairs_x1[EstnEvtMax*100];
+	thrust::pair<int, int> hitpairs_u1[EstnEvtMax*100];
+	thrust::pair<int, int> hitpairs_v1[EstnEvtMax*100];
 	
 	//util arrays for pair making
-	int hitidx1[100];
-	int hitidx2[100];
-	short hitflag1[100];
-	short hitflag2[100];
+//	int hitidx1[EstnEvtMax*100];
+//	int hitidx2[EstnEvtMax*100];
+//	short hitflag1[EstnEvtMax*100];
+//	short hitflag2[EstnEvtMax*100];
 };
 
 
 struct gStraightTrackBuilder{
 public:
-	gTrack2D trackXZ;
-	gTrack2D trackYZ;
-	gTrack2D besttrackYZ;
+//	gTrack2D trackXZ[EstnEvtMax];
+//	gTrack2D trackYZ[EstnEvtMax];
+//	gTrack2D besttrackYZ[EstnEvtMax];
 	
         //pairs in station 2
-        thrust::pair<int, int> hitpairs_x2[280];//28*10
-        thrust::pair<int, int> hitpairs_u2[1120];//28*40
-        thrust::pair<int, int> hitpairs_v2[1120];
+        thrust::pair<int, int> hitpairs_x2[EstnEvtMax*280];//28*10
+        thrust::pair<int, int> hitpairs_u2[EstnEvtMax*1120];//28*40
+        thrust::pair<int, int> hitpairs_v2[EstnEvtMax*1120];
         //pairs in station 3
-        thrust::pair<int, int> hitpairs_x3[580];//29*10*2
-        thrust::pair<int, int> hitpairs_u3[2320];//29*40*2
-        thrust::pair<int, int> hitpairs_v3[2320];
+        thrust::pair<int, int> hitpairs_x3[EstnEvtMax*580];//29*10*2
+        thrust::pair<int, int> hitpairs_u3[EstnEvtMax*2320];//29*40*2
+        thrust::pair<int, int> hitpairs_v3[EstnEvtMax*2320];
 	
-	int nhitpairs_x2[28];
-	int nhitpairs_u2[28];
-	int nhitpairs_v2[28];
+//	int nhitpairs_x2[EstnEvtMax*28];
+//	int nhitpairs_u2[EstnEvtMax*28];
+//	int nhitpairs_v2[EstnEvtMax*28];
 	
-	int nhitpairs_x3[58];
-	int nhitpairs_u3[58];
-	int nhitpairs_v3[58];
+//	int nhitpairs_x3[EstnEvtMax*58];
+//	int nhitpairs_u3[EstnEvtMax*58];
+//	int nhitpairs_v3[EstnEvtMax*58];
 	
-	//util arrays for pair making
-	int hitidx1[100];
-	int hitidx2[100];
-	short hitflag1[100];
-	short hitflag2[100];
+//	//util arrays for pair making
+//	int hitidx1[EstnEvtMax*100];
+//	int hitidx2[EstnEvtMax*100];
+//	short hitflag1[EstnEvtMax*100];
+//	short hitflag2[EstnEvtMax*100];
 };
 
 struct gStraightFitArrays {
 public:
-      int npoints;
-      float drift_dist[MaxHitsPerTrack]; // hit drift distance
-      float resolution[MaxHitsPerTrack]; // detector resolution
+      int npoints[EstnEvtMax];
+      float drift_dist[EstnEvtMax*MaxHitsPerTrack]; // hit drift distance
+      float resolution[EstnEvtMax*MaxHitsPerTrack]; // detector resolution
       
-      float p1x[MaxHitsPerTrack];// x bottom end point of the wire hit 
-      float p1y[MaxHitsPerTrack];// y bottom end point of the wire hit 
-      float p1z[MaxHitsPerTrack];// z bottom end point of the wire hit 
+      float p1x[EstnEvtMax*MaxHitsPerTrack];// x bottom end point of the wire hit 
+      float p1y[EstnEvtMax*MaxHitsPerTrack];// y bottom end point of the wire hit 
+      float p1z[EstnEvtMax*MaxHitsPerTrack];// z bottom end point of the wire hit 
       
-      float deltapx[MaxHitsPerTrack];// x distance between bottom and top end points of the wire hit 
-      float deltapy[MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
-      float deltapz[MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
+      float deltapx[EstnEvtMax*MaxHitsPerTrack];// x distance between bottom and top end points of the wire hit 
+      float deltapy[EstnEvtMax*MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
+      float deltapz[EstnEvtMax*MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
       
-      float output_parameters[4];
-      float output_parameters_errors[4];
-      float chi2_2d;
-      float chi2;
+//      float output_parameters[EstnEvtMax*4];
+//      float output_parameters_errors[EstnEvtMax*4];
+//      float chi2_2d[EstnEvtMax];
+//      float chi2[EstnEvtMax];
 
-      float x_array[MaxHitsPerTrack];// x position arrays
-      float y_array[MaxHitsPerTrack];// y position arrays
-      float z_array[MaxHitsPerTrack];// z position arrays
-      float dx_array[MaxHitsPerTrack];// x position uncertainty
-      float dy_array[MaxHitsPerTrack];// x position uncertainty
+      float x_array[EstnEvtMax*MaxHitsPerTrack];// x position arrays
+      float y_array[EstnEvtMax*MaxHitsPerTrack];// y position arrays
+      float z_array[EstnEvtMax*MaxHitsPerTrack];// z position arrays
+      float dx_array[EstnEvtMax*MaxHitsPerTrack];// x position uncertainty
+      float dy_array[EstnEvtMax*MaxHitsPerTrack];// x position uncertainty
       
-      float A[4];// matrix: max size 2x2
-      float Ainv[4];// inverted matrix
-      float B[2];// input vector
+//      float A[EstnEvtMax*4];// matrix: max size 2x2
+//      float Ainv[EstnEvtMax*4];// inverted matrix
+//      float B[EstnEvtMax*2];// input vector
 };
 
 struct gKalmanFitArrays{
 public:
-	float state[5];// 5-vector: x0, y0, tx, ty, invP
-	float Cov[25];// symmetric 5x5 matrix: C00 = err_x0, C11 = err_y0, C22 = err_tx, C33 = err_ty, C44 = err_invP
-	float H[2];
-	float K[5];// matrix: max size 5x5, but we can use this unique array for all possible sizes
-	float KCResKt[25];// matrix 5x5, result of tensor product of K*K
-	float chi2;// chi2
+	float state[EstnEvtMax*5];// 5-vector: x0, y0, tx, ty, invP
+	float Cov[EstnEvtMax*25];// symmetric 5x5 matrix: C00 = err_x0, C11 = err_y0, C22 = err_tx, C33 = err_ty, C44 = err_invP
+	float H[EstnEvtMax*2];
+	float K[EstnEvtMax*5];// matrix: max size 5x5, but we can use this unique array for all possible sizes
+	float KCResKt[EstnEvtMax*25];// matrix 5x5, result of tensor product of K*K
+	float chi2[EstnEvtMax];// chi2
 };
 
 struct gOutputEvent {
 public:
-	int EventID;
-	int nAH;
-	bool HasTooManyHits;//bool to flag an event with too many hits
-	int nTracklets;
-	gTracklet AllTracklets[TrackletSizeMax+1];//save one slot for a new candidate
+	int EventID[EstnEvtMax];
+	int nAH[EstnEvtMax];
+	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
+	int nTracklets[EstnEvtMax];
+	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
 };
 
 //geometry carrier
 struct gPlane {
       public:
-      float z;
-      int nelem;
-      float cellwidth;
-      float spacing;
-      float xoffset;
-      float scalex;
-      float x0;
-      float x1;
-      float x2;
-      float costheta;
-      float scaley;
-      float y0;
-      float y1;
-      float y2;
-      float sintheta;
-      float resolution;
-      float deltaW_[9];
-      float z_mean;
-      float u_win;
-      float v_win_fac1;
-      float v_win_fac2;
-      float v_win_fac3;
-      float p1x_w1;
-      float p1y_w1;
-      float p1z_w1;
-      float deltapx;
-      float deltapy;
-      float deltapz;
-      float dp1x;
-      float dp1y;
-      float dp1z;
-      float slope_max;
-      float inter_max;
+      float z[nDetectors];
+      int nelem[nDetectors];
+      float cellwidth[nDetectors];
+      float spacing[nDetectors];
+      float xoffset[nDetectors];
+      float scalex[nDetectors];
+      float x0[nDetectors];
+      float x1[nDetectors];
+      float x2[nDetectors];
+      float costheta[nDetectors];
+      float scaley[nDetectors];
+      float y0[nDetectors];
+      float y1[nDetectors];
+      float y2[nDetectors];
+      float sintheta[nDetectors];
+      float resolution[nDetectors];
+      float deltaW_[nDetectors*9];
+      float z_mean[nDetectors];
+      float u_win[nDetectors];
+      float v_win_fac1[nDetectors];
+      float v_win_fac2[nDetectors];
+      float v_win_fac3[nDetectors];
+      float p1x_w1[nDetectors];
+      float p1y_w1[nDetectors];
+      float p1z_w1[nDetectors];
+      float deltapx[nDetectors];
+      float deltapy[nDetectors];
+      float deltapz[nDetectors];
+      float dp1x[nDetectors];
+      float dp1y[nDetectors];
+      float dp1z[nDetectors];
+      float slope_max[nDetectors];
+      float inter_max[nDetectors];
 };
