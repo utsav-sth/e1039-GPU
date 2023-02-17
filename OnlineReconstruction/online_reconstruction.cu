@@ -304,7 +304,23 @@ int main(int argn, char * argv[]) {
 	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
 
 	static gEvent host_gEvent;
+	//static gEventHitCollections host_gEventHits;
+	
 	int nAH, nTH;
+	
+	unsigned int hitarrayoffset[nDetectors];
+	//the offset convention for the hit is the following: 
+	// 1 <= detID <= 30: EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(detID-1)
+	// 31 <= detID <= 46: EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes*(detID-31)
+	// 47 <= detID <= 54: EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes*(detID-47)
+	for(short k = 1; k<=nChamberPlanes; k++){
+		hitarrayoffset[k] = EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(k-1);
+	}
+	for(short k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++){
+		hitarrayoffset[k] = EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(k-31);
+	}
+	
+	
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -332,7 +348,10 @@ int main(int argn, char * argv[]) {
 			}
 			host_gEvent.nAH[i] = rawEvent->fAllHits.size();
 			host_gEvent.nTH[i] = rawEvent->fTriggerHits.size();
+			
+			
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
+				if( (rawEvent->fAllHits[m]).detectorID )
 				host_gEvent.AllHits[i*EstnAHMax+m].index=(rawEvent->fAllHits[m]).index;
 				host_gEvent.AllHits[i*EstnAHMax+m].detectorID=(rawEvent->fAllHits[m]).detectorID;
 				host_gEvent.AllHits[i*EstnAHMax+m].elementID=(rawEvent->fAllHits[m]).elementID;
@@ -473,7 +492,7 @@ int main(int argn, char * argv[]) {
 	// now data is transfered in the device: kernel function for event reconstruction called;
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
-	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
+	//gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;

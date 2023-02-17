@@ -6,6 +6,7 @@
 // CUDA C++ extends C++ by allowing the programmer to define C++ functions, called kernels, that, when called, 
 // are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
 
+
 // event reducer: 
 __global__ void gkernel_eR(gEvent* ic) {
 	//printf("Running the kernel function...\n");
@@ -751,8 +752,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 						oc->AllTracklets[idxoff_tkl+ntkl].err_ty = besttrackYZ.err_tx_;
 					}
 				}
-#ifdef OLDCODE
-#endif				
 			}// end loop on uv hits
 
 			if(best_candyz_only){
@@ -778,12 +777,11 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	oc->nTracklets[index] = ntkl;
 }
 
+#ifdef OLDCODE
 
 // ------------------------------
 // Global Track candidates
 // ------------------------------
-
-#ifdef OLDCODE
 
 
 __global__ void gKernel_GlobalTrack_building(gEvent* ic, gOutputEvent* oc, gFullTrackBuilder* fulltrackbuilder, gStraightFitArrays* fitarrays, const gPlane* planes, bool ktracker)
