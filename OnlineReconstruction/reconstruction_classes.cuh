@@ -14,14 +14,14 @@ struct gHit {
 };
 
 //it may be beneficial to have several classes of hits...
-struct gWCHits {
+struct gHits {
 	public:
 	const unsigned int NHitsTotal;
 	float* m_hitdata;
 	
 	//convention: offset: chan (element ID) 0; pos 1; tdc 2; flag 3; drift 4;
 		
-	__host__ __device__ gWCHits(float* basedata, const unsigned total_number_of_hits, const unsigned offset = 0) :
+	__host__ __device__ gHits(float* basedata, const unsigned total_number_of_hits, const unsigned offset = 0) :
     		m_hitdata(basedata + offset), NHitsTotal(total_number_of_hits)
 		{
 			static_assert(sizeof(float) == sizeof(unsigned));
@@ -59,6 +59,7 @@ struct gWCHits {
 		}
 };
 
+/*
 //it may be beneficial to have several classes of hits...
 struct gHodoHits {
 	public:
@@ -103,7 +104,7 @@ struct gHodoHits {
 struct gHitPairs{
 	
 };
-
+*/
 
 
 struct gTracklet {
@@ -176,33 +177,53 @@ struct gEvent {
 	int nAH[EstnEvtMax]; // size of AllHits
 	int nTH[EstnEvtMax]; // size of TriggerHits
 	//limit the max hit multiplicity for unreduced events to 2 times of what it is for reduced events
-	
-	//float HitsChambersRawData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*2];
-	//float HitsPropTubesRawData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes*2];
-	//float HitsHodoRawData[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes*2];
-	gHit AllHits[EstnEvtMax*EstnAHMax]; // array of all hits
-	gHit TriggerHits[EstnEvtMax*EstnTHMax]; // array of trigger hits
+	//float HitsChambersReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers];
+	//float HitsPropTubesReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes*2];
+	//float HitsHodoReducedData[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
+
+	//gHit AllHits[EstnEvtMax*EstnAHMax]; // array of all hits
+	//gHit TriggerHits[EstnEvtMax*EstnTHMax]; // array of trigger hits
 	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
 };
 
-// one per chamber?
 struct gEventHitCollections {
 	public:
 	unsigned int NHitsChambers[EstnEvtMax*nChamberPlanes];
-	float HitsChambersReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers];
+	float HitsChambersRawData[EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers];
 	
-	unsigned int NHitsPropTubes[EstnEvtMax*nChamberPlanes]; 
-	float HitsPropTubesReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes];
-
-	unsigned int NHitsHodo[EstnEvtMax*nChamberPlanes]; 
-	float HitsHodoReducedData[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
+	unsigned int NHitsHodo[EstnEvtMax*nHodoPlanes]; 
+	float HitsHodoRawData[EstnEvtMax*nHodoPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes];
+	
+	unsigned int NHitsPropTubes[EstnEvtMax*nPropPlanes]; 
+	float HitsPropTubesRawData[EstnEvtMax*nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes];
 };
 
-struct gEventReducerInput{
+/*
+struct gEventHitCollections {
+	public:
+	const unsigned int NEvtsTotal;
+	unsigned int* NHitsChambers;//[EstnEvtMax*nChamberPlanes];
+	float* HitsChambersRawData;//[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers];
 	
-	
-};
+	unsigned int* NHitsPropTubes;// [EstnEvtMax*nChamberPlanes]; 
+	float* HitsPropTubesRawData;//[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes];
 
+	unsigned int* NHitsHodo;// [EstnEvtMax*nChamberPlanes]; 
+	float* HitsHodoRawData;//[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
+
+	__host__ __device__ gEventHitCollections(const unsigned total_number_of_events) :
+    		NEvtsTotal(total_number_of_events);
+		{
+			NHitsChambers = int[NEvtsTotal*nChamberPlanes];
+			NHitsHodo = int[NEvtsTotal*nHodoPlanes];
+			NHitsPropTubes = int[NEvtsTotal*nPropPlanes];
+			
+			HitsChambersRawData = float[NEvtsTotals*nChamberPlanes*5*datasizes::NMaxHitsChambers];
+			HitsPropTubesRawData = float[NEvtsTotals*nChamberPlanes*5*datasizes::NMaxHitsPropTubes];
+			HitsHodoRawData = float[NEvtsTotal*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
+		}
+};
+*/
 
 struct gTracks2D {
 	public:
@@ -242,7 +263,6 @@ struct gPropHitColl{
 	int projID;//X, 0; Y: 1
 	gHit Hits[datasizes::NMaxHitsPropTubes];
 };
-*/
 
 struct gFullTrackBuilder{
 public:
@@ -332,6 +352,7 @@ public:
 	float KCResKt[EstnEvtMax*25];// matrix 5x5, result of tensor product of K*K
 	float chi2[EstnEvtMax];// chi2
 };
+*/
 
 struct gOutputEvent {
 public:

@@ -4,6 +4,8 @@
 // functions to calculate bottom and top end wire points for a hit //
 // --------------------------------------------------------------- //
 
+#ifdef OLDCODE
+
 __device__ float x_bep(const gHit hit, const gPlane* plane)
 {
 	return plane->p1x_w1[hit.detectorID]+plane->dp1x[hit.detectorID]*(hit.elementID-1);
@@ -675,7 +677,6 @@ __device__ void resolve_single_leftright(gTracklet &tkl, const gPlane* planes)
 	
 }
 
-#ifdef OLDCODE
 
 // ----------------------------------------------------------------- //
 // functions for selection of station 1 hits for back partial tracks //

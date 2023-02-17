@@ -304,22 +304,35 @@ int main(int argn, char * argv[]) {
 	if(nEvtMax>EstnEvtMax)nEvtMax=EstnEvtMax;
 
 	static gEvent host_gEvent;
-	//static gEventHitCollections host_gEventHits;
+	static gEventHitCollections host_gEventHits;
 	
 	int nAH, nTH;
 	
+	unsigned int detarrayoffset[nDetectors];
 	unsigned int hitarrayoffset[nDetectors];
 	//the offset convention for the hit is the following: 
 	// 1 <= detID <= 30: EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(detID-1)
-	// 31 <= detID <= 46: EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes*(detID-31)
-	// 47 <= detID <= 54: EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes*(detID-47)
+	// 31 <= detID <= 46: EstnEvtMax*nHodoPlanes*4*datasizes::NMaxHitsHodoscopes*(detID-31)
+	// 47 <= detID <= 54: EstnEvtMax*nPropPlanes*5*datasizes::NMaxHitsPropTubes*(detID-47)
 	for(short k = 1; k<=nChamberPlanes; k++){
-		hitarrayoffset[k] = EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(k-1);
+		detarrayoffset[k] = EstnEvtMax*(k-1);
+		hitarrayoffset[k] = EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*(k-1);
 	}
 	for(short k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++){
-		hitarrayoffset[k] = EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers*(k-31);
+		detarrayoffset[k] = EstnEvtMax*(k-1);
+		hitarrayoffset[k] = EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(k-31);
+	}
+	for(short k = nChamberPlanes+nHodoPlanes+1; k<=nDetectors; k++){
+		detarrayoffset[k] = EstnEvtMax*(k-1);
+		hitarrayoffset[k] = EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*(k-47);
 	}
 	
+	for(short k = 1; k<=nDetectors; k++){
+		cout << detarrayoffset[k] << " " << hitarrayoffset[k] << endl;
+	}
+	
+	short detid;
+	int nhits;
 	
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
@@ -345,30 +358,63 @@ int main(int argn, char * argv[]) {
 			}
 			for(int l=0; l<nDetectors; l++) {
 				host_gEvent.NHits[i*nDetectors+l] = rawEvent->fNHits[l];
+				if(1 <= l && l <= 30){
+					host_gEventHits.NHitsChambers[detarrayoffset[l]+l-1] = rawEvent->fNHits[l];
+				}
+				if(31 <= l && l <= 46){
+					host_gEventHits.NHitsHodo[detarrayoffset[l]+l-31] = rawEvent->fNHits[l];
+				}
+				if(47 <= l && l <= 54){
+					host_gEventHits.NHitsPropTubes[detarrayoffset[l]+l-47] = rawEvent->fNHits[l];
+				}
 			}
 			host_gEvent.nAH[i] = rawEvent->fAllHits.size();
 			host_gEvent.nTH[i] = rawEvent->fTriggerHits.size();
 			
-			
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
-				if( (rawEvent->fAllHits[m]).detectorID )
-				host_gEvent.AllHits[i*EstnAHMax+m].index=(rawEvent->fAllHits[m]).index;
-				host_gEvent.AllHits[i*EstnAHMax+m].detectorID=(rawEvent->fAllHits[m]).detectorID;
-				host_gEvent.AllHits[i*EstnAHMax+m].elementID=(rawEvent->fAllHits[m]).elementID;
-				host_gEvent.AllHits[i*EstnAHMax+m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
-				host_gEvent.AllHits[i*EstnAHMax+m].driftDistance=(rawEvent->fAllHits[m]).driftDistance;
-				host_gEvent.AllHits[i*EstnAHMax+m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
-				host_gEvent.AllHits[i*EstnAHMax+m].flag=(rawEvent->fAllHits[m]).flag;
+				detid = (rawEvent->fAllHits[m]).detectorID;
+				nhits = rawEvent->fNHits[detid];
+				if(1 <= detid && detid <= 30){
+					host_gEventHits.HitsChambersRawData[hitarrayoffset[detid]+m] = (rawEvent->fAllHits[m]).elementID;
+					host_gEventHits.HitsChambersRawData[hitarrayoffset[detid]+m*nhits] = wire_position[detid][(rawEvent->fAllHits[m]).elementID];
+					host_gEventHits.HitsChambersRawData[hitarrayoffset[detid]+m*2*nhits] = (rawEvent->fAllHits[m]).tdcTime;
+					host_gEventHits.HitsChambersRawData[hitarrayoffset[detid]+m*3*nhits] = (rawEvent->fAllHits[m]).flag;
+					host_gEventHits.HitsChambersRawData[hitarrayoffset[detid]+m*4*nhits] = (rawEvent->fAllHits[m]).driftDistance;
+				}
+
+				if(31 <= detid && detid <= 46){
+					host_gEventHits.HitsHodoRawData[hitarrayoffset[detid]+m] = (rawEvent->fAllHits[m]).elementID;
+					host_gEventHits.HitsHodoRawData[hitarrayoffset[detid]+m*nhits] = wire_position[detid][(rawEvent->fAllHits[m]).elementID];
+					host_gEventHits.HitsHodoRawData[hitarrayoffset[detid]+m*2*nhits] = (rawEvent->fAllHits[m]).tdcTime;
+					host_gEventHits.HitsHodoRawData[hitarrayoffset[detid]+m*3*nhits] = (rawEvent->fAllHits[m]).flag;
+					host_gEventHits.HitsHodoRawData[hitarrayoffset[detid]+m*4*nhits] = (rawEvent->fAllHits[m]).driftDistance;
+				}
+				
+				if(47 <= detid && detid <= 54){
+					host_gEventHits.HitsPropTubesRawData[hitarrayoffset[detid]+m] = (rawEvent->fAllHits[m]).elementID;
+					host_gEventHits.HitsPropTubesRawData[hitarrayoffset[detid]+m*nhits] = wire_position[detid][(rawEvent->fAllHits[m]).elementID];
+					host_gEventHits.HitsPropTubesRawData[hitarrayoffset[detid]+m*2*nhits] = (rawEvent->fAllHits[m]).tdcTime;
+					host_gEventHits.HitsPropTubesRawData[hitarrayoffset[detid]+m*3*nhits] = (rawEvent->fAllHits[m]).flag;
+					host_gEventHits.HitsPropTubesRawData[hitarrayoffset[detid]+m*4*nhits] = (rawEvent->fAllHits[m]).driftDistance;
+				}
+				//host_gEvent.AllHits[i*EstnAHMax+m].index=(rawEvent->fAllHits[m]).index;
+				//host_gEvent.AllHits[i*EstnAHMax+m].detectorID=(rawEvent->fAllHits[m]).detectorID;
+				//host_gEvent.AllHits[i*EstnAHMax+m].elementID=(rawEvent->fAllHits[m]).elementID;
+				//host_gEvent.AllHits[i*EstnAHMax+m].tdcTime=(rawEvent->fAllHits[m]).tdcTime;
+				//host_gEvent.AllHits[i*EstnAHMax+m].driftDistance=(rawEvent->fAllHits[m]).;
+				//host_gEvent.AllHits[i*EstnAHMax+m].pos=wire_position[(rawEvent->fAllHits[m]).detectorID][(rawEvent->fAllHits[m]).elementID];
+				//host_gEvent.AllHits[i*EstnAHMax+m].flag=(rawEvent->fAllHits[m]).flag;
 			}
-			for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
-				host_gEvent.TriggerHits[i*EstnTHMax+n].index=(rawEvent->fTriggerHits[n]).index;
-				host_gEvent.TriggerHits[i*EstnTHMax+n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
-				host_gEvent.TriggerHits[i*EstnTHMax+n].elementID=(rawEvent->fTriggerHits[n]).elementID;
-				host_gEvent.TriggerHits[i*EstnTHMax+n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
-				host_gEvent.TriggerHits[i*EstnTHMax+n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
-				host_gEvent.TriggerHits[i*EstnTHMax+n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
-				host_gEvent.TriggerHits[i*EstnTHMax+n].flag=(rawEvent->fTriggerHits[n]).flag;
-			}
+			//AFAIK trigger hits are not used anywhere in the online reco...
+			//for(int n=0; n<rawEvent->fTriggerHits.size(); n++) {
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].index=(rawEvent->fTriggerHits[n]).index;
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].detectorID=(rawEvent->fTriggerHits[n]).detectorID;
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].elementID=(rawEvent->fTriggerHits[n]).elementID;
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].tdcTime=(rawEvent->fTriggerHits[n]).tdcTime;
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].driftDistance=(rawEvent->fTriggerHits[n]).driftDistance;
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].pos=wire_position[(rawEvent->fAllHits[n]).detectorID][(rawEvent->fAllHits[n]).elementID];
+				//host_gEvent.TriggerHits[i*EstnTHMax+n].flag=(rawEvent->fTriggerHits[n]).flag;
+			//}
 			// printouts for test
 			//if(10000<rawEvent->fEventID&&rawEvent->fEventID<10050){
 			//	printf("%d:\n ", rawEvent->fEventID);
@@ -401,27 +447,27 @@ int main(int argn, char * argv[]) {
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
-				host_gEvent.nAH[i]++;
-				host_gEvent.NHits[i*nDetectors+hit_vec[m]->get_detector_id()]++;
-				host_gEvent.AllHits[i+EstnAHMax*m].index=hit_vec[m]->get_hit_id();
-				host_gEvent.AllHits[i+EstnAHMax*m].detectorID=hit_vec[m]->get_detector_id();
-				host_gEvent.AllHits[i+EstnAHMax*m].elementID=hit_vec[m]->get_element_id();
-				host_gEvent.AllHits[i+EstnAHMax*m].tdcTime=hit_vec[m]->get_tdc_time();
-				host_gEvent.AllHits[i+EstnAHMax*m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-				host_gEvent.AllHits[i+EstnAHMax*m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
-				host_gEvent.AllHits[i+EstnAHMax*m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
-				host_gEvent.AllHits[i+EstnAHMax*m].flag=(1<<hit_vec[m]->is_in_time());
+				//host_gEvent.nAH[i]++;
+				//host_gEvent.NHits[i*nDetectors+hit_vec[m]->get_detector_id()]++;
+				//host_gEvent.AllHits[i+EstnAHMax*m].index=hit_vec[m]->get_hit_id();
+				//host_gEvent.AllHits[i+EstnAHMax*m].detectorID=hit_vec[m]->get_detector_id();
+				//host_gEvent.AllHits[i+EstnAHMax*m].elementID=hit_vec[m]->get_element_id();
+				//host_gEvent.AllHits[i+EstnAHMax*m].tdcTime=hit_vec[m]->get_tdc_time();
+				//host_gEvent.AllHits[i+EstnAHMax*m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+				//host_gEvent.AllHits[i+EstnAHMax*m].sign_mc=hit_vec[m]->get_drift_distance()/fabs(hit_vec[m]->get_drift_distance());
+				//host_gEvent.AllHits[i+EstnAHMax*m].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
+				//host_gEvent.AllHits[i+EstnAHMax*m].flag=(1<<hit_vec[m]->is_in_time());
 				
-				if(hit_vec[m]->is_trigger_mask()){
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].index=hit_vec[m]->get_hit_id();
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].detectorID=hit_vec[m]->get_detector_id();
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].elementID=hit_vec[m]->get_element_id();
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
-					host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].flag=(1<<hit_vec[m]->is_in_time());
-					ntrighits++;
-				}
+				//if(hit_vec[m]->is_trigger_mask()){
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].index=hit_vec[m]->get_hit_id();
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].detectorID=hit_vec[m]->get_detector_id();
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].elementID=hit_vec[m]->get_element_id();
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].tdcTime=hit_vec[m]->get_tdc_time();
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
+					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].flag=(1<<hit_vec[m]->is_in_time());
+				//	ntrighits++;
+				//}
 			}
 			host_gEvent.nTH[i] = ntrighits;
 #endif
@@ -436,30 +482,35 @@ int main(int argn, char * argv[]) {
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = sizeof(gEvent);
+	size_t NBytesAllHits = sizeof(gEventHitCollections);
 	size_t NBytesAllOutputEvent = sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  sizeof(gPlane);
-	size_t NBytesFitterTools = sizeof(gStraightFitArrays);
-	size_t NBytesStraightTrackBuilders = sizeof(gStraightTrackBuilder);
-	size_t NBytesFullTrackBuilders = sizeof(gFullTrackBuilder);
-	size_t NBytesKalmanFilterTools = sizeof(gStraightFitArrays);
+	//size_t NBytesFitterTools = sizeof(gStraightFitArrays);
+	//size_t NBytesStraightTrackBuilders = sizeof(gStraightTrackBuilder);
+	//size_t NBytesFullTrackBuilders = sizeof(gFullTrackBuilder);
+	//size_t NBytesKalmanFilterTools = sizeof(gStraightFitArrays);
 	
-	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesFitterTools << endl;
-	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent << "; straight track builder tools: " << NBytesStraightTrackBuilders
-	     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
-	     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
-	     << "; planes info: " << NBytesAllPlanes << endl;  
+	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesAllHits << endl;
+	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent 
+		<< "; raw hits: " << NBytesAllHits 
+		//<< "; straight track builder tools: " << NBytesStraightTrackBuilders
+	//     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
+	//     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
+		<< "; planes info: " << NBytesAllPlanes << endl;  
 		
 	gEvent* host_output_eR = (gEvent*)malloc(NBytesAllEvent);
+	gEvent* host_output_gHits = (gEvent*)malloc(NBytesAllHits);
 	gOutputEvent* host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
 	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent* device_gEvent;
+	gEventHitCollections* device_gHits;
 	gOutputEvent* device_output_TKL;
 	gPlane* device_gPlane;
-	gStraightFitArrays* device_gFitArrays;
-	gStraightTrackBuilder* device_gStraightTrackBuilder;
-	gFullTrackBuilder* device_gFullTrackBuilder;
-	gKalmanFitArrays* device_gKalmanFitArrays;
+	//gStraightFitArrays* device_gFitArrays;
+	//gStraightTrackBuilder* device_gStraightTrackBuilder;
+	//gFullTrackBuilder* device_gFullTrackBuilder;
+	//gKalmanFitArrays* device_gKalmanFitArrays;
 
 
 	//printDeviceStatus();
@@ -467,11 +518,12 @@ int main(int argn, char * argv[]) {
 	// copy of data from host to device: evaluate operation time 
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
+	gpuErrchk( cudaMalloc((void**)&device_gHits, NBytesAllHits));
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
-	gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
+	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
+	//gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
 	
 	std::size_t free_bytes;
 	std::size_t total_bytes;
@@ -483,6 +535,7 @@ int main(int argn, char * argv[]) {
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	gpuErrchk( cudaMemcpy(device_gPlane, &plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, &host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gHits, &host_gEventHits, NBytesAllHits, cudaMemcpyHostToDevice));
 		
 	auto cp3 = std::chrono::system_clock::now();
 
@@ -493,6 +546,7 @@ int main(int argn, char * argv[]) {
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
 	//gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
+	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_gHits);
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;
@@ -513,9 +567,9 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: straight tracking: "<<gpu_st.count()/1000000000.<<endl;
 
 	//release here the memory for straight track builders and straight track fitters	
-	cudaFree( device_gStraightTrackBuilder );
+	//cudaFree( device_gStraightTrackBuilder );
 	
-	gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
+	//gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 
 	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
@@ -524,7 +578,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
+	//gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_gt = cp6-cp5;
@@ -543,6 +597,9 @@ int main(int argn, char * argv[]) {
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
 	cudaFree(device_gEvent);
+
+	gpuErrchk( cudaMemcpy(host_output_gHits, device_gHits, NBytesAllHits, cudaMemcpyDeviceToHost));
+	cudaFree(device_gHits);
 	
 	gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
 	cudaFree(device_output_TKL);

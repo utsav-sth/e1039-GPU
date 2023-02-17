@@ -6,6 +6,56 @@
 // CUDA C++ extends C++ by allowing the programmer to define C++ functions, called kernels, that, when called, 
 // are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
 
+//called over 8192 blocks 8 threads each
+__global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls) {
+	const int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const int ev = blockIdx.x;
+	//const int //thread: threadIdx.x;
+	//Load the hit collections: 3 wire chamber planes, 2 hodoscope planes, and 1 prop planes.
+	// calculate the collection offsets:
+	//
+	const unsigned int detid_chambers[3] = {
+		geometry::eff_detid_chambers[threadIdx.x],
+		geometry::eff_detid_chambers[threadIdx.x+8],
+		geometry::eff_detid_chambers[threadIdx.x+16]
+	};
+	const unsigned int nhits_chambers[3] = {
+		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[0]], 
+		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[1]], 
+		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[2]], 
+	};
+	const unsigned int offsets_hitcoll_chambers[3] = {
+		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[0], 
+		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[1],
+		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[2]
+	};
+
+
+	const unsigned int offset_nhits_hodo[2] = {
+		hitcolls->NHitsHodo[EstnEvtMax*threadIdx.x], 
+		hitcolls->NHitsHodo[EstnEvtMax*(threadIdx.x+8)]
+	};
+	const unsigned int offsets_hitcoll_hodo[2] = {
+		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
+		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
+	};
+	
+	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[EstnEvtMax*threadIdx.x];
+	const unsigned int offset_hitcoll_prop = EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
+	
+	gHits hitcoll_prop(hitcolls->HitsPropTubesRawData, nhits_prop, offset_hitcoll_prop);
+	
+	for(int k = 0; k<3; k++){
+		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
+	}
+	for(int k = 0; k<2; k++){
+		gHits hitcoll_hodo = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
+	}
+	
+}
+
+
+#ifdef OLDCODE
 
 // event reducer: 
 __global__ void gkernel_eR(gEvent* ic) {
@@ -777,7 +827,6 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 	oc->nTracklets[index] = ntkl;
 }
 
-#ifdef OLDCODE
 
 // ------------------------------
 // Global Track candidates
