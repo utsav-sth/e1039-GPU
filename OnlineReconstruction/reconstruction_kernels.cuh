@@ -16,33 +16,30 @@ __global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int first
 	//Load the hit collections: 3 wire chamber planes, 2 hodoscope planes, and 1 prop planes.
 	// calculate the collection offsets:
 	//
-	/*
 	const unsigned int detid_chambers[3] = {
 		geometry::eff_detid_chambers[threadIdx.x],
 		geometry::eff_detid_chambers[threadIdx.x+8],
 		geometry::eff_detid_chambers[threadIdx.x+16]
 	};
 	const unsigned int nhits_chambers[3] = {
-		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[0]-1], 
-		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[1]-1], 
-		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[2]-1] 
+		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[0]-1], 
+		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[1]-1], 
+		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[2]-1] 
 	};
 	const unsigned int offsets_hitcoll_chambers[3] = {
-		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[0], 
-		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[1],
-		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[2]
+		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[0]-1), 
+		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[1]-1),
+		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[2]-1)
 	};
-
-
-	const unsigned int offset_nhits_hodo[2] = {
-		hitcolls->NHitsHodo[EstnEvtMax*threadIdx.x], 
-		hitcolls->NHitsHodo[EstnEvtMax*(threadIdx.x+8)]
+	
+	const unsigned int nhits_hodo[2] = {
+		hitcolls->NHitsHodo[(ev-firstevnum)*nHodoPlanes+threadIdx.x], 
+		hitcolls->NHitsHodo[(ev-firstevnum)*nHodoPlanes+(threadIdx.x+8)]
 	};
 	const unsigned int offsets_hitcoll_hodo[2] = {
-		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
-		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
+		(ev-firstevnum)*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
+		(ev-firstevnum)*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
 	};
-	*/
 	
 	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[(ev-firstevnum)*nPropPlanes+threadIdx.x];
 	const unsigned int offset_hitcoll_prop = (ev-firstevnum)*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
@@ -50,22 +47,42 @@ __global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int first
 	
 	gHits hitcoll_prop(hitcolls->HitsPropTubesRawData, nhits_prop, offset_hitcoll_prop);
 	
+#ifdef DEBUG
 	if(ev==2044){
 		printf(" det offset %d array offset %d nhits_prop(%d) = %d \n", (ev-firstevnum)*nPropPlanes+threadIdx.x, offset_hitcoll_prop, 47+threadIdx.x, nhits_prop);
 		for(int i = 0; i<nhits_prop; i++){
-			//printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f, test %1.0f %1.4f\n", offset_hitcoll_prop, 47+threadIdx.x, hitcoll_prop.chan(i), hitcoll_prop.pos(i), hitcoll_prop.tdc(i), hitcoll_prop.flag(i), hitcoll_prop.drift(i), hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
-			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offset_hitcoll_prop, 47+threadIdx.x, i, offset_hitcoll_prop+i, offset_hitcoll_prop+i+nhits_prop, offset_hitcoll_prop+i+nhits_prop*2, offset_hitcoll_prop+i+nhits_prop*3, offset_hitcoll_prop+i+nhits_prop*4, hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offset_hitcoll_prop, 47+threadIdx.x, hitcoll_prop.chan(i), hitcoll_prop.pos(i), hitcoll_prop.tdc(i), hitcoll_prop.flag(i), hitcoll_prop.drift(i));
+			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offset_hitcoll_prop, 47+threadIdx.x, i, offset_hitcoll_prop+i, offset_hitcoll_prop+i+nhits_prop, offset_hitcoll_prop+i+nhits_prop*2, offset_hitcoll_prop+i+nhits_prop*3, offset_hitcoll_prop+i+nhits_prop*4, hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
 
 		}
 	}
-	/*
+	gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[0], offsets_hitcoll_chambers[0]);
+	if(ev==2044){
+		printf(" det offset %d array offset %d nhits_chambers(%d) = %d \n", (ev-firstevnum)*nChamberPlanes+detid_chambers[0]-1, offsets_hitcoll_chambers[0], detid_chambers[0], nhits_chambers[0]);
+		for(int i = 0; i<nhits_chambers[0]; i++){
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_chambers[0], detid_chambers[0], hitcoll_chambers.chan(i), hitcoll_chambers.pos(i), hitcoll_chambers.tdc(i), hitcoll_chambers.flag(i), hitcoll_chambers.drift(i));
+			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_chambers[0], detid_chambers[0], i, offsets_hitcoll_chambers[0]+i, offsets_hitcoll_chambers[0]+i+nhits_chambers[0], offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*2, offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*3, offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*4, hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[0]+i], hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[0]+i+nhits_chambers[0]]);
+
+		}
+	}
+	gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo[0], offsets_hitcoll_hodo[0]);
+	if(ev==2044){
+		printf(" det offset %d array offset %d nhits_hodo(%d) = %d \n", (ev-firstevnum)*nChamberPlanes+threadIdx.x, offsets_hitcoll_hodo[0], 31+threadIdx.x, nhits_hodo[0]);
+		for(int i = 0; i<nhits_hodo[0]; i++){
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_hodo[0], 31+threadIdx.x, hitcoll_hodo.chan(i), hitcoll_hodo.pos(i), hitcoll_hodo.tdc(i), hitcoll_hodo.flag(i), hitcoll_hodo.drift(i));
+			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_hodo[0], 31+threadIdx.x, i, offsets_hitcoll_hodo[0]+i, offsets_hitcoll_hodo[0]+i+nhits_hodo[0], offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*2, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*3, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*4, hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i], hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i+nhits_hodo[0]]);
+
+		}
+	}
+#endif
+	
 	for(int k = 0; k<3; k++){
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
+		
 	}
 	for(int k = 0; k<2; k++){
-		gHits hitcoll_hodo = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
+		gHits hitcoll_hodo = gHits(hitcolls->HitsChambersRawData, nhits_hodo[k], offsets_hitcoll_chambers[k]);
 	}
-	*/
 }
 
 

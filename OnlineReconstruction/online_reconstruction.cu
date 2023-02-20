@@ -322,10 +322,11 @@ int main(int argn, char * argv[]) {
 	for(short k = nChamberPlanes+nHodoPlanes+1; k<=nDetectors; k++){
 		evhitarrayoffset[k] = datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*(k-47);
 	}
-	
+#ifdef DEBUG
 	for(short k = 1; k<=nDetectors; k++){
 		cout << k << " " << evhitarrayoffset[k] << endl;
 	}
+#endif
 	
 	short detid;
 	int nhits;
@@ -360,9 +361,6 @@ int main(int argn, char * argv[]) {
 				if(l<nDetectors-1){
 					hit_offset[l+1] = hit_offset[l]+rawEvent->fNHits[l];
 				}
-				if(rawEvent->fEventID==2044)
-					cout << l << " " << rawEvent->fNHits[l] << " " << hit_offset[l] << " " << rawEvent->fNHits[0] << endl;
-
 				if(1 <= l && l <= 30){
 					host_gEventHits.NHitsChambers[(rawEvent->fEventID-firstevent)*nChamberPlanes+l-1] = rawEvent->fNHits[l];
 				}
@@ -371,9 +369,10 @@ int main(int argn, char * argv[]) {
 				}
 				if(47 <= l && l <= 54){
 					host_gEventHits.NHitsPropTubes[(rawEvent->fEventID-firstevent)*nPropPlanes+l-47] = rawEvent->fNHits[l];
+#ifdef DEBUG
 					if(rawEvent->fEventID==2044)cout << l << " " << rawEvent->fNHits[l] << " " << rawEvent->fEventID*nPropPlanes+l-47 << " " 
 						<< host_gEventHits.NHitsPropTubes[rawEvent->fEventID*nPropPlanes+l-47] << endl;
-
+#endif
 				}
 			}
 			host_gEvent.nAH[i] = rawEvent->fAllHits.size();
@@ -382,17 +381,21 @@ int main(int argn, char * argv[]) {
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
 				detid = (rawEvent->fAllHits[m]).detectorID;
 				nhits = rawEvent->fNHits[detid];
+#ifdef DEBUG
 				if(rawEvent->fEventID==2044){
 					cout << detid << " " << (rawEvent->fAllHits[m]).elementID << " " 
 						<< wire_position[detid][(rawEvent->fAllHits[m]).elementID] << " " 
 						<< (rawEvent->fAllHits[m]).tdcTime << " " << (rawEvent->fAllHits[m]).flag << " " 
 						<< (rawEvent->fAllHits[m]).driftDistance << endl;
 				}
-				
+#endif				
 				if(1 <= detid && detid <= 30){
 					if((rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers)
 					cout << rawEvent->fEventID << " " << detid <<  " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers << " " << m-hit_offset[detid] << endl;
-
+					
+#ifdef DEBUG
+					if(rawEvent->fEventID==2044)cout << "hit offsets " << detid << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0] << " " << evhitarrayoffset[detid] << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid] << ": " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+m-hit_offset[detid] << " " << (rawEvent->fAllHits[m]).elementID << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << endl;
+#endif					
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])] = (float)(rawEvent->fAllHits[m]).elementID;
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] = (float)wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
@@ -412,18 +415,11 @@ int main(int argn, char * argv[]) {
 				}
 				
 				if(47 <= detid && detid <= 54){
-#ifdef DEBUG
-					if(rawEvent->fEventID==2044)cout << "hit offsets " << detid << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2] << " " << evhitarrayoffset[detid] << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid] << ": " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+m-hit_offset[detid] << " " << (rawEvent->fAllHits[m]).elementID << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << endl;
-					if((rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])==9811200 || 
-						(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits==9811200 || 
-						(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+2*nhits==9811200 || 
-						(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+3*nhits==9811200 || 
-						(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits==9811200
-						)
-						cout << " OUH " << rawEvent->fEventID << " " << detid << " " << evhitarrayoffset[detid] << " " << m-hit_offset[detid] << " " << nhits << endl;
-					
 					if( (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes)
 					cout << rawEvent->fEventID << " " << detid <<  " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes << " " << m-hit_offset[detid] << endl;
+
+#ifdef DEBUG
+					if(rawEvent->fEventID==2044)cout << "hit offsets " << detid << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2] << " " << evhitarrayoffset[detid] << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid] << ": " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+m-hit_offset[detid] << " " << (rawEvent->fAllHits[m]).elementID << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << endl;
 #endif
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])] = (float)(rawEvent->fAllHits[m]).elementID;
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
