@@ -22,7 +22,7 @@ struct gHits {
 	//convention: offset: chan (element ID) 0; pos 1; tdc 2; flag 3; drift 4;
 		
 	__host__ __device__ gHits(float* basedata, const unsigned total_number_of_hits, const unsigned offset = 0) :
-    		m_hitdata(basedata + offset), NHitsTotal(total_number_of_hits)
+    		m_hitdata(reinterpret_cast<float*>(basedata) + offset), NHitsTotal(total_number_of_hits)
 		{
 			static_assert(sizeof(float) == sizeof(unsigned));
 			assert((((size_t) basedata) & sizeof(float)) == 0);

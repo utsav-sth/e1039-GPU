@@ -7,22 +7,25 @@
 // are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
 
 //called over 8192 blocks 8 threads each
-__global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls) {
+__global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int firstevnum = 1) {
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int ev = blockIdx.x;
+	const int ev = ic->EventID[blockIdx.x];
+	assert(ev-firstevnum>=0 && ev-firstevnum<EstnEvtMax);
+
 	//const int //thread: threadIdx.x;
 	//Load the hit collections: 3 wire chamber planes, 2 hodoscope planes, and 1 prop planes.
 	// calculate the collection offsets:
 	//
+	/*
 	const unsigned int detid_chambers[3] = {
 		geometry::eff_detid_chambers[threadIdx.x],
 		geometry::eff_detid_chambers[threadIdx.x+8],
 		geometry::eff_detid_chambers[threadIdx.x+16]
 	};
 	const unsigned int nhits_chambers[3] = {
-		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[0]], 
-		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[1]], 
-		hitcolls->NHitsChambers[EstnEvtMax*detid_chambers[2]], 
+		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[0]-1], 
+		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[1]-1], 
+		hitcolls->NHitsChambers[ev*nChamberPlanes+detid_chambers[2]-1] 
 	};
 	const unsigned int offsets_hitcoll_chambers[3] = {
 		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsChambers*detid_chambers[0], 
@@ -39,19 +42,30 @@ __global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls) {
 		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
 		EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
 	};
+	*/
 	
-	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[EstnEvtMax*threadIdx.x];
-	const unsigned int offset_hitcoll_prop = EstnEvtMax*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
+	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[(ev-firstevnum)*nPropPlanes+threadIdx.x];
+	const unsigned int offset_hitcoll_prop = (ev-firstevnum)*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
+	
 	
 	gHits hitcoll_prop(hitcolls->HitsPropTubesRawData, nhits_prop, offset_hitcoll_prop);
 	
+	if(ev==2044){
+		printf(" det offset %d array offset %d nhits_prop(%d) = %d \n", (ev-firstevnum)*nPropPlanes+threadIdx.x, offset_hitcoll_prop, 47+threadIdx.x, nhits_prop);
+		for(int i = 0; i<nhits_prop; i++){
+			//printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f, test %1.0f %1.4f\n", offset_hitcoll_prop, 47+threadIdx.x, hitcoll_prop.chan(i), hitcoll_prop.pos(i), hitcoll_prop.tdc(i), hitcoll_prop.flag(i), hitcoll_prop.drift(i), hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
+			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offset_hitcoll_prop, 47+threadIdx.x, i, offset_hitcoll_prop+i, offset_hitcoll_prop+i+nhits_prop, offset_hitcoll_prop+i+nhits_prop*2, offset_hitcoll_prop+i+nhits_prop*3, offset_hitcoll_prop+i+nhits_prop*4, hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
+
+		}
+	}
+	/*
 	for(int k = 0; k<3; k++){
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
 	}
 	for(int k = 0; k<2; k++){
 		gHits hitcoll_hodo = gHits(hitcolls->HitsChambersRawData, nhits_chambers[k], offsets_hitcoll_chambers[k]);
 	}
-	
+	*/
 }
 
 
