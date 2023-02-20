@@ -604,6 +604,7 @@ int main(int argn, char * argv[]) {
 	
 	//gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
 
+	CUDA_CHECK_STATUS(cudaMemGetInfo(&free_bytes, &total_bytes));
 	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
 	
 	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);

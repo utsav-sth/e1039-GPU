@@ -188,6 +188,8 @@ struct gEvent {
 
 struct gEventHitCollections {
 	public:
+	//TODO: add offset calculation functions!!!
+	
 	unsigned int NHitsChambers[EstnEvtMax*nChamberPlanes];
 	float HitsChambersRawData[EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers];
 	

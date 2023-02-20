@@ -1,20 +1,20 @@
 #include "operations.h"
 
-__device__ void matinv_2x2_matrix_per_thread (const REAL *A, REAL *Ainv)
+__device__ void matinv_2x2_matrix_per_thread (const float *A, float *Ainv)
 {
     //const int blkNum = blockIdx.y * gridDim.x + blockIdx.x;
     //const int thrdNum = blkNum * blockDim.x + threadIdx.x;
     //const int N = 2;
     int perm0, perm1;
     int icol0, icol1;
-    REAL AA00, AA01; 
-    REAL AA10, AA11;
-    REAL tmp;
+    float AA00, AA01; 
+    float AA10, AA11;
+    float tmp;
 //#if USE_PIVOTING
     //typename config<T,arch>::absValType t;
     //typename config<T,arch>::absValType p;
-    REAL t;
-    REAL p;
+    float t;
+    float p;
     int i, pvt;
 //#endif
 
@@ -81,22 +81,22 @@ __device__ void matinv_2x2_matrix_per_thread (const REAL *A, REAL *Ainv)
     //}
 }
 
-__device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
+__device__ void matinv_4x4_matrix_per_thread (const float *A, float *Ainv)
 {
     //const int blkNum = blockIdx.y * gridDim.x + blockIdx.x;
     //const int thrdNum = blkNum * blockDim.x + threadIdx.x;
     //const int N = 4;
     int perm0, perm1, perm2, perm3;
     int icol0, icol1, icol2, icol3;
-    REAL AA00, AA01, AA02, AA03; 
-    REAL AA10, AA11, AA12, AA13;
-    REAL AA20, AA21, AA22, AA23;
-    REAL AA30, AA31, AA32, AA33;
-    REAL tmp;
+    float AA00, AA01, AA02, AA03; 
+    float AA10, AA11, AA12, AA13;
+    float AA20, AA21, AA22, AA23;
+    float AA30, AA31, AA32, AA33;
+    float tmp;
 
 //#if USE_PIVOTING
-    REAL t;
-    REAL p;
+    float t;
+    float p;
     int i, pvt;
 //#endif
 
@@ -349,18 +349,18 @@ __device__ void matinv_4x4_matrix_per_thread (const REAL *A, REAL *Ainv)
 }
 
 __device__ void chi2_straight(size_t const n_points, 
-                              REAL* const driftdist, REAL* const resolutions,
-                              REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                              REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			      REAL* output_parameters, REAL& chi2)
+                              float* const driftdist, float* const resolutions,
+                              float* const p1x, float* const p1y, float* const p1z,
+                              float* const deltapx, float* const deltapy, float* const deltapz,
+			      float* output_parameters, float& chi2)
 {
-	REAL dca;
+	float dca;
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 		//printf("%1.6f %1.6f, %1.6f %1.6f %1.6f, %1.6f %1.6f %1.6f \n", driftdist[i], resolutions[i], p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i]);
 		//printf("%1.6f %1.6f, %1.6f ; %1.6f %1.6f %1.6f (%1.6f) ; \n", p1x[i]-output_parameters[0], p1y[i]-output_parameters[1], p1z[i], output_parameters[3]*deltapz[i] - deltapy[i], deltapx[i] - output_parameters[2]*deltapz[i], output_parameters[2]*deltapy[i] - output_parameters[3]*deltapx[i], deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i]);
 		//this is the simplified expression of the chi2 where we neglect deltapz
-		//TODO: plug in the real expression
+		//TODO: plug in the float expression
 		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
 		//printf(" dca = %1.6f \n", dca);
 		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
@@ -368,64 +368,64 @@ __device__ void chi2_straight(size_t const n_points,
 }
 
 __device__ void chi2_global(size_t const n_points, 
-                            REAL* const driftdist, REAL* const resolutions,
-                            REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                            REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    REAL* output_parameters, REAL& chi2)
+                            float* const driftdist, float* const resolutions,
+                            float* const p1x, float* const p1y, float* const p1z,
+                            float* const deltapx, float* const deltapy, float* const deltapz,
+			    float* output_parameters, float& chi2)
 {
-	REAL dca;
+	float dca;
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 	     	//this is the simplified expression of the chi2 where we neglect deltapz
-		//TODO: plug in the real expression
+		//TODO: plug in the float expression
 		dca = ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
 		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
 	}
 }
 
 __device__ void chisquare(size_t const n_points, 
-                            REAL* const driftdist, REAL* const resolutions,
-                            REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                            REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    size_t const nparam, REAL* output_parameters, REAL& chi2)
+                            float* const driftdist, float* const resolutions,
+                            float* const p1x, float* const p1y, float* const p1z,
+                            float* const deltapx, float* const deltapy, float* const deltapz,
+			    size_t const nparam, float* output_parameters, float& chi2)
 {
 	if(nparam==4)chi2_straight(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2);
 	if(nparam==5)chi2_global(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2);
 }
 
 __device__ void chi2_straight_res(size_t const n_points, 
-                              REAL* const driftdist, REAL* const resolutions,
-                              REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                              REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			      REAL* output_parameters, REAL& chi2, REAL* values)
+                              float* const driftdist, float* const resolutions,
+                              float* const p1x, float* const p1y, float* const p1z,
+                              float* const deltapx, float* const deltapy, float* const deltapz,
+			      float* output_parameters, float& chi2, float* values)
 {
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 		//this is the simplified expression of the chi2 where we neglect deltapz
-		//TODO: plug in the real expression
+		//TODO: plug in the float expression
 	}
 }
 
 __device__ void chi2_global_res(size_t const n_points, 
-                            REAL* const driftdist, REAL* const resolutions,
-                            REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                            REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    REAL* output_parameters, REAL& chi2, REAL* values)
+                            float* const driftdist, float* const resolutions,
+                            float* const p1x, float* const p1y, float* const p1z,
+                            float* const deltapx, float* const deltapy, float* const deltapz,
+			    float* output_parameters, float& chi2, float* values)
 {
 	chi2 = 0;
 	for( int i=0; i<n_points; i++ ){
 	     	//this is the simplified expression of the chi2 where we neglect deltapz
-		//TODO: plug in the real expression
+		//TODO: plug in the float expression
 		values[i] = driftdist[i] - ( -deltapy[i]*(p1x[i]-output_parameters[0]) + deltapx[i]*(p1y[i]-output_parameters[1]) + p1z[i]*(output_parameters[2]*deltapy[i]-output_parameters[3]*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*output_parameters[2]*output_parameters[3]*deltapy[i]*deltapx[i] );
 		chi2+= ( values[i] ) * ( values[i] ) / resolutions[i] / resolutions[i];
 	}
 }
 
 __device__ void chisquare_res(size_t const n_points, 
-                            REAL* const driftdist, REAL* const resolutions,
-                            REAL* const p1x, REAL* const p1y, REAL* const p1z,
-                            REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-			    size_t const nparam, REAL* output_parameters, REAL& chi2, REAL *values)
+                            float* const driftdist, float* const resolutions,
+                            float* const p1x, float* const p1y, float* const p1z,
+                            float* const deltapx, float* const deltapy, float* const deltapz,
+			    size_t const nparam, float* output_parameters, float& chi2, float *values)
 {
 	if(nparam==4)chi2_straight_res(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2, values);
 	if(nparam==5)chi2_global_res(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, output_parameters, chi2, values);
@@ -435,12 +435,12 @@ __device__ void chisquare_res(size_t const n_points,
 
 // numerical calculation of derivative
 __device__ void calc_derivatives_num(size_t const n_points,
-				     REAL* const driftdist, REAL* const resolutions,
-				     REAL* const p1x, REAL* const p1y, REAL* const p1z,
-				     REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-				     size_t const nparam, REAL* output_parameters, REAL* output_parameters_steps, REAL const lambda, 
-				     REAL* derivatives, //REAL* doublederivatives, 
-				     REAL& chi2, REAL &chi2prev, REAL dca)
+				     float* const driftdist, float* const resolutions,
+				     float* const p1x, float* const p1y, float* const p1z,
+				     float* const deltapx, float* const deltapy, float* const deltapz,
+				     size_t const nparam, float* output_parameters, float* output_parameters_steps, float const lambda, 
+				     float* derivatives, //float* doublederivatives, 
+				     float& chi2, float &chi2prev, float dca)
 {
 	//calculation of chi2 at the nominal x, 
 	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev);
@@ -478,12 +478,12 @@ __device__ void calc_derivatives_num(size_t const n_points,
 
 
 __device__ void calc_corr_derivatives_num(size_t const n_points,
-					  REAL* const driftdist, REAL* const resolutions,
-					  REAL* const p1x, REAL* const p1y, REAL* const p1z,
-					  REAL* const deltapx, REAL* const deltapy, REAL* const deltapz,
-					  size_t const nparam, REAL* output_parameters, REAL* output_parameters_steps, REAL const lambda, 
-					  REAL* derivatives, 
-					  REAL& chi2, REAL &chi2prev, REAL dca)
+					  float* const driftdist, float* const resolutions,
+					  float* const p1x, float* const p1y, float* const p1z,
+					  float* const deltapx, float* const deltapy, float* const deltapz,
+					  size_t const nparam, float* output_parameters, float* output_parameters_steps, float const lambda, 
+					  float* derivatives, 
+					  float& chi2, float &chi2prev, float dca)
 {
 	chisquare(n_points, driftdist, resolutions, p1x, p1y, p1z, deltapx, deltapy, deltapz, nparam, output_parameters, chi2prev);
 	

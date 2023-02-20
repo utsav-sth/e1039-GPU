@@ -1,5 +1,162 @@
 #include "reconstruction_classes.cuh"
 
+
+__device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int detid, const int nhits) {
+	float w_max; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
+	
+	float w_min; // max drift distance of the hit closest to the cluster avg position // current average position of cluster * 0.4
+	float dt_mean; // tbd
+	int cluster_iAH_arr_cur; // current cluster array
+	int cluster_iAH_arr_size; // cluster size i.e number of hits in cluster
+	int cluster_iAH_arr[ClusterSizeMax]; // global cluster array 
+	int uniqueID; // hit unique element ID
+	int uniqueID_curr; // current hit unique element ID
+	float tdcTime_curr; // current hit TDC time
+	int iAH; // hit index 
+	int nAH_reduced; // number of hits after hit quality filtering
+	// int nHitsPerDetector[nDetectors+1];
+	
+	//if(ic[index].EventID==0){
+	//	printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
+	//	for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
+	//	printf("\n");
+	//}
+
+	// initialization of array size
+	cluster_iAH_arr_size = 0;
+	nAH_reduced = 0;
+	
+	// event reducing/hit filtering
+	for(iAH = 0; iAH<nhits; ++iAH) {
+		hitflag[iAH] = 1;
+		
+		// if hit not good, set its flag to 0 and continue;
+		if( (int(hitcoll.flag(iAH)) & hitFlagBit(1)) == 0) {
+			//if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", detid);
+			hitflag[iAH] = -1;
+			continue;
+		}
+		uniqueID = uniqueID_curr = -1;
+
+		// hits in DCs or Prop tubes
+		if(detid < 31 || detid > 46) {
+			// evaluate "unique ID"
+			uniqueID = detid*1000 + hitcoll.chan(iAH);
+			// compare with current unique element ID; if different, update the unique element ID and time info 
+			if(uniqueID != uniqueID_curr) {
+				uniqueID_curr = uniqueID;
+				tdcTime_curr = hitcoll.tdc(iAH);
+			}
+			// if next hit and current hit belong to the same element: if detID>36 => prop tubes (reminder that hodoscpes are out of the picture in this scope), 
+			// we're suppose to have one signal (a second signal would be after-pulsing)
+			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
+			else {
+				if(detid > 36 || ((hitcoll.tdc(iAH) - tdcTime_curr >= 0.0) && (hitcoll.tdc(iAH) - tdcTime_curr < 80.0)) || ((hitcoll.tdc(iAH) - tdcTime_curr <= 0.0) && (hitcoll.tdc(iAH) - tdcTime_curr > -80.0))) {
+					//if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", detid, hitcoll.chan(iAH));
+					hitflag[iAH] = -1;
+					continue;
+				}
+				else {
+					tdcTime_curr = hitcoll.tdc(iAH);
+				}
+			}
+		}
+		// declustering of hits in DCs (from CPU code, I understand this one better)
+		// if there are hits in the same plane and hitting to neighboring wires, they both give redundant information: 
+		if(detid <= nChamberPlanes) {
+			//if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size);
+//			printf("Decluster...\n");
+			if(cluster_iAH_arr_size == ClusterSizeMax) {
+//				printf("Oversized cluster...\n");
+			}
+			// if array size is zero, start storing the hit in the array
+			if(cluster_iAH_arr_size == 0) {
+				cluster_iAH_arr[0] = iAH;
+				++cluster_iAH_arr_size;
+			} else { // otherwise
+				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
+				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
+				//if(ic[index].EventID==0){
+//printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
+//printf("hit det/elem: %d, %d; %d, %d\n", detid, ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, 
+//	    	      	      	  	 hitcoll.chan(iAH), hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]));
+//printf("diffs: %d, %d\n", (detid - ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID),
+//	       	   	  (hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])));
+//printf("bools: %d, %d\n", (detid != ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID),
+//	       	   	  (abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) > 1));
+	    	     	   	//}
+	    	     	   	//all hits are in the same plane now
+				if(abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) > 1) {
+					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
+					if(cluster_iAH_arr_size == 2) {
+						w_max = 0.9*0.5*(hitcoll.pos(cluster_iAH_arr[cluster_iAH_arr_size-1]) - hitcoll.pos(cluster_iAH_arr[0]));
+						w_min = 4.0/9.0*w_max;
+						if((hitcoll.drift(cluster_iAH_arr[0]) > w_max && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_min) || (hitcoll.drift(cluster_iAH_arr[0]) > w_min && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_max)) {
+						//if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
+							//eliminating the existing hit with the lagest drift distance
+							if(hitcoll.drift(cluster_iAH_arr[0]) > hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1])) {
+								//if(ic[index].EventID==0)printf("1 - hit det %d elem %d Skip cluster...\n", ic->AllHits[cluster_iAH_arr[0]].detectorID, ic->AllHits[cluster_iAH_arr[0]].elementID);
+								hitflag[cluster_iAH_arr[0]] = -1;
+							}
+							else {
+								//if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]));
+								hitflag[cluster_iAH_arr[cluster_iAH_arr_size-1]] = -1;
+							}
+						}
+						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
+						else if((((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) >= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) < 8.0) || ((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) <= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) > -8.0)) && (detid >= 19 && detid <= 24)) {
+						        //if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", detid, hitcoll.chan(iAH));
+							hitflag[cluster_iAH_arr[0]] = -1;
+							hitflag[cluster_iAH_arr[cluster_iAH_arr_size-1]] = -1;
+						}
+					}
+					// if 3 hits or more in cluster: we essentially discard them all;
+					if(cluster_iAH_arr_size >= 3) {
+						// evaluate the mean time difference;
+						dt_mean = 0.0;
+						for(cluster_iAH_arr_cur = 1; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
+							dt_mean += ((hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur-1])) > 0.0 ? (hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur-1])) : (hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur-1]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_cur])));
+						}
+						dt_mean = dt_mean/(cluster_iAH_arr_size - 1);
+						// if mean time difference is less than 10, that's electronic noise, so we remove them all.
+						if(dt_mean < 10.0) {
+						        //if(ic[index].EventID==0)printf("4 - hit det %d elem %d Skip cluster...\n", detid, hitcoll.chan(iAH));
+							for(cluster_iAH_arr_cur = 0; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
+								hitflag[cluster_iAH_arr[cluster_iAH_arr_cur]] = -1;
+							}
+						}
+						// otherwise, we remove them all except first and last
+						else {
+						        //if(ic[index].EventID==0)printf("5 - hit det %d elem %d Skip cluster...\n", detid, hitcoll.chan(iAH));
+							for(cluster_iAH_arr_cur = 1; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
+								hitflag[cluster_iAH_arr[cluster_iAH_arr_cur]] = -1;
+							}
+						}
+					}
+					cluster_iAH_arr_size = 0;
+				} else { // if hits are in the same detector and in two neighboring cells!
+				        // current hit and previous hit are in same detector plane and in neighbor wires: 
+				  	// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
+				  	//if(ic[index].EventID==0)printf("h1: det %d el %d; h2 det %d el %d \n", detid, hitcoll.chan(iAH), ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]));
+				  	cluster_iAH_arr[cluster_iAH_arr_size] = iAH;
+				  	++cluster_iAH_arr_size;
+				}
+			}
+		}
+	}
+	//end of the hit loop
+	
+	for(iAH = 0; iAH<nhits; ++iAH) {
+		if(hitflag[iAH]>0) {
+			++nAH_reduced;
+		}
+	}
+}
+
+
+
+
+
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //
 // --------------------------------------------------------------- //
@@ -66,13 +223,13 @@ __device__ int make_hitpairs_in_station(gEvent *ic, thrust::pair<int, int>* hitp
 	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
 	const int superdetid = geometry::detsuperid[stID][projID];
 	int hitctr1 = 0, hitctr2 = 0;
-	for(int i = 0; i<ic->nAH[index]; i++){
-		if(ic->AllHits[idxoff_global+i].detectorID==detid1){
-			hitidx1[hitctr1] = idxoff_global+i;
+	for(int i = 0; i<nhits; i++){
+		if(ic->AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
 			hitctr1++;
 		}
-		if(ic->AllHits[idxoff_global+i].detectorID==detid2){
-			hitidx2[hitctr2] = idxoff_global+i;
+		if(ic->AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
 			hitctr2++;
 		}
 	}
@@ -116,7 +273,7 @@ __device__ int make_hitpairs_in_station(gEvent *ic, thrust::pair<int, int>* hitp
 }
 
 
-__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, unsigned int* hitidx1, unsigned int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const REAL xmin, const REAL xmax){
+__device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitpairs, unsigned int* hitidx1, unsigned int* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const float xmin, const float xmax){
 	// I think we assume that by default we want to know where we are
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
 	const int idxoff_global = index*EstnAHMax;	
@@ -135,42 +292,42 @@ __device__ int make_hitpairs_in_station(gEvent* ic, thrust::pair<int, int>* hitp
 	const int superdetid = geometry::detsuperid[stID][projID];
 	int hitctr1 = 0, hitctr2 = 0;
 	float p1x, p2x;
-	for(int i = 0; i<ic->nAH[index]; i++){
-		if(ic->AllHits[idxoff_global+i].detectorID==detid1){
-			//p1x = planes[ ic->AllHits[idxoff_global+i].detectorID ].p1x_w1 + planes[ ic->AllHits[idxoff_global+i].detectorID ].dp1x * (ic->AllHits[idxoff_global+i].elementID-1);
-			if(planes->deltapx[ ic->AllHits[idxoff_global+i].detectorID ]>0){
-				p1x = x_bep(ic->AllHits[idxoff_global+i], planes);
-				p2x = x_tep(ic->AllHits[idxoff_global+i], planes);
-				//p2x = p1x + planes[ ic->AllHits[idxoff_global+i].detectorID ].deltapx;
+	for(int i = 0; i<nhits; i++){
+		if(ic->AllHits[i].detectorID==detid1){
+			//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
+			if(planes->deltapx[ ic->AllHits[i].detectorID ]>0){
+				p1x = x_bep(ic->AllHits[i], planes);
+				p2x = x_tep(ic->AllHits[i], planes);
+				//p2x = p1x + planes[ ic->AllHits[i].detectorID ].deltapx;
 			}else{
-				p1x = x_tep(ic->AllHits[idxoff_global+i], planes);
-				p2x = x_bep(ic->AllHits[idxoff_global+i], planes);
+				p1x = x_tep(ic->AllHits[i], planes);
+				p2x = x_bep(ic->AllHits[i], planes);
 				//p2x = p1x;
-				//p1x+= planes[ ic->AllHits[idxoff_global+i].detectorID ].deltapx;
+				//p1x+= planes[ ic->AllHits[i].detectorID ].deltapx;
 			}
-			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[idxoff_global+i].detectorID, ic->AllHits[idxoff_global+i].elementID, ic->AllHits[idxoff_global+i].pos, p1x, p2x, xmin, xmax);
+			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
 			if( (p1x <= xmax) && (p2x >= xmin) ){ 
-				hitidx1[hitctr1] = idxoff_global+i;
+				hitidx1[hitctr1] = i;
 				hitctr1++;
 			}
 		}
-		if(ic->AllHits[idxoff_global+i].detectorID==detid2){
-			//p1x = planes[ ic->AllHits[idxoff_global+i].detectorID ].p1x_w1 + planes[ ic->AllHits[idxoff_global+i].detectorID ].dp1x * (ic->AllHits[idxoff_global+i].elementID-1);
-			if(planes[ ic->AllHits[idxoff_global+i].detectorID ].deltapx>0){
-				p1x = x_bep(ic->AllHits[idxoff_global+i], planes);
-				p2x = x_tep(ic->AllHits[idxoff_global+i], planes);
-				//p2x = p1x + planes[ ic->AllHits[idxoff_global+i].detectorID ].deltapx;
+		if(ic->AllHits[i].detectorID==detid2){
+			//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
+			if(planes[ ic->AllHits[i].detectorID ].deltapx>0){
+				p1x = x_bep(ic->AllHits[i], planes);
+				p2x = x_tep(ic->AllHits[i], planes);
+				//p2x = p1x + planes[ ic->AllHits[i].detectorID ].deltapx;
 			}else{
-				p1x = x_tep(ic->AllHits[idxoff_global+i], planes);
-				p2x = x_bep(ic->AllHits[idxoff_global+i], planes);
+				p1x = x_tep(ic->AllHits[i], planes);
+				p2x = x_bep(ic->AllHits[i], planes);
 				//p2x = p1x;
-				//p1x+= planes[ ic->AllHits[idxoff_global+i].detectorID ].deltapx;
+				//p1x+= planes[ ic->AllHits[i].detectorID ].deltapx;
 			}
-			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[idxoff_global+i].detectorID, ic->AllHits[idxoff_global+i].elementID, ic->AllHits[idxoff_global+i].pos, p1x, p2x, xmin, xmax);
+			//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
 			//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
 			if( (p1x <= xmax) && (p2x >= xmin) ){ 
-				hitidx2[hitctr2] = idxoff_global+i;
+				hitidx2[hitctr2] = i;
 				hitctr2++;
 			}
 		}
@@ -257,13 +414,13 @@ __device__ void make_hitpairs_in_station_bins(gEvent* ic, thrust::pair<int, int>
 	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
 	const int superdetid = geometry::detsuperid[stID][projID];
 	int hitctr1 = 0, hitctr2 = 0;
-	for(int i = 0; i<ic->nAH[index]; i++){
-		if(ic->AllHits[idxoff_global+i].detectorID==detid1){
-			hitidx1[hitctr1] = idxoff_global+i;
+	for(int i = 0; i<nhits; i++){
+		if(ic->AllHits[i].detectorID==detid1){
+			hitidx1[hitctr1] = i;
 			hitctr1++;
 		}
-		if(ic->AllHits[idxoff_global+i].detectorID==detid2){
-			hitidx2[hitctr2] = idxoff_global+i;
+		if(ic->AllHits[i].detectorID==detid2){
+			hitidx2[hitctr2] = i;
 			hitctr2++;
 		}
 	}
@@ -460,11 +617,11 @@ __device__ void FillFitArrays_X(const int n, const gHit hit, const short hitsign
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
 	const int idxoff_global = index*MaxHitsPerTrack;
 
-	fitarray->z_array[idxoff_global+n] = planes->z[ hit.detectorID ];
-	fitarray->x_array[idxoff_global+n] = hit.pos+hit.driftDistance*hitsign;
-	fitarray->dx_array[idxoff_global+n] = planes->resolution[ hit.detectorID ];
+	fitarray->z_array[n] = planes->z[ hit.detectorID ];
+	fitarray->x_array[n] = hit.pos+hit.driftDistance*hitsign;
+	fitarray->dx_array[n] = planes->resolution[ hit.detectorID ];
 	if(hitsign==0){
-		fitarray->dx_array[idxoff_global+n] = planes->spacing[ hit.detectorID ]*3.4641f;
+		fitarray->dx_array[n] = planes->spacing[ hit.detectorID ]*3.4641f;
 	}
 }
 
@@ -473,9 +630,9 @@ __device__ void FillFitArrays_UV(const int n, const gHit hit, gStraightFitArrays
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
 	const int idxoff_global = index*MaxHitsPerTrack;	
 
-	fitarray->z_array[idxoff_global+n] = planes->z[ hit.detectorID ];
-	fitarray->y_array[idxoff_global+n] = y;
-        fitarray->dy_array[idxoff_global+n] = dy;
+	fitarray->z_array[n] = planes->z[ hit.detectorID ];
+	fitarray->y_array[n] = y;
+        fitarray->dy_array[n] = dy;
 }
 
 
@@ -483,32 +640,32 @@ __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign,
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
 	const int idxoff_global = index*MaxHitsPerTrack;	
 	
-	fitarray->drift_dist[idxoff_global+n] = hit.driftDistance*hitsign;
-	fitarray->resolution[idxoff_global+n] = planes->resolution[ hit.detectorID ];
+	fitarray->drift_dist[n] = hit.driftDistance*hitsign;
+	fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
 	if(hitsign==0){
-		fitarray->resolution[idxoff_global+n] = planes->spacing[ hit.detectorID ]*3.4641f;
+		fitarray->resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
 	}else{
-		fitarray->resolution[idxoff_global+n] = planes->resolution[ hit.detectorID ];
+		fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
 	}	       
-	fitarray->p1x[idxoff_global+n] = x_bep( hit, planes);
-	fitarray->p1y[idxoff_global+n] = y_bep( hit, planes);
-	fitarray->p1z[idxoff_global+n] = z_bep( hit, planes);
+	fitarray->p1x[n] = x_bep( hit, planes);
+	fitarray->p1y[n] = y_bep( hit, planes);
+	fitarray->p1z[n] = z_bep( hit, planes);
 	
-	fitarray->deltapx[idxoff_global+n] = planes->deltapx[ hit.detectorID ];
-	fitarray->deltapy[idxoff_global+n] = planes->deltapy[ hit.detectorID ];
-	fitarray->deltapz[idxoff_global+n] = planes->deltapz[ hit.detectorID ];
+	fitarray->deltapx[n] = planes->deltapx[ hit.detectorID ];
+	fitarray->deltapy[n] = planes->deltapy[ hit.detectorID ];
+	fitarray->deltapz[n] = planes->deltapz[ hit.detectorID ];
 }
 
 __device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, float* drift_dist, float* resolution, float* p1x, float* p1y, float* p1z, float* deltapx, float* deltapy, float* deltapz, const gPlane* planes){
 	const int index = threadIdx.x + blockIdx.x * blockDim.x;
 	const int idxoff_global = index*MaxHitsPerTrack;	
 	
-	drift_dist[idxoff_global+n] = hit.driftDistance*hitsign;
-	resolution[idxoff_global+n] = planes->resolution[ hit.detectorID ];
+	drift_dist[n] = hit.driftDistance*hitsign;
+	resolution[n] = planes->resolution[ hit.detectorID ];
 	if(hitsign==0){
-		resolution[idxoff_global+n] = planes->spacing[ hit.detectorID ]*3.4641f;
+		resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
 	}else{
-		resolution[idxoff_global+n] = planes->resolution[ hit.detectorID ];
+		resolution[n] = planes->resolution[ hit.detectorID ];
 	}	       
 	p1x[n] = x_bep( hit, planes);
 	p1y[n] = y_bep( hit, planes);
