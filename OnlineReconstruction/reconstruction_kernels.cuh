@@ -7,11 +7,17 @@
 // are executed N times in parallel by N different CUDA threads, as opposed to only once like regular C++ functions. 
 
 //called over 8192 blocks 8 threads each
-__global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int firstevnum = 1) {
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int ev = ic->EventID[blockIdx.x];
-	assert(ev-firstevnum>=0 && ev-firstevnum<EstnEvtMax);
-
+__global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits) {
+	//const int index = threadIdx.x + blockIdx.x * blockDim.x;
+	assert(blockIdx.x>=0 && blockIdx.x<EstnEvtMax);
+	
+	__shared__ unsigned short station_multiplicity[THREADS_PER_BLOCK][5];//0: D0; 1: D2; 2: D3p; 3: D3m; 4: proptubes
+	
+	for(int i = 0; i<5; i++)station_multiplicity[threadIdx.x][i] = 0;
+	
+	float hitarraycopy[600];
+	int nvalues;
+	
 	short hitflag[200];
 	int nhits, hitidx;
 	//const int //thread: threadIdx.x;
@@ -24,14 +30,14 @@ __global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int first
 		geometry::eff_detid_chambers[threadIdx.x+16]
 	};
 	const unsigned int nhits_chambers[3] = {
-		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[0]-1], 
-		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[1]-1], 
-		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[2]-1] 
+		hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[0]-1], 
+		hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[1]-1], 
+		hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[2]-1] 
 	};
 	const unsigned int offsets_hitcoll_chambers[3] = {
-		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[0]-1), 
-		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[1]-1),
-		(ev-firstevnum)*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[2]-1)
+		blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[0]-1), 
+		blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[1]-1),
+		blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid_chambers[2]-1)
 	};
 	
 	const unsigned int detid_hodo[2] = {
@@ -40,290 +46,348 @@ __global__ void gkernel_eR(gEvent* ic, gEventHitCollections* hitcolls, int first
 	};
 	
 	const unsigned int nhits_hodo[2] = {
-		hitcolls->NHitsHodo[(ev-firstevnum)*nHodoPlanes+threadIdx.x], 
-		hitcolls->NHitsHodo[(ev-firstevnum)*nHodoPlanes+(threadIdx.x+8)]
+		hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+threadIdx.x], 
+		hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+(threadIdx.x+8)]
 	};
 	const unsigned int offsets_hitcoll_hodo[2] = {
-		(ev-firstevnum)*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
-		(ev-firstevnum)*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
+		blockIdx.x*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*threadIdx.x, 
+		blockIdx.x*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(threadIdx.x+8)
 	};
 	
 	const unsigned int detid_prop = 47+threadIdx.x;
-	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[(ev-firstevnum)*nPropPlanes+threadIdx.x];
-	const unsigned int offset_hitcoll_prop = (ev-firstevnum)*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
+	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x];
+	const unsigned int offset_hitcoll_prop = blockIdx.x*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
 	
-	gHits hitcoll_prop(hitcolls->HitsPropTubesRawData, nhits_prop, offset_hitcoll_prop);
+	const gHits hitcoll_prop(hitcolls->HitsPropTubesRawData, nhits_prop, offset_hitcoll_prop);
 	nhits = event_reduction(hitcoll_prop, hitflag, detid_prop, nhits_prop);
 	
-	hitcolls->NHitsPropTubes[(ev-firstevnum)*nPropPlanes+threadIdx.x] = nhits;
+	hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x] = nhits;
 	hitidx = 0;
 	for(int k = 0; k<nhits_prop; k++){
 		if(hitflag[k]>0){
-			hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+hitidx] = hitcoll_prop.chan(k);
-			hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+hitidx+nhits] = hitcoll_prop.pos(k);
-			hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+hitidx+nhits*2] = hitcoll_prop.tdc(k);
-			hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+hitidx+nhits*3] = hitcoll_prop.tdc(k);
-			hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+hitidx+nhits*4] = hitcoll_prop.drift(k);
+			hitarraycopy[hitidx] = hitcoll_prop.chan(k);
+			hitarraycopy[hitidx+nhits] = hitcoll_prop.pos(k);
+			hitarraycopy[hitidx+nhits*2] = hitcoll_prop.tdc(k);
+			hitarraycopy[hitidx+nhits*3] = hitcoll_prop.flag(k);
+			hitarraycopy[hitidx+nhits*4] = hitcoll_prop.drift(k);
 			hitidx++;
 		}
 	}
+	nvalues = datasizes::NHitsParam*nhits;
+	for(int k = 0; k<nvalues; k++)hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+k] = hitarraycopy[k];
 	
-#ifdef DEBUG
-	if(ev==2044){
-		printf(" det offset %d array offset %d nhits_prop(%d) = %d \n", (ev-firstevnum)*nPropPlanes+threadIdx.x, offset_hitcoll_prop, 47+threadIdx.x, nhits_prop);
-		for(int i = 0; i<nhits_prop; i++){
-			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offset_hitcoll_prop, 47+threadIdx.x, hitcoll_prop.chan(i), hitcoll_prop.pos(i), hitcoll_prop.tdc(i), hitcoll_prop.flag(i), hitcoll_prop.drift(i));
-			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offset_hitcoll_prop, 47+threadIdx.x, i, offset_hitcoll_prop+i, offset_hitcoll_prop+i+nhits_prop, offset_hitcoll_prop+i+nhits_prop*2, offset_hitcoll_prop+i+nhits_prop*3, offset_hitcoll_prop+i+nhits_prop*4, hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
-
-		}
-	}
-	gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[0], offsets_hitcoll_chambers[0]);
-	if(ev==2044){
-		printf(" det offset %d array offset %d nhits_chambers(%d) = %d \n", (ev-firstevnum)*nChamberPlanes+detid_chambers[0]-1, offsets_hitcoll_chambers[0], detid_chambers[0], nhits_chambers[0]);
-		for(int i = 0; i<nhits_chambers[0]; i++){
-			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_chambers[0], detid_chambers[0], hitcoll_chambers.chan(i), hitcoll_chambers.pos(i), hitcoll_chambers.tdc(i), hitcoll_chambers.flag(i), hitcoll_chambers.drift(i));
-			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_chambers[0], detid_chambers[0], i, offsets_hitcoll_chambers[0]+i, offsets_hitcoll_chambers[0]+i+nhits_chambers[0], offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*2, offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*3, offsets_hitcoll_chambers[0]+i+nhits_chambers[0]*4, hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[0]+i], hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[0]+i+nhits_chambers[0]]);
-
-		}
-	}
-	gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo[0], offsets_hitcoll_hodo[0]);
-	if(ev==2044){
-		printf(" det offset %d array offset %d nhits_hodo(%d) = %d \n", (ev-firstevnum)*nChamberPlanes+threadIdx.x, offsets_hitcoll_hodo[0], 31+threadIdx.x, nhits_hodo[0]);
-		for(int i = 0; i<nhits_hodo[0]; i++){
-			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_hodo[0], 31+threadIdx.x, hitcoll_hodo.chan(i), hitcoll_hodo.pos(i), hitcoll_hodo.tdc(i), hitcoll_hodo.flag(i), hitcoll_hodo.drift(i));
-			printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_hodo[0], 31+threadIdx.x, i, offsets_hitcoll_hodo[0]+i, offsets_hitcoll_hodo[0]+i+nhits_hodo[0], offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*2, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*3, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*4, hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i], hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i+nhits_hodo[0]]);
-
-		}
-	}
-#endif
+	station_multiplicity[threadIdx.x][4]+= nhits;
+			
+	int stid;
 	for(int i = 0; i<3; i++){
+		if(detid_chambers[i]<=12){
+			stid = 0;
+		}else{
+			stid = (detid_chambers[i]-7)/6;
+		}
+		
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[i], offsets_hitcoll_chambers[i]);
 		nhits = event_reduction(hitcoll_chambers, hitflag, detid_chambers[i], nhits_chambers[i]);
 		
-		hitcolls->NHitsChambers[(ev-firstevnum)*nChamberPlanes+detid_chambers[i]-1] = nhits;
+		hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[i]-1] = nhits;
 		hitidx = 0;
 		for(int k = 0; k<nhits_chambers[i]; k++){
 			if(hitflag[k]>0){
-				hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+hitidx] = hitcoll_chambers.chan(k);
-				hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+hitidx+nhits] = hitcoll_chambers.pos(k);
-				hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+hitidx+nhits*2] = hitcoll_chambers.tdc(k);
-				hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+hitidx+nhits*3] = hitcoll_chambers.flag(k);
-				hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+hitidx+nhits*4] = hitcoll_chambers.drift(k);
+				hitarraycopy[hitidx] = hitcoll_chambers.chan(k);
+				hitarraycopy[hitidx+nhits] = hitcoll_chambers.pos(k);
+				hitarraycopy[hitidx+nhits*2] = hitcoll_chambers.tdc(k);
+				hitarraycopy[hitidx+nhits*3] = hitcoll_chambers.flag(k);
+				hitarraycopy[hitidx+nhits*4] = hitcoll_chambers.drift(k);
 				hitidx++;
 			}
 		}
+		nvalues = datasizes::NHitsParam*nhits;
+		for(int k = 0; k<nvalues; k++)hitcolls->HitsChambersRawData[offset_hitcoll_prop+k] = hitarraycopy[k];
+
+		station_multiplicity[threadIdx.x][stid]+=nhits;
 	}
 	for(int i = 0; i<2; i++){
 		gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo[i], offsets_hitcoll_hodo[i]);
 		nhits = event_reduction(hitcoll_hodo, hitflag, detid_hodo[i], nhits_hodo[i]);
 		
-		hitcolls->NHitsHodo[(ev-firstevnum)*nHodoPlanes+detid_hodo[i]-31] = nhits;
+		hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+detid_hodo[i]-31] = nhits;
 		hitidx = 0;
 		for(int k = 0; k<nhits_hodo[i]; k++){
 			if(hitflag[k]>0){
-				hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+hitidx] = hitcoll_hodo.chan(k);
-				hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+hitidx+nhits] = hitcoll_hodo.pos(k);
-				hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+hitidx+nhits*2] = hitcoll_hodo.tdc(k);
-				hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+hitidx+nhits*3] = hitcoll_hodo.flag(k);
-				hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+hitidx+nhits*4] = hitcoll_hodo.drift(k);
+				hitarraycopy[hitidx] = hitcoll_hodo.chan(k);
+				hitarraycopy[hitidx+nhits] = hitcoll_hodo.pos(k);
+				hitarraycopy[hitidx+nhits*2] = hitcoll_hodo.tdc(k);
+				hitarraycopy[hitidx+nhits*3] = hitcoll_hodo.flag(k);
+				hitarraycopy[hitidx+nhits*4] = hitcoll_hodo.drift(k);
 				hitidx++;
 			}
 		}
+		nvalues = datasizes::NHitsParam*nhits;
+		for(int k = 0; k<nvalues; k++)hitcolls->HitsHodoRawData[offset_hitcoll_prop+k] = hitarraycopy[k];
 	}
+	__syncthreads();
+	
+	unsigned short station_mult[5] = {0, 0, 0, 0, 0};
+	for(short j = 0; j<5; j++){
+		for(short i = 0; i<THREADS_PER_BLOCK; i++){
+			station_mult[j]+= station_multiplicity[i][j];
+		}
+	}
+	
+	hastoomanyhits[blockIdx.x] = false;
+	if(station_mult[0]>250)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[1]>200)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[2]>150)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[3]>120)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[4]>250)hastoomanyhits[blockIdx.x] = true;
+
+#ifdef DEBUG
+	if(blockIdx.x+1==2044){
+		int nhits_chambers_ = hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[2]-1];
+		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers_, offsets_hitcoll_chambers[2]);
+		printf(" det offset %d array offset %d nhits_chambers(%d) = %d \n", blockIdx.x*nChamberPlanes+detid_chambers[2]-1, offsets_hitcoll_chambers[2], detid_chambers[2], nhits_chambers_);
+		for(int i = 0; i<nhits_chambers_; i++){
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_chambers[2], detid_chambers[2], hitcoll_chambers.chan(i), hitcoll_chambers.pos(i), hitcoll_chambers.tdc(i), hitcoll_chambers.flag(i), hitcoll_chambers.drift(i));
+			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_chambers[2], detid_chambers[2], i, offsets_hitcoll_chambers[2]+i, offsets_hitcoll_chambers[2]+i+nhits_chambers[2], offsets_hitcoll_chambers[2]+i+nhits_chambers[2]*2, offsets_hitcoll_chambers[2]+i+nhits_chambers*3, offsets_hitcoll_chambers[2]+i+nhits_chambers[2]*4, hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[2]+i], hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[2]+i+nhits_chambers[2]]);
+
+		}}
+
+		int nhits_hodo_ = hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+threadIdx.x];
+		gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo_, offsets_hitcoll_hodo[0]);
+		printf(" det offset %d array offset %d nhits_hodo(%d) = %d \n", blockIdx.x*nChamberPlanes+threadIdx.x, offsets_hitcoll_hodo[0], detid_hodo[0], nhits_hodo_);
+		for(int i = 0; i<nhits_hodo_; i++){
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_hodo[0], 31+threadIdx.x, hitcoll_hodo.chan(i), hitcoll_hodo.pos(i), hitcoll_hodo.tdc(i), hitcoll_hodo.flag(i), hitcoll_hodo.drift(i));
+			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_hodo[0], 31+threadIdx.x, i, offsets_hitcoll_hodo[0]+i, offsets_hitcoll_hodo[0]+i+nhits_hodo[0], offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*2, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*3, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*4, hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i], hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i+nhits_hodo[0]]);
+
+		}
+	
+		int nhits_prop_ = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x];
+		gHits hitcoll_prop2(hitcolls->HitsPropTubesRawData, nhits_prop_, offset_hitcoll_prop);
+		printf(" det offset %d array offset %d nhits_prop(%d) = %d \n", blockIdx.x*nPropPlanes+threadIdx.x, offset_hitcoll_prop, 47+threadIdx.x, nhits_prop_);
+		for(int i = 0; i<nhits_prop_; i++){
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offset_hitcoll_prop, 47+threadIdx.x, hitcoll_prop2.chan(i), hitcoll_prop2.pos(i), hitcoll_prop2.tdc(i), hitcoll_prop2.flag(i), hitcoll_prop2.drift(i));
+			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offset_hitcoll_prop, 47+threadIdx.x, i, offset_hitcoll_prop+i, offset_hitcoll_prop+i+nhits_prop, offset_hitcoll_prop+i+nhits_prop*2, offset_hitcoll_prop+i+nhits_prop*3, offset_hitcoll_prop+i+nhits_prop*4, hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i], hitcolls->HitsPropTubesRawData[offset_hitcoll_prop+i+nhits_prop]);
+
+		}
+		if(threadIdx.x==0)for(int i = 0; i<5; i++)printf("thread %d station %d mult %d \n ", threadIdx.x, i, station_mult[i]);
+	}
+#endif
+	
+//#ifdef DEBUG
+	
+//#endif
 }
 
+
+__global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const float* z_array, const float* res_array, const int* eventID, bool* hastoomanyhits)
+//(gTrackingXZparams* parameters)			
+{
+	if(hastoomanyhits[blockIdx.x]){
+#ifdef DEBUG
+		if(threadIdx.x==0)printf("Evt %d discarded, too many hits\n", eventID[blockIdx.x]);
+#endif
+		return;
+	}
+	
+	const int nbins_st2 = 7;//28/4
+	const int nbins_st3 = 29;//58/2
+	
+	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
+	int bin0_st2 = (threadIdx.x/2)*7;
+	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
+
+	short hitflag1[100];
+	short hitflag2[100];
+	
+	// As a starting point we will process 8 bins per thread: x acceptance divided by 4 * 2 bins for d3p and d3m 
+	int nhitpairs_x2[nbins_st2];
+	int nhitpairs_x3[29];
+        //pairs in station 2
+        thrust::pair<int, int> hitpairs_x2[nbins_st2*geometry::MaxHitsProj[0]];//7*10
+        //pairs in station 3
+        thrust::pair<int, int> hitpairs_x3[nbins_st3*geometry::MaxHitsProj[0]];//29*10
+
+	
+	unsigned int offset_hitcoll;
+	
+	short stid, projid, detid, detoff;
+	
+	projid = 0;
+	stid = 2-1;
+	detoff = 1;
+	
+	detid = geometry::detsuperid[stid][projid];
+	int nhits_st2x;
+	const gHits hits_st2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
+	const float z_st2x = z_array[detid];
+	const float res_st2x = res_array[detid];
+	
+	detid-= 1;
+	int nhits_st2xp;
+	const gHits hits_st2xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2xp);
+	const float z_st2xp = z_array[detid];
+	const float res_st2xp = res_array[detid];
+
+	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+	
+	stid = st3-1;
+	detid = geometry::detsuperid[stid][projid];
+	int nhits_st3x;
+	const gHits hits_st3x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3x);
+	const float z_st3x = z_array[detid];
+	const float res_st3x = res_array[detid];
+
+	detid-= 1;
+	int nhits_st3xp;
+	const gHits hits_st3xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3xp);
+	const float z_st3xp = z_array[detid];
+	const float res_st3xp = res_array[detid];
+
+
+	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, 0, nbins_st3, hitflag1, hitflag2, stid, projid);
+	
+	stid = 6-1;
+	detid = geometry::detsuperid[stid][projid];
+	int nhits_p1x1;
+	const gHits hits_p1x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x1);
+	const float z_p1x1 = z_array[detid];
+	const float res_p1x1 = res_array[detid];
+
+	detid-= 1;
+	int nhits_p1x2;
+	const gHits hits_p1x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x2);
+	const float z_p1x2 = z_array[detid];
+	const float res_p1x2 = res_array[detid];
+	
+	stid = 7-1;
+	detid = geometry::detsuperid[stid][projid];
+	int nhits_p2x1;
+	const gHits hits_p2x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x1);
+	const float z_p2x1 = z_array[detid];
+	const float res_p2x1 = res_array[detid];
+
+	detid-= 1;
+	int nhits_p2x2;
+	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
+	const float z_p2x2 = z_array[detid];
+	const float res_p2x2 = res_array[detid];
+	
+	bool bin_overflows = false;
+	for(int bin = 0; bin<nbins_st2; bin++){
+		if(nhitpairs_x2[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
+		//if(nhitpairs_x2[bin])printf("evt %d bin %d nhits x2 = %d\n", ic[index].EventID, bin, nhitpairs_x2[bin]);
+	}
+	for(int bin = 0; bin<nbins_st3; bin++){
+		if(nhitpairs_x3[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
+		//if(nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, nhitpairs_x3[bin]);
+	}
+	if(bin_overflows){
+		//hastoomanyhits[blockIdx.x] = true;
+	}
+	
+	float X[4];
+	float errX[4];
+	float Z[4];
+	float A_[4];
+	
+	float Ainv_[4];
+	float B_[2];
+	float Par[2];
+	float ParErr[2];
+	float chi2;
+	
+	short nprop, iprop, idet;
+	float xExp, ipos;
+	
+	short nhits_x;
+	short nhits_x2, nhits_x3;
+	
+	// if parallel:
+	// const short nbins_st3 = geometry::N_WCHitsBins[2];
+	const short nbins_total = nbins_st2*nbins_st3;
+	short bin2, bin3;
+	
+	int nx2, nu2, nv2;
+	int nx3, nu3, nv3;
+	
+	int ncomb_x, ncomb_uv;
+	
+	short i_x2, i_x3;
+	short i_u2, i_u3, i_v2, i_v3;
+	
+	int i_x, i_uv, i_hit;
+
+	float y, err_y;
+	float ty;
+	
+	float chi2min = 10000.1f;
+	
+	int n_goodxz;
+	
+}
+
+/*
+__global__ void gKernel_XZ_tracking_prep(const gEventHitCollections* hitcolls, bool* hastoomanyhits, const gPlane* planes)
+{
+	if(hastoomanyhits[blockIdx.x]){
+		return;
+	}
+	
+	gTrackingXZparams param;
+	
+
+	const unsigned int detid_prop = 47+threadIdx.x;
+	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x];
+	const unsigned int offset_hitcoll_prop = blockIdx.x*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
+		
+	unsigned int detid, nhits, offset_hitcoll;
+	
+	short stid;
+	short projid = 0;
+	
+	short detoff = 1;
+	stid = 1;
+	for(int i = 0; i<2; i++){
+		detid = detsuperid[stid][projid]-i;
+		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detid-detoff];
+		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-detoff);
+		param.hits_st2x[i] = gHits(hitcolls->HitsChambersRawData, nhits, offset_hitcoll);
+
+		param.z_array[i] = planes.z[detid];
+		param.res_array[i] = planes.spacing[detid];
+	}
+	
+	stid = 2;
+	for(int i = 0; i<4; i++){
+		if(i==2)stid+=1;
+		detid = detsuperid[stid][projid]-i%2;
+		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detid-detoff];
+		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-detoff);
+		param.hits_st3x[i] = gHits(hitcolls->HitsChambersRawData, nhits, offset_hitcoll);
+
+		param.z_array[i+2] = planes.z[detid];
+		param.res_array[i+2] = planes.spacing[detid];
+	}
+	
+	stid = 5;
+	detoff = 47;
+	for(int i = 0; i<4; i++){
+		if(i==2)stid+=1;
+		detid = detsuperid[stid][projid]-i%2;
+		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detoff];
+		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*detoff;
+		param.hits_px[i] = gHits(hitcolls->HitsPropTubesRawData, nhits, offset_hitcoll);
+
+		param.z_array[i+6] = planes.z[detid];
+		param.res_array[i+6] = planes.spacing[detid];
+	}
+	
+	
+	gKernel_XZ_tracking<<<1,THREADS_PER_BLOCK>>>(param);
+}
+*/
 
 #ifdef OLDCODE
-
-// event reducer: 
-__global__ void gkernel_eR(gEvent* ic) {
-	//printf("Running the kernel function...\n");
-	// retrieve global thread index
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	
-	double w_max; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
-	
-	double w_min; // max drift distance of the hit closest to the cluster avg position // current average position of cluster * 0.4
-	double dt_mean; // tbd
-	int cluster_iAH_arr_cur; // current cluster array
-	int cluster_iAH_arr_size; // cluster size i.e number of hits in cluster
-	static int cluster_iAH_arr[ClusterSizeMax]; // global cluster array 
-	int uniqueID; // hit unique element ID
-	int uniqueID_curr; // current hit unique element ID
-	double tdcTime_curr; // current hit TDC time
-	int iAH; // hit index 
-	int nAH_reduced; // number of hits after hit quality filtering
-	// int nHitsPerDetector[nDetectors+1];
-	
-	const int idxoff_global = index*EstnAHMax;
-	int iAH_global;
-	//if(ic[index].EventID==0){
-	//	printf("evt = %d, nAH = %d: \n", ic[index].EventID, ic[index].nAH);
-	//	for(int i = 1; i<=nDetectors; i++)printf(" det %d: %d;  ", i, ic[index].NHits[i]);
-	//	printf("\n");
-	//}
-
-	// initialization of array size
-	cluster_iAH_arr_size = 0;
-	nAH_reduced = 0;
-	
-	// event reducing/hit filtering
-	for(iAH = 0; iAH<ic->nAH[index]; ++iAH) {
-		iAH_global = idxoff_global+iAH;
-		// if hit not good, set its detID to 0 and continue;
-		if((ic->AllHits[iAH_global].flag & hitFlagBit(1)) == 0) {
-			//if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", ic->AllHits[iAH_global].detectorID);
-			ic->AllHits[iAH_global].detectorID = 0;
-			continue;
-		}
-		uniqueID = uniqueID_curr = -1;
-
-		// hits in DCs or Prop tubes
-		if(ic->AllHits[iAH_global].detectorID < 31 || ic->AllHits[iAH_global].detectorID > 46) {
-			// evaluate "unique ID"
-			uniqueID = ic->AllHits[iAH_global].detectorID*1000 + ic->AllHits[iAH_global].elementID;
-			// compare with current unique element ID; if different, update the unique element ID and time info 
-			if(uniqueID != uniqueID_curr) {
-				uniqueID_curr = uniqueID;
-				tdcTime_curr = ic->AllHits[iAH_global].tdcTime;
-			}
-			// if next hit and current hit belong to the same element: if detID>36 => prop tubes (reminder that hodoscpes are out of the picture in this scope), 
-			// we're suppose to have one signal (a second signal would be after-pulsing)
-			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
-			else {
-				if(ic->AllHits[iAH_global].detectorID > 36 || ((ic->AllHits[iAH_global].tdcTime - tdcTime_curr >= 0.0) && (ic->AllHits[iAH_global].tdcTime - tdcTime_curr < 80.0)) || ((ic->AllHits[iAH_global].tdcTime - tdcTime_curr <= 0.0) && (ic->AllHits[iAH_global].tdcTime - tdcTime_curr > -80.0))) {
-					//if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", ic->AllHits[iAH_global].detectorID, ic->AllHits[iAH_global].elementID);
-					ic->AllHits[iAH_global].detectorID = 0;
-					continue;
-				}
-				else {
-					tdcTime_curr = ic->AllHits[iAH_global].tdcTime;
-				}
-			}
-		}
-		// declustering of hits in DCs (from CPU code, I understand this one better)
-		// if there are hits in the same plane and hitting to neighboring wires, they both give redundant information: 
-		if(ic->AllHits[iAH_global].detectorID <= nChamberPlanes) {
-			//if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size);
-//			printf("Decluster...\n");
-			if(cluster_iAH_arr_size == ClusterSizeMax) {
-//				printf("Oversized cluster...\n");
-			}
-			// if array size is zero, start storing the hit in the array
-			if(cluster_iAH_arr_size == 0) {
-				cluster_iAH_arr[0] = iAH;
-				++cluster_iAH_arr_size;
-			} else { // otherwise
-				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
-				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
-				//if(ic[index].EventID==0){
-//printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
-//printf("hit det/elem: %d, %d; %d, %d\n", ic->AllHits[iAH_global].detectorID, ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, 
-//	    	      	      	  	 ic->AllHits[iAH_global].elementID, ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID);
-//printf("diffs: %d, %d\n", (ic->AllHits[iAH_global].detectorID - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID),
-//	       	   	  (ic->AllHits[iAH_global].elementID - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID));
-//printf("bools: %d, %d\n", (ic->AllHits[iAH_global].detectorID != ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID),
-//	       	   	  (abs(ic->AllHits[iAH_global].elementID - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID) > 1));
-	    	     	   	//}
-				if((ic->AllHits[iAH_global].detectorID != ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID) || (abs(ic->AllHits[iAH_global].elementID - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID) > 1)) {
-					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
-					if(cluster_iAH_arr_size == 2) {
-						w_max = 0.9*0.5*(ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].pos - ic->AllHits[idxoff_global+cluster_iAH_arr[0]].pos);
-						w_min = 4.0/9.0*w_max;
-						if((ic->AllHits[idxoff_global+cluster_iAH_arr[0]].driftDistance > w_max && ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].driftDistance > w_min) || (ic->AllHits[idxoff_global+cluster_iAH_arr[0]].driftDistance > w_min && ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].driftDistance > w_max)) {
-						//if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
-							//eliminating the existing hit with the lagest drift distance
-							if(ic->AllHits[idxoff_global+cluster_iAH_arr[0]].driftDistance > ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].driftDistance) {
-								//if(ic[index].EventID==0)printf("1 - hit det %d elem %d Skip cluster...\n", ic->AllHits[idxoff_global+cluster_iAH_arr[0]].detectorID, ic->AllHits[idxoff_global+cluster_iAH_arr[0]].elementID);
-								ic->AllHits[idxoff_global+cluster_iAH_arr[0]].detectorID = 0;
-							}
-							else {
-								//if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID);
-								ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID = 0;
-							}
-						}
-						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
-						else if((((ic->AllHits[idxoff_global+cluster_iAH_arr[0]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].tdcTime) >= 0.0 && (ic->AllHits[idxoff_global+cluster_iAH_arr[0]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].tdcTime) < 8.0) || ((ic->AllHits[idxoff_global+cluster_iAH_arr[0]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].tdcTime) <= 0.0 && (ic->AllHits[idxoff_global+cluster_iAH_arr[0]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].tdcTime) > -8.0)) && (ic->AllHits[idxoff_global+cluster_iAH_arr[0]].detectorID >= 19 && ic->AllHits[idxoff_global+cluster_iAH_arr[0]].detectorID <= 24)) {
-						        //if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", ic->AllHits[iAH_global].detectorID, ic->AllHits[iAH_global].elementID);
-							ic->AllHits[idxoff_global+cluster_iAH_arr[0]].detectorID = 0;
-							ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID = 0;
-						}
-					}
-					// if 3 hits or more in cluster: we essentially discard them all;
-					if(cluster_iAH_arr_size >= 3) {
-						// evaluate the mean time difference;
-						dt_mean = 0.0;
-						for(cluster_iAH_arr_cur = 1; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
-							dt_mean += ((ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur-1]].tdcTime) > 0.0 ? (ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur-1]].tdcTime) : (ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur-1]].tdcTime - ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur]].tdcTime));
-						}
-						dt_mean = dt_mean/(cluster_iAH_arr_size - 1);
-						// if mean time difference is less than 10, that's electronic noise, so we remove them all.
-						if(dt_mean < 10.0) {
-						        //if(ic[index].EventID==0)printf("4 - hit det %d elem %d Skip cluster...\n", ic->AllHits[iAH_global].detectorID, ic->AllHits[iAH_global].elementID);
-							for(cluster_iAH_arr_cur = 0; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
-								ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur]].detectorID = 0;
-							}
-						}
-						// otherwise, we remove them all except first and last
-						else {
-						        //if(ic[index].EventID==0)printf("5 - hit det %d elem %d Skip cluster...\n", ic->AllHits[iAH_global].detectorID, ic->AllHits[iAH_global].elementID);
-							for(cluster_iAH_arr_cur = 1; cluster_iAH_arr_cur < cluster_iAH_arr_size; ++cluster_iAH_arr_cur) {
-								ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_cur]].detectorID = 0;
-							}
-						}
-					}
-					cluster_iAH_arr_size = 0;
-				} else { // if hits are in the same detector and in two neighboring cells!
-				        // current hit and previous hit are in same detector plane and in neighbor wires: 
-				  	// we count how many hits we have in this case, until we find a hit in a different detector or in a wire that is not a neighbor to the previous hit.
-				  	//if(ic[index].EventID==0)printf("h1: det %d el %d; h2 det %d el %d \n", ic->AllHits[iAH_global].detectorID, ic->AllHits[iAH_global].elementID, ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, ic->AllHits[idxoff_global+cluster_iAH_arr[cluster_iAH_arr_size-1]].elementID);
-				  	cluster_iAH_arr[cluster_iAH_arr_size] = iAH;
-				  	++cluster_iAH_arr_size;
-				}
-			}
-		}
-	}
-	//end of the hit loop
-
-	// Hit reduction: 
-	// store in "AllHits" containers only hits with non-zero detectorID and couting those with nAH_reduced
-	for(iAH = 0; iAH<ic->nAH[index]; ++iAH) {
-		iAH_global = idxoff_global+iAH;
-		if(ic->AllHits[iAH_global].detectorID != 0) {
-			ic->AllHits[idxoff_global+nAH_reduced] = ic->AllHits[iAH_global];
-			++nAH_reduced;
-		}
-	}
-
-	// compute hits per detector
-	int nEventHits = nAH_reduced;
-	// reinitialize number of hits per detector
-	for(auto iDetector = 1; iDetector <= nDetectors; ++iDetector) {
-		ic->NHits[index*nDetectors+iDetector] = 0;
-	}
-	// loop on reduced hits and counting number of hits per detector
-	for(auto iHit = 0; iHit < nEventHits; ++iHit) {
-		auto detectorId = ic->AllHits[iHit].detectorID;
-		if(detectorId != 0) {
-			++ic->NHits[index*nDetectors+detectorId];
-		}
-	}
-
-	ic->nAH[index] = nAH_reduced;
-	ic->HasTooManyHits[index] = false;
-
-	int hitmult_[5] = {0, 0, 0, 0, 0};
-	for(auto iDetector = 1; iDetector <= 12; ++iDetector)hitmult_[0]+= ic->NHits[index*nDetectors+iDetector];
-	if(hitmult_[0]>250)ic->HasTooManyHits[index] = true;
-	for(auto iDetector = 13; iDetector <= 18; ++iDetector)hitmult_[1]+= ic->NHits[index*nDetectors+iDetector];
-	if(hitmult_[1]>200)ic->HasTooManyHits[index] = true;
-	for(auto iDetector = 19; iDetector <= 24; ++iDetector)hitmult_[2]+= ic->NHits[index*nDetectors+iDetector];
-	if(hitmult_[2]>150)ic->HasTooManyHits[index] = true;
-	for(auto iDetector = 25; iDetector <= 30; ++iDetector)hitmult_[3]+= ic->NHits[index*nDetectors+iDetector];
-	if(hitmult_[3]>120)ic->HasTooManyHits[index] = true;
-	for(auto iDetector = 47; iDetector <= 54; ++iDetector)hitmult_[4]+= ic->NHits[index*nDetectors+iDetector];
-	if(hitmult_[4]>250)ic->HasTooManyHits[index] = true;
-}
 
 
 // function to match a tracklet to a hodoscope hit
@@ -469,7 +533,7 @@ __global__ void gKernel_XZ_YZ_tracking_new(gEvent* ic, gOutputEvent* oc, gStraig
 
 	oc->EventID[index] = ic->EventID[index];
 	oc->nAH[index] = ic->nAH[index];
-	oc->HasTooManyHits[index] = ic->HasTooManyHits[index];
+	oc->HasTooManyHits[index] = hastoomanyhits[index];
 	oc->nTracklets[index] = 0;
 	
 	if(oc->HasTooManyHits[index])return;

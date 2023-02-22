@@ -29,7 +29,6 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 	// event reducing/hit filtering
 	for(iAH = 0; iAH<nhits; ++iAH) {
 		hitflag[iAH] = 1;
-		
 		// if hit not good, set its flag to 0 and continue;
 		if( (int(hitcoll.flag(iAH)) & hitFlagBit(1)) == 0) {
 			//if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", detid);
@@ -67,13 +66,14 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 			//if(ic[index].EventID==0)printf("%d\n", cluster_iAH_arr_size);
 //			printf("Decluster...\n");
 			if(cluster_iAH_arr_size == ClusterSizeMax) {
-//				printf("Oversized cluster...\n");
+				printf("Oversized cluster...\n");
 			}
 			// if array size is zero, start storing the hit in the array
 			if(cluster_iAH_arr_size == 0) {
 				cluster_iAH_arr[0] = iAH;
 				++cluster_iAH_arr_size;
 			} else { // otherwise
+
 				// current hit and previous hit are *not* in same detector plane OR next hit and current hit are *not* in neighbors cells
 				// we "declusterize" i.e. we remove the hit/hits which information is redundant with other hits and/or useless
 				//if(ic[index].EventID==0){
@@ -86,11 +86,19 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 //	       	   	  (abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) > 1));
 	    	     	   	//}
 	    	     	   	//all hits are in the same plane now
-				if(abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) > 1) {
+				if(abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) > 1 || iAH==nhits-1) {
+					if(iAH==nhits-1 && abs(hitcoll.chan(iAH) - hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1])) <= 1){
+						cluster_iAH_arr[cluster_iAH_arr_size] = iAH;
+				  		++cluster_iAH_arr_size;
+					}
+					
+					//if(blockIdx.x==2043 && detid>24 && detid<31)printf("%d %1.0f %1.0f %d \n", detid, hitcoll.chan(cluster_iAH_arr[0]), hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]), cluster_iAH_arr_size ); 
+
 					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size == 2) {
 						w_max = 0.9*0.5*(hitcoll.pos(cluster_iAH_arr[cluster_iAH_arr_size-1]) - hitcoll.pos(cluster_iAH_arr[0]));
 						w_min = 4.0/9.0*w_max;
+						
 						if((hitcoll.drift(cluster_iAH_arr[0]) > w_max && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_min) || (hitcoll.drift(cluster_iAH_arr[0]) > w_min && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_max)) {
 						//if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
 							//eliminating the existing hit with the lagest drift distance
@@ -151,9 +159,88 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 			++nAH_reduced;
 		}
 	}
+	return nAH_reduced;
 }
 
 
+__device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID, const int projID){
+	// I think we assume that by default we want to know where we are
+	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
+	
+	short bin;
+	const short MaxHits = geometry::MaxHitsProj[projID];
+
+#ifdef DEBUG
+#endif
+	for(bin = bin0; bin<bin0+Nbins; bin++){
+		npairs[bin-bin0] = 0;
+	}
+	
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	//const int detid1 = geometry::detsuperid[stID][projID]*2;
+	//const int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	const int superdetid = geometry::detsuperid[stID][projID];
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<nhits1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<nhits2; j++){
+			idx2++;
+			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(idx1) && 
+				    hitcoll1.chan(idx1) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[npairs[bin-bin0]] = thrust::make_pair(idx1, idx2);
+					npairs[bin-bin0]++;
+				}
+			}
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<nhits1; i++){
+		if(hitflag1[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(i) && 
+				    hitcoll1.chan(i) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0] = thrust::make_pair(i, -1);
+					npairs[bin-bin0]++;
+				}
+			}
+		}
+	}
+	for(int i = 0; i<nhits2; i++){
+		if(hitflag2[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin], geometry::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll2.chan(i) && 
+				    hitcoll2.chan(i) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[npairs[bin-bin0]] = thrust::make_pair(-1, i);
+					npairs[bin-bin0]++;
+				}
+			}
+		 }
+	}
+}
 
 
 

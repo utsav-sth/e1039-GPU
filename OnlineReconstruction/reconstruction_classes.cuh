@@ -27,7 +27,7 @@ struct gHits {
 			static_assert(sizeof(float) == sizeof(unsigned));
 			assert((((size_t) basedata) & sizeof(float)) == 0);
 		}
-	
+		
 	__host__ __device__ inline float chan(const unsigned index) const
 		{
 			assert(index < NHitsTotal);
@@ -59,74 +59,18 @@ struct gHits {
 		}
 };
 
-/*
-//it may be beneficial to have several classes of hits...
-struct gHodoHits {
-	public:
-	const unsigned int NHitsTotal;
-	float* m_hitdata;
-	
-	//convention: offset: chan (element ID) 0; pos 1; tdc 2; flag 3;
-	//maybe we could revise that?
-	
-	__host__ __device__ gHodoHits(float* basedata, const unsigned total_number_of_hits, const unsigned offset = 0) :
-    		m_hitdata(basedata + offset), NHitsTotal(total_number_of_hits)
-		{
-			static_assert(sizeof(float) == sizeof(unsigned));
-			assert((((size_t) basedata) & sizeof(float)) == 0);
-		}
-	
-	__host__ __device__ inline float chan(const unsigned index) const
-		{
-			assert(index < NHitsTotal);
-			return m_hitdata[index];
-		}
-	
-	__host__ __device__ inline float pos(const unsigned index) const
-		{
-			assert(index < NHitsTotal);
-			return m_hitdata[NHitsTotal + index];
-		}
-		
-	__host__ __device__ inline float tdc(const unsigned index) const
-		{
-			assert(index < NHitsTotal);
-			return m_hitdata[NHitsTotal*2 + index];
-		}
-		
-	__host__ __device__ inline float flag(const unsigned index) const
-		{
-			assert(index < NHitsTotal);
-			return m_hitdata[NHitsTotal*3 + index];
-		}
-};
-
-struct gHitPairs{
-	
-};
-*/
-
 
 struct gTracklet {
       public:
       __device__ gTracklet(){
-	nXHits = nUHits = nVHits = 0;
+	nHits = 0;
       }
-      __device__ short nHits(){
-        return nXHits + nUHits + nVHits;
-      } 
-            
+	            
       short stationID;
-      short nXHits;
-      short nUHits;
-      short nVHits;
-
+      short nHits;
       float chisq;
       float chisq_vtx;
 
-      //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[MaxHitsPerTrack];// array of all hits
-      short hitsign[MaxHitsPerTrack];
       
       float tx;
       float ty;
@@ -141,7 +85,11 @@ struct gTracklet {
       float err_invP;
       
       short charge;
-      float residual[MaxHitsPerTrack];
+
+      //maybe we can be a bit more sober in memory, and just require hit "event" index?
+      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits
+      short hitsign[datasizes::MaxHitsPerTrack];
+      float residual[datasizes::MaxHitsPerTrack];
 };
 
 struct gTrack2D {
@@ -198,163 +146,100 @@ struct gEventHitCollections {
 	
 	unsigned int NHitsPropTubes[EstnEvtMax*nPropPlanes]; 
 	float HitsPropTubesRawData[EstnEvtMax*nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes];
+	
+	__device__ const gHits hitschambers(const unsigned int event, const short detid, int &nhits) {
+		nhits = NHitsChambers[event*nChamberPlanes+detid-1];
+		return gHits(HitsChambersRawData, nhits, event*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-1) );
+	}
+
+	__device__ const gHits hitshodos(const unsigned int event, const short detid, int &nhits){
+		nhits = NHitsHodo[event*nHodoPlanes+detid-31];
+		return gHits(HitsHodoRawData, nhits, event*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(detid-31) );
+	}
+
+	__device__ const gHits hitsprop(const unsigned int event, const short detid, int &nhits){
+		nhits = NHitsPropTubes[event*nPropPlanes+detid-47];
+		return gHits(HitsPropTubesRawData, nhits, event*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(detid-47) );
+	}
+
 };
 
 /*
-struct gEventHitCollections {
-	public:
-	const unsigned int NEvtsTotal;
-	unsigned int* NHitsChambers;//[EstnEvtMax*nChamberPlanes];
-	float* HitsChambersRawData;//[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers];
-	
-	unsigned int* NHitsPropTubes;// [EstnEvtMax*nChamberPlanes]; 
-	float* HitsPropTubesRawData;//[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes];
-
-	unsigned int* NHitsHodo;// [EstnEvtMax*nChamberPlanes]; 
-	float* HitsHodoRawData;//[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
-
-	__host__ __device__ gEventHitCollections(const unsigned total_number_of_events) :
-    		NEvtsTotal(total_number_of_events);
-		{
-			NHitsChambers = int[NEvtsTotal*nChamberPlanes];
-			NHitsHodo = int[NEvtsTotal*nHodoPlanes];
-			NHitsPropTubes = int[NEvtsTotal*nPropPlanes];
-			
-			HitsChambersRawData = float[NEvtsTotals*nChamberPlanes*5*datasizes::NMaxHitsChambers];
-			HitsPropTubesRawData = float[NEvtsTotals*nChamberPlanes*5*datasizes::NMaxHitsPropTubes];
-			HitsHodoRawData = float[NEvtsTotal*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
-		}
-};
-*/
-
-struct gTracks2D {
+struct gTracks {
 	public:
 	const unsigned int NTracksTotal;
 	float* m_trackdata;
 	float* m_hitdata;
 	
-	__host__ __device__ gTracks2D(float* basedata, float* hitdata, const unsigned total_number_of_tracks, const unsigned offset = 0) :
+	__host__ __device__ gTracks(float* basedata, float* hitdata, const unsigned total_number_of_tracks, const unsigned offset = 0) :
 		m_trackdata(basedata + offset), m_hitdata(hitdata + offset), NTracksTotal(total_number_of_tracks)
 		{
 			static_assert(sizeof(float) == sizeof(unsigned));
 			assert((((size_t) basedata) & sizeof(float)) == 0);
 		}
-	
-};
-
-
-
-/*
-struct gChamberHitColl{
-	public:
-	int stID;
-	int projID;//X: 0, U: 1, V: 2
-	thrust::pair<gHit, gHit> hitpairs[datasizes::NMaxHitPairsChambers];
-};
-
-struct gHodoHitColl{
-	public:
-	int stID;
-	int projID;//X, 0; Y: 1
-	gHit Hits[datasizes::NMaxHitsHodoscopes];
-};
-
-struct gPropHitColl{
-	public:
-	int stID;
-	int projID;//X, 0; Y: 1
-	gHit Hits[datasizes::NMaxHitsPropTubes];
-};
-
-struct gFullTrackBuilder{
-public:
-	gTrack2D TrackXZ_st1[EstnEvtMax];
-	
-      	int hitlist[EstnEvtMax*MaxHitsPerTrack];
-      	short hitsign[EstnEvtMax*MaxHitsPerTrack];
-	
-	thrust::pair<int, int> hitpairs_x1[EstnEvtMax*100];
-	thrust::pair<int, int> hitpairs_u1[EstnEvtMax*100];
-	thrust::pair<int, int> hitpairs_v1[EstnEvtMax*100];
-	
-	//util arrays for pair making
-//	int hitidx1[EstnEvtMax*100];
-//	int hitidx2[EstnEvtMax*100];
-//	short hitflag1[EstnEvtMax*100];
-//	short hitflag2[EstnEvtMax*100];
-};
-
-
-struct gStraightTrackBuilder{
-public:
-//	gTrack2D trackXZ[EstnEvtMax];
-//	gTrack2D trackYZ[EstnEvtMax];
-//	gTrack2D besttrackYZ[EstnEvtMax];
-	
-        //pairs in station 2
-        thrust::pair<int, int> hitpairs_x2[EstnEvtMax*280];//28*10
-        thrust::pair<int, int> hitpairs_u2[EstnEvtMax*1120];//28*40
-        thrust::pair<int, int> hitpairs_v2[EstnEvtMax*1120];
-        //pairs in station 3
-        thrust::pair<int, int> hitpairs_x3[EstnEvtMax*580];//29*10*2
-        thrust::pair<int, int> hitpairs_u3[EstnEvtMax*2320];//29*40*2
-        thrust::pair<int, int> hitpairs_v3[EstnEvtMax*2320];
-	
-//	int nhitpairs_x2[EstnEvtMax*28];
-//	int nhitpairs_u2[EstnEvtMax*28];
-//	int nhitpairs_v2[EstnEvtMax*28];
-	
-//	int nhitpairs_x3[EstnEvtMax*58];
-//	int nhitpairs_u3[EstnEvtMax*58];
-//	int nhitpairs_v3[EstnEvtMax*58];
-	
-//	//util arrays for pair making
-//	int hitidx1[EstnEvtMax*100];
-//	int hitidx2[EstnEvtMax*100];
-//	short hitflag1[EstnEvtMax*100];
-//	short hitflag2[EstnEvtMax*100];
-};
-
-struct gStraightFitArrays {
-public:
-      int npoints[EstnEvtMax];
-      float drift_dist[EstnEvtMax*MaxHitsPerTrack]; // hit drift distance
-      float resolution[EstnEvtMax*MaxHitsPerTrack]; // detector resolution
-      
-      float p1x[EstnEvtMax*MaxHitsPerTrack];// x bottom end point of the wire hit 
-      float p1y[EstnEvtMax*MaxHitsPerTrack];// y bottom end point of the wire hit 
-      float p1z[EstnEvtMax*MaxHitsPerTrack];// z bottom end point of the wire hit 
-      
-      float deltapx[EstnEvtMax*MaxHitsPerTrack];// x distance between bottom and top end points of the wire hit 
-      float deltapy[EstnEvtMax*MaxHitsPerTrack];// y distance between bottom and top end points of the wire hit 
-      float deltapz[EstnEvtMax*MaxHitsPerTrack];// z distance between bottom and top end points of the wire hit 
-      
-//      float output_parameters[EstnEvtMax*4];
-//      float output_parameters_errors[EstnEvtMax*4];
-//      float chi2_2d[EstnEvtMax];
-//      float chi2[EstnEvtMax];
-
-      float x_array[EstnEvtMax*MaxHitsPerTrack];// x position arrays
-      float y_array[EstnEvtMax*MaxHitsPerTrack];// y position arrays
-      float z_array[EstnEvtMax*MaxHitsPerTrack];// z position arrays
-      float dx_array[EstnEvtMax*MaxHitsPerTrack];// x position uncertainty
-      float dy_array[EstnEvtMax*MaxHitsPerTrack];// x position uncertainty
-      
-//      float A[EstnEvtMax*4];// matrix: max size 2x2
-//      float Ainv[EstnEvtMax*4];// inverted matrix
-//      float B[EstnEvtMax*2];// input vector
-};
-
-struct gKalmanFitArrays{
-public:
-	float state[EstnEvtMax*5];// 5-vector: x0, y0, tx, ty, invP
-	float Cov[EstnEvtMax*25];// symmetric 5x5 matrix: C00 = err_x0, C11 = err_y0, C22 = err_tx, C33 = err_ty, C44 = err_invP
-	float H[EstnEvtMax*2];
-	float K[EstnEvtMax*5];// matrix: max size 5x5, but we can use this unique array for all possible sizes
-	float KCResKt[EstnEvtMax*25];// matrix 5x5, result of tensor product of K*K
-	float chi2[EstnEvtMax];// chi2
 };
 */
+
+struct gEventTrackCollection{
+	unsigned int NTracks[EstnEvtMax];
+	gTracklet Tracklets[EstnEvtMax*datasizes::TrackletSizeMax];
+};
+
+
+struct gTracklets {
+	public:
+	const unsigned int ntkl;
+	gTracklet* tkl_list;
+	
+	__host__ __device__ gTracklets(gTracklet* baselist, gTracklet* tkl_list, const unsigned total_number_of_tracks, const unsigned offset = 0) :
+		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
+		{
+			static_assert(sizeof(float) == sizeof(unsigned));
+			assert((((size_t) baselist) & sizeof(gTracklet)) == 0);
+		}
+	
+	__host__ __device__ inline gTracklet getTracklet(const unsigned index) const
+		{
+			assert(index < ntkl);
+			return tkl_list[index];
+		}
+		
+	__host__ __device__ inline void setTracklet(const unsigned index, gTracklet tkl) const
+		{
+			assert(index < ntkl);
+			tkl_list[index] = tkl;
+		}
+};
+
+/*
+struct gTrackingXZparams{
+	public:
+	gTrackingXZparams();
+	//utils
+	float z_array[10];
+	float res_array[10];
+	
+	//input
+	gHits hits_st2x;
+	gHits hits_st2xp;
+	gHits hits_st3px;
+	gHits hits_st3pxp;
+	gHits hits_st3mx;
+	gHits hits_st3mxp;
+
+	gHits hits_p1x1;
+	gHits hits_p1x2;
+	gHits hits_p2x1;
+	gHits hits_p2x2;
+	gHits hits_st2x[2];
+	gHits hits_st3x[4];
+	gHits hits_px[4];
+	
+	//output
+	gTracklets Tracks;
+};
+*/
+
 
 struct gOutputEvent {
 public:
@@ -362,7 +247,7 @@ public:
 	int nAH[EstnEvtMax];
 	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
 	int nTracklets[EstnEvtMax];
-	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
+//	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
 };
 
 //geometry carrier

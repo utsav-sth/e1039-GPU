@@ -516,6 +516,7 @@ int main(int argn, char * argv[]) {
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = sizeof(gEvent);
 	size_t NBytesAllHits = sizeof(gEventHitCollections);
+	size_t NBytesAllTracks = sizeof(gEventTrackCollection);
 	size_t NBytesAllOutputEvent = sizeof(gOutputEvent);
 	size_t NBytesAllPlanes =  sizeof(gPlane);
 	//size_t NBytesFitterTools = sizeof(gStraightFitArrays);
@@ -525,7 +526,7 @@ int main(int argn, char * argv[]) {
 	
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllOutputEvent+NBytesAllPlanes+NBytesAllHits << endl;
 	cout << " input events: " << NBytesAllEvent << "; output events: " << NBytesAllOutputEvent 
-		<< "; raw hits: " << NBytesAllHits 
+		<< "; raw hits: " << NBytesAllHits << "; tracks " << NBytesAllTracks
 		//<< "; straight track builder tools: " << NBytesStraightTrackBuilders
 	//     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
 	//     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
@@ -538,6 +539,7 @@ int main(int argn, char * argv[]) {
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent* device_gEvent;
 	gEventHitCollections* device_gHits;
+	gEventTrackCollection* device_gTracks;
 	gOutputEvent* device_output_TKL;
 	gPlane* device_gPlane;
 	//gStraightFitArrays* device_gFitArrays;
@@ -552,6 +554,7 @@ int main(int argn, char * argv[]) {
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_gHits, NBytesAllHits));
+	gpuErrchk( cudaMalloc((void**)&device_gTracks, NBytesAllTracks));
 	gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
@@ -579,7 +582,7 @@ int main(int argn, char * argv[]) {
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
 	//gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
-	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_gHits);
+	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gEvent->HasTooManyHits);
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;
@@ -590,6 +593,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
+	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane->z, device_gPlane->spacing, device_gEvent->EventID, device_gEvent->HasTooManyHits);
 	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
@@ -641,6 +645,11 @@ int main(int argn, char * argv[]) {
 	auto cp8 = std::chrono::system_clock::now();
 	auto cp_to_cpu = cp8-cp7;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
+	
+	int nGood = EstnEvtMax;
+	for(int i = 0; i<EstnEvtMax; i++)if(host_output_eR->HasTooManyHits[i])nGood--;
+	cout << nGood << " events over " << EstnEvtMax << endl;
+	
 //#define TEST 1
 #ifdef TEST	
 	ofstream out("OutputFile.txt");
@@ -675,14 +684,13 @@ int main(int argn, char * argv[]) {
 				out << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].detectorID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].elementID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].driftDistance*host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hitsign[l] << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].pos << endl;
 			}
 		}
-		
 	}
-
+	
 	cout << tklctr << " total tracks reconstructed" << endl;
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
 
-#endif		
+#endif
 
 	delete rawEvent;
 
