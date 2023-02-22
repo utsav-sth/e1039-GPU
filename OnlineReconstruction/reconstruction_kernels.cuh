@@ -85,7 +85,6 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 		}else{
 			stid = (detid_chambers[i]-7)/6;
 		}
-		
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers[i], offsets_hitcoll_chambers[i]);
 		nhits = event_reduction(hitcoll_chambers, hitflag, detid_chambers[i], nhits_chambers[i]);
 		
@@ -102,7 +101,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 			}
 		}
 		nvalues = datasizes::NHitsParam*nhits;
-		for(int k = 0; k<nvalues; k++)hitcolls->HitsChambersRawData[offset_hitcoll_prop+k] = hitarraycopy[k];
+		for(int k = 0; k<nvalues; k++)hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[i]+k] = hitarraycopy[k];
 
 		station_multiplicity[threadIdx.x][stid]+=nhits;
 	}
@@ -123,7 +122,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 			}
 		}
 		nvalues = datasizes::NHitsParam*nhits;
-		for(int k = 0; k<nvalues; k++)hitcolls->HitsHodoRawData[offset_hitcoll_prop+k] = hitarraycopy[k];
+		for(int k = 0; k<nvalues; k++)hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[i]+k] = hitarraycopy[k];
 	}
 	__syncthreads();
 	
@@ -142,16 +141,17 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	if(station_mult[4]>250)hastoomanyhits[blockIdx.x] = true;
 
 #ifdef DEBUG
-	if(blockIdx.x+1==2044){
-		int nhits_chambers_ = hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[2]-1];
-		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers_, offsets_hitcoll_chambers[2]);
-		printf(" det offset %d array offset %d nhits_chambers(%d) = %d \n", blockIdx.x*nChamberPlanes+detid_chambers[2]-1, offsets_hitcoll_chambers[2], detid_chambers[2], nhits_chambers_);
+	if(blockIdx.x==345){
+		for(int k = 0; k<3; k++){
+		int nhits_chambers_ = hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[k]-1];
+		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers_, offsets_hitcoll_chambers[k]);
+		printf(" det offset %d array offset %d nhits_chambers(%d) = %d \n", blockIdx.x*nChamberPlanes+detid_chambers[k]-1, offsets_hitcoll_chambers[k], detid_chambers[k], nhits_chambers_);
 		for(int i = 0; i<nhits_chambers_; i++){
-			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_chambers[2], detid_chambers[2], hitcoll_chambers.chan(i), hitcoll_chambers.pos(i), hitcoll_chambers.tdc(i), hitcoll_chambers.flag(i), hitcoll_chambers.drift(i));
-			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_chambers[2], detid_chambers[2], i, offsets_hitcoll_chambers[2]+i, offsets_hitcoll_chambers[2]+i+nhits_chambers[2], offsets_hitcoll_chambers[2]+i+nhits_chambers[2]*2, offsets_hitcoll_chambers[2]+i+nhits_chambers*3, offsets_hitcoll_chambers[2]+i+nhits_chambers[2]*4, hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[2]+i], hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[2]+i+nhits_chambers[2]]);
-
-		}}
-
+			printf("%d %d %1.0f %1.4f %1.4f %1.0f %1.4f\n", offsets_hitcoll_chambers[k], detid_chambers[k], hitcoll_chambers.chan(i), hitcoll_chambers.pos(i), hitcoll_chambers.tdc(i), hitcoll_chambers.flag(i), hitcoll_chambers.drift(i));
+			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_chambers[k], detid_chambers[k], i, offsets_hitcoll_chambers[k]+i, offsets_hitcoll_chambers[k]+i+nhits_chambers[k], offsets_hitcoll_chambers[k]+i+nhits_chambers[k]*2, offsets_hitcoll_chambers[k]+i+nhits_chambers*3, offsets_hitcoll_chambers[k]+i+nhits_chambers[k]*4, hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[k]+i], hitcolls->HitsChambersRawData[offsets_hitcoll_chambers[k]+i+nhits_chambers[2]]);
+		}
+		}
+	}
 		int nhits_hodo_ = hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+threadIdx.x];
 		gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo_, offsets_hitcoll_hodo[0]);
 		printf(" det offset %d array offset %d nhits_hodo(%d) = %d \n", blockIdx.x*nChamberPlanes+threadIdx.x, offsets_hitcoll_hodo[0], detid_hodo[0], nhits_hodo_);
@@ -172,10 +172,6 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 		if(threadIdx.x==0)for(int i = 0; i<5; i++)printf("thread %d station %d mult %d \n ", threadIdx.x, i, station_mult[i]);
 	}
 #endif
-	
-//#ifdef DEBUG
-	
-//#endif
 }
 
 
@@ -193,7 +189,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	const int nbins_st3 = 29;//58/2
 	
 	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
-	int bin0_st2 = (threadIdx.x/2)*7;
+	int bin0_st2 = (threadIdx.x/2)*nbins_st2;
 	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
 
 	short hitflag1[100];
@@ -213,10 +209,12 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	short stid, projid, detid, detoff;
 	
 	projid = 0;
-	stid = 2-1;
+	stid = 2;
 	detoff = 1;
 	
-	detid = geometry::detsuperid[stid][projid];
+	//Get the required hit collections here!
+	
+	detid = geometry::detsuperid[stid][projid]*2;
 	int nhits_st2x;
 	const gHits hits_st2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
 	const float z_st2x = z_array[detid];
@@ -227,50 +225,65 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	const gHits hits_st2xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2xp);
 	const float z_st2xp = z_array[detid];
 	const float res_st2xp = res_array[detid];
-
-	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
 	
-	stid = st3-1;
-	detid = geometry::detsuperid[stid][projid];
+	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+
+	stid = st3;
+	detid = geometry::detsuperid[stid][projid]*2;
 	int nhits_st3x;
 	const gHits hits_st3x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3x);
+#ifdef DEBUG	
+	if(blockIdx.x==345 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3x, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
+#endif
 	const float z_st3x = z_array[detid];
 	const float res_st3x = res_array[detid];
 
 	detid-= 1;
 	int nhits_st3xp;
 	const gHits hits_st3xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3xp);
+#ifdef DEBUG	
+	if(blockIdx.x==345 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
+#endif
 	const float z_st3xp = z_array[detid];
 	const float res_st3xp = res_array[detid];
 
-
 	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, 0, nbins_st3, hitflag1, hitflag2, stid, projid);
+
+#ifdef DEBUG	
+	if(blockIdx.x==345 && st3==4){
+		printf("nhits %d %d \n", nhits_st3x, nhits_st3xp);
+		for(int i = 0; i<nbins_st3; i++){
+			printf("thread %d npairs %d \n", threadIdx.x, nhitpairs_x3[i]);
+			for(int j = 0; j<nhitpairs_x3[i]; j++){
+				printf("thread %d < %d , %d >\n", threadIdx.x, hitpairs_x3[i+nbins_st3*j].first, hitpairs_x3[i+nbins_st3*j].second);
+				if(hitpairs_x3[i+nbins_st3*j].first>=0)printf("thread %d bin %d st3x, hit %d chan %1.0f pos %1.4f \n", threadIdx.x, i, hitpairs_x3[i+nbins_st3*j].first, hits_st3x.chan(hitpairs_x3[i+nbins_st3*j].first), hits_st3x.pos(hitpairs_x3[i+nbins_st3*j].first));
+				if(hitpairs_x3[i+nbins_st3*j].second>=0)printf("thread %d bin %d st3xp, hit %d chan %1.0f pos %1.4f \n", threadIdx.x, i, hitpairs_x3[i+nbins_st3*j].second, hits_st3xp.chan(hitpairs_x3[i+nbins_st3*j].second), hits_st3xp.pos(hitpairs_x3[i+nbins_st3*j].second) );
+			}
+		}
+	}
+#endif
 	
 	stid = 6-1;
-	detid = geometry::detsuperid[stid][projid];
+	detid = geometry::detsuperid[stid][projid]*2;
 	int nhits_p1x1;
 	const gHits hits_p1x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x1);
 	const float z_p1x1 = z_array[detid];
-	const float res_p1x1 = res_array[detid];
 
 	detid-= 1;
 	int nhits_p1x2;
 	const gHits hits_p1x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x2);
 	const float z_p1x2 = z_array[detid];
-	const float res_p1x2 = res_array[detid];
 	
 	stid = 7-1;
-	detid = geometry::detsuperid[stid][projid];
+	detid = geometry::detsuperid[stid][projid]*2;
 	int nhits_p2x1;
 	const gHits hits_p2x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x1);
 	const float z_p2x1 = z_array[detid];
-	const float res_p2x1 = res_array[detid];
 
 	detid-= 1;
 	int nhits_p2x2;
 	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
 	const float z_p2x2 = z_array[detid];
-	const float res_p2x2 = res_array[detid];
 	
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
@@ -282,47 +295,185 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		//if(nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, nhitpairs_x3[bin]);
 	}
 	if(bin_overflows){
-		//hastoomanyhits[blockIdx.x] = true;
+		hastoomanyhits[blockIdx.x] = true;
+		return;
 	}
 	
+	//variables for slope calculation
 	float X[4];
 	float errX[4];
 	float Z[4];
-	float A_[4];
 	
+	float A_[4];
 	float Ainv_[4];
 	float B_[2];
 	float Par[2];
 	float ParErr[2];
 	float chi2;
+
+	float x0, tx;
 	
+	//small varaibles for prop tube matching
 	short nprop, iprop, idet;
 	float xExp, ipos;
+	bool checknext;
 	
 	short nhits_x;
 	short nhits_x2, nhits_x3;
+	short i_x, i_x2, i_x3;
+	int i_hit;
 	
 	// if parallel:
 	// const short nbins_st3 = geometry::N_WCHitsBins[2];
 	const short nbins_total = nbins_st2*nbins_st3;
 	short bin2, bin3;
 	
-	int nx2, nu2, nv2;
-	int nx3, nu3, nv3;
-	
-	int ncomb_x, ncomb_uv;
-	
-	short i_x2, i_x3;
-	short i_u2, i_u3, i_v2, i_v3;
-	
-	int i_x, i_uv, i_hit;
-
-	float y, err_y;
-	float ty;
-	
-	float chi2min = 10000.1f;
-	
+	int nx2, nx3;
+	int ncomb_x;
+		
 	int n_goodxz;
+	
+	__shared__ gTracklet tkl[THREADS_PER_BLOCK];
+	__shared__ int ntkl[THREADS_PER_BLOCK];
+	
+	for(short i = 0; i<nbins_total; i++){
+		bin2 = i%nbins_st2;
+		bin3 = (i-bin2)/nbins_st2;
+		//printf("bin %d %d\n", bin2, bin3);
+		// if parallel:
+		// bin3+=nbins_st3*i_thread;
+
+		nx2 = nhitpairs_x2[bin2];
+		nx3 = nhitpairs_x3[bin3];
+		
+		if(nx2 == 0 || nx3==0) continue;
+#ifdef DEBUG
+		if(blockIdx.x==345 && st3==4)printf("bin %d %d, nx %d %d \n", bin2, bin3, nx2, nx3);
+#endif		
+		// evaluating the number of combinations;
+		ncomb_x = nx2*nx3;
+		
+		n_goodxz = 0;
+		
+		for(i_x = 0; i_x<ncomb_x; i_x++){
+			i_x2 = i_x%nx2;
+			i_x3 = (i_x-i_x2)/nx2;
+			
+			nhits_x = 0;
+			
+			if(hitpairs_x2[bin2+nbins_st2*i_x2].first>=0){
+				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].first;
+				X[nhits_x] = hits_st2x.pos(i_hit);
+				errX[nhits_x] = res_st2x;
+				Z[nhits_x] = z_st2x;
+				nhits_x++;
+			}
+			if(hitpairs_x2[bin2+nbins_st2*i_x2].second>=0){
+				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].second;
+				X[nhits_x] = hits_st2xp.pos(i_hit);
+				errX[nhits_x] = res_st2xp;
+				Z[nhits_x] = z_st2xp;
+				nhits_x++;
+			}
+			
+			nhits_x2 = nhits_x;
+			if(nhits_x2==0) continue;
+
+#ifdef DEBUG
+			if(blockIdx.x==345 && st3==4) printf("thread %d in loop (i_x2 %d i_x3 %d): < %d , %d >\n", threadIdx.x, i_x2, i_x3, hitpairs_x3[bin3+nbins_st3*i_x3].first, hitpairs_x3[bin3+nbins_st3*i_x3].second);
+#endif
+			
+			if(hitpairs_x3[bin3+nbins_st3*i_x3].first>=0){
+				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].first;
+				X[nhits_x] = hits_st3x.pos(i_hit);
+				errX[nhits_x] = res_st3x;
+				Z[nhits_x] = z_st3x;
+				nhits_x++;
+			}
+			if(hitpairs_x3[bin3+nbins_st3*i_x3].second>=0){
+				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].second;
+				X[nhits_x] = hits_st3xp.pos(i_hit);
+				errX[nhits_x] = res_st3xp;
+				Z[nhits_x] = z_st3xp;
+				nhits_x++;
+			}
+			
+			nhits_x3 = nhits_x-nhits_x2;
+			if(nhits_x3==0) continue;
+
+			
+			fit_2D_track(nhits_x, X, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
+			x0 = Par[0];
+			tx = Par[1];
+			
+			if(fabs(x0)>1.05*X0_MAX || fabs(tx)>1.05*TX_MAX)continue;
+
+			n_goodxz++;
+			
+			//prop matching
+			nprop = 0;
+			checknext = true;
+
+			for(int n = 0; n<nhits_p1x1; n++){
+				//ipos = hits_p1x1.pos(n);
+				xExp = tx*z_p1x1+x0;
+				if(fabs(ipos-xExp)<5.08f){
+					nprop++;
+					checknext = false;
+					break;
+				}
+			}
+			if(checknext){
+				for(int n = 0; n<nhits_p1x2; n++){
+					ipos = hits_p1x2.pos(n);
+					xExp = tx*z_p1x2+x0;
+					if(fabs(ipos-xExp)<5.08f){
+						nprop++;
+						checknext = false;
+						break;
+					}
+				}
+			}
+			if(checknext){
+				for(int n = 0; n<nhits_p1x2; n++){
+					ipos = hits_p1x2.pos(n);
+					xExp = tx*z_p1x2+x0;
+					if(fabs(ipos-xExp)<5.08f){
+						nprop++;
+						checknext = false;
+						break;
+					}
+				}
+			}
+			if(checknext){
+				for(int n = 0; n<nhits_p2x2; n++){
+					ipos = hits_p2x2.pos(n);
+					xExp = tx*z_p2x2+x0;
+					if(fabs(ipos-xExp)<5.08f){
+						nprop++;
+						checknext = false;
+						break;
+					}
+				}
+			}
+			if(nprop==0)continue;
+			
+			/*
+			tkl[threadIdx.x].stationID = 3;
+			tkl[threadIdx.x].x0 = x0;
+			tkl[threadIdx.x].tx = tx;
+			tkl[threadIdx.x].err_x0 = ParErr[0];
+			tkl[threadIdx.x].err_tx = ParErr[1];
+			tkl[threadIdx.x].nHits = nhits_x;
+			for(int n = 0; n<nhits_x; n++){
+				tkl[threadIdx.x].
+			}
+			*/
+			
+#ifdef TEST
+#endif
+		}
+	}			
 	
 }
 

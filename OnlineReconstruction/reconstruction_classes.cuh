@@ -147,19 +147,19 @@ struct gEventHitCollections {
 	unsigned int NHitsPropTubes[EstnEvtMax*nPropPlanes]; 
 	float HitsPropTubesRawData[EstnEvtMax*nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes];
 	
-	__device__ const gHits hitschambers(const unsigned int event, const short detid, int &nhits) {
+	__device__ const gHits hitschambers(const unsigned int event, const short detid, int& nhits) {
 		nhits = NHitsChambers[event*nChamberPlanes+detid-1];
 		return gHits(HitsChambersRawData, nhits, event*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-1) );
 	}
 
-	__device__ const gHits hitshodos(const unsigned int event, const short detid, int &nhits){
-		nhits = NHitsHodo[event*nHodoPlanes+detid-31];
-		return gHits(HitsHodoRawData, nhits, event*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(detid-31) );
+	__device__ const gHits hitshodos(const unsigned int event, const short detid, int& nhits){
+		nhits = NHitsHodo[event*nHodoPlanes+detid-nChamberPlanes-1];
+		return gHits(HitsHodoRawData, nhits, event*datasizes::eventhitsize[1]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(detid-nChamberPlanes-1) );
 	}
 
-	__device__ const gHits hitsprop(const unsigned int event, const short detid, int &nhits){
-		nhits = NHitsPropTubes[event*nPropPlanes+detid-47];
-		return gHits(HitsPropTubesRawData, nhits, event*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes*(detid-47) );
+	__device__ const gHits hitsprop(const unsigned int event, const short detid, int& nhits){
+		nhits = NHitsPropTubes[event*nPropPlanes+detid-nChamberPlanes-nHodoPlanes-1];
+		return gHits(HitsPropTubesRawData, nhits, event*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*(detid-nChamberPlanes-nHodoPlanes-1) );
 	}
 
 };

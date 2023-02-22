@@ -191,11 +191,16 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	// the "spacing" defined for the planes, then the hits can be paired together.
 	int idx1 = -1;
 	int idx2 = -1;
+	
+	//if(blockIdx.x==2044 && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
+
 	for(int i = 0; i<nhits1; i++){
 		idx1++;
 		idx2 = -1;
 		for(int j = 0; j<nhits2; j++){
 			idx2++;
+			//if(blockIdx.x==2044 && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
+
 			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > geometry::spacingplane[superdetid] ){
 				continue;
 			}
@@ -204,7 +209,7 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(idx1) && 
 				    hitcoll1.chan(idx1) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
 					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[npairs[bin-bin0]] = thrust::make_pair(idx1, idx2);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(idx1, idx2);
 					npairs[bin-bin0]++;
 				}
 			}
@@ -221,7 +226,7 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(i) && 
 				    hitcoll1.chan(i) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
 					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0] = thrust::make_pair(i, -1);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(i, -1);
 					npairs[bin-bin0]++;
 				}
 			}
@@ -234,7 +239,7 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 				if( geometry::WCHitsBins[stID-1][projID][0][bin] <= hitcoll2.chan(i) && 
 				    hitcoll2.chan(i) <= geometry::WCHitsBins[stID-1][projID][1][bin]){
 					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, geometry::WCHitsBins[stID-1][projID][0][bin-bin0], geometry::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[npairs[bin-bin0]] = thrust::make_pair(-1, i);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(-1, i);
 					npairs[bin-bin0]++;
 				}
 			}
