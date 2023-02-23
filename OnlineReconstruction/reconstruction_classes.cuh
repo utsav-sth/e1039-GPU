@@ -3,14 +3,14 @@
 //clone of LoadEvent::Hit:
 struct gHit {
 	public:
-	int index; // global hit index in the hit array
+	//int index; // global hit index in the hit array
 	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
 	short elementID; // ID of the element in the detector: wire/slat/tube number
 	float tdcTime; // raw TDC time from the DAQ 
 	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
-	short sign_mc;//temp
+	//short sign_mc;//temp
 	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
-	short flag; // 1: in time; 2: hodo mask; 3: trigger mask
+	//short flag; // 1: in time; 2: hodo mask; 3: trigger mask
 };
 
 //it may be beneficial to have several classes of hits...
@@ -66,30 +66,31 @@ struct gTracklet {
 	nHits = 0;
       }
 	            
-      short stationID;
-      short nHits;
-      float chisq;
-      float chisq_vtx;
+      short stationID;//0
+      short binID;//1
+      short nHits;//2
+      float chisq;//3
+      float chisq_vtx;//4
 
       
-      float tx;
-      float ty;
-      float x0;
-      float y0;
-      float invP;
+      float tx;//5
+      float ty;//6
+      float x0;//7
+      float y0;//8
+      float invP;//9
       
-      float err_tx;
-      float err_ty;
-      float err_x0;
-      float err_y0;
-      float err_invP;
+      float err_tx;//10
+      float err_ty;//11
+      float err_x0;//12
+      float err_y0;//13
+      float err_invP;//14
       
-      short charge;
+      short charge;//15
 
       //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits
-      short hitsign[datasizes::MaxHitsPerTrack];
-      float residual[datasizes::MaxHitsPerTrack];
+      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits:16-105
+      short hitsign[datasizes::MaxHitsPerTrack];//106-123
+      float residual[datasizes::MaxHitsPerTrack];//124-141
 };
 
 struct gTrack2D {
@@ -180,18 +181,12 @@ struct gTracks {
 };
 */
 
-struct gEventTrackCollection{
-	unsigned int NTracks[EstnEvtMax];
-	gTracklet Tracklets[EstnEvtMax*datasizes::TrackletSizeMax];
-};
-
-
 struct gTracklets {
 	public:
 	const unsigned int ntkl;
 	gTracklet* tkl_list;
 	
-	__host__ __device__ gTracklets(gTracklet* baselist, gTracklet* tkl_list, const unsigned total_number_of_tracks, const unsigned offset = 0) :
+	__host__ __device__ gTracklets(gTracklet* baselist, const unsigned total_number_of_tracks, const unsigned offset = 0) :
 		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
 		{
 			static_assert(sizeof(float) == sizeof(unsigned));
@@ -210,6 +205,19 @@ struct gTracklets {
 			tkl_list[index] = tkl;
 		}
 };
+
+
+struct gEventTrackCollection{
+	unsigned short NTracks[EstnEvtMax];
+	gTracklet Tracklets[EstnEvtMax*datasizes::TrackletSizeMax];
+	
+	__device__ const gTracklets tracks(const unsigned int event, int& ntracks) {
+		ntracks = NTracks[event];
+		return gTracklets(Tracklets, ntracks, event*datasizes::TrackletSizeMax);
+	}
+
+};
+
 
 /*
 struct gTrackingXZparams{

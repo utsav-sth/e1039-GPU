@@ -248,6 +248,67 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 }
 
 
+// --------------------------------------------------------------- //
+// functions to calculate bottom and top end wire points for a hit //
+// --------------------------------------------------------------- //
+
+
+__device__ float x_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1x_w1[detid]+plane->dp1x[detid]*(elid-1);
+}
+
+__device__ float x_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return x_bep(detid, elid, plane)+plane->deltapx[detid];
+}
+
+__device__ float y_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1y_w1[detid]+plane->dp1y[detid]*(elid-1);
+}
+
+__device__ float y_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return y_bep(detid, elid, plane)+plane->deltapy[detid];
+}
+
+__device__ float z_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1z_w1[detid]+plane->dp1z[detid]*(elid-1);
+}
+
+__device__ float z_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return z_bep(detid, elid, plane)+plane->deltapz[detid];
+}
+
+//calculation of y
+
+__device__ bool calculate_y_uvhit(const int detid, const int elid, const float drift, const short hitsign, const float x0, const float tx, const gPlane* planes, float &y, float &err_y){
+	float p1x = x_bep(detid, elid, planes);
+	float p1y = y_bep(detid, elid, planes);
+	float p2x = x_tep(detid, elid, planes);
+	
+	float x_trk = x0+planes->z[ detid ]*tx;
+
+	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
+	
+	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
+	if(hitsign==0){
+		if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk+drift<p1x && x_trk+drift<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+
+		y = max(y, p1y);
+		y = min(y, p1y+planes->deltapy[ detid ]);
+	}else{
+		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+	}
+
+	err_y = planes->spacing[ detid ]/3.4641f * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
+	return true;
+}
 
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //

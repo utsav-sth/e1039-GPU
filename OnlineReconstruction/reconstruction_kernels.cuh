@@ -134,11 +134,11 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	}
 	
 	hastoomanyhits[blockIdx.x] = false;
-	if(station_mult[0]>250)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[1]>200)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[2]>150)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[3]>120)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[4]>250)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[0]>375)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[1]>300)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[2]>225)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[3]>180)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[4]>375)hastoomanyhits[blockIdx.x] = true;
 
 #ifdef DEBUG
 	if(blockIdx.x==345){
@@ -174,6 +174,11 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 #endif
 }
 
+////////////////////////////////////
+//
+//          XZ TRACKING
+//
+////////////////////////////////////
 
 __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const float* z_array, const float* res_array, const int* eventID, bool* hastoomanyhits)
 //(gTrackingXZparams* parameters)			
@@ -189,7 +194,8 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	const int nbins_st3 = 29;//58/2
 	
 	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
-	int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	const int bin0_st3 = 0;
 	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
 
 	short hitflag1[100];
@@ -197,11 +203,11 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	
 	// As a starting point we will process 8 bins per thread: x acceptance divided by 4 * 2 bins for d3p and d3m 
 	int nhitpairs_x2[nbins_st2];
-	int nhitpairs_x3[29];
+	int nhitpairs_x3[nbins_st3];
         //pairs in station 2
-        thrust::pair<int, int> hitpairs_x2[nbins_st2*geometry::MaxHitsProj[0]];//7*10
+        thrust::pair<int, int> hitpairs_x2[nbins_st2*geometry::MaxHitsProj[0]];
         //pairs in station 3
-        thrust::pair<int, int> hitpairs_x3[nbins_st3*geometry::MaxHitsProj[0]];//29*10
+        thrust::pair<int, int> hitpairs_x3[nbins_st3*geometry::MaxHitsProj[0]];
 
 	
 	unsigned int offset_hitcoll;
@@ -211,16 +217,19 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	projid = 0;
 	stid = 2;
 	detoff = 1;
+	short detid_list[4];
 	
 	//Get the required hit collections here!
 	
 	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[0] = detid;
 	int nhits_st2x;
 	const gHits hits_st2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
 	const float z_st2x = z_array[detid];
 	const float res_st2x = res_array[detid];
 	
 	detid-= 1;
+	detid_list[1] = detid;
 	int nhits_st2xp;
 	const gHits hits_st2xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2xp);
 	const float z_st2xp = z_array[detid];
@@ -230,6 +239,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 	stid = st3;
 	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[2] = detid;
 	int nhits_st3x;
 	const gHits hits_st3x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3x);
 #ifdef DEBUG	
@@ -240,6 +250,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 	detid-= 1;
 	int nhits_st3xp;
+	detid_list[3] = detid;
 	const gHits hits_st3xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3xp);
 #ifdef DEBUG	
 	if(blockIdx.x==345 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
@@ -247,7 +258,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	const float z_st3xp = z_array[detid];
 	const float res_st3xp = res_array[detid];
 
-	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, 0, nbins_st3, hitflag1, hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
 
 #ifdef DEBUG	
 	if(blockIdx.x==345 && st3==4){
@@ -299,7 +310,11 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		return;
 	}
 	
-	//variables for slope calculation
+	//tracklet container://limit the access to the large tracklet arrays.
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
+		
+	//variables for 2D track fit
+	short detID[4];
 	float X[4];
 	float errX[4];
 	float Z[4];
@@ -312,6 +327,11 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	float chi2;
 
 	float x0, tx;
+	
+	//Arrays for other basic hit info
+	float elID[4];
+	float drift[4];
+	float tdc[4];
 	
 	//small varaibles for prop tube matching
 	short nprop, iprop, idet;
@@ -327,18 +347,24 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	// const short nbins_st3 = geometry::N_WCHitsBins[2];
 	const short nbins_total = nbins_st2*nbins_st3;
 	short bin2, bin3;
+	int binId;
 	
 	int nx2, nx3;
 	int ncomb_x;
 		
 	int n_goodxz;
 	
-	__shared__ gTracklet tkl[THREADS_PER_BLOCK];
-	__shared__ int ntkl[THREADS_PER_BLOCK];
+	static float tkl_data_local[datasizes::TrackletSizeMax][142];
 	
+	//__shared__ gTracklet tkl[THREADS_PER_BLOCK];
+	//__shared__ short ntkl[THREADS_PER_BLOCK];
+	__shared__ int ntkl_per_thread[THREADS_PER_BLOCK];
+	for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_thread[k] = 0;
+			
 	for(short i = 0; i<nbins_total; i++){
 		bin2 = i%nbins_st2;
 		bin3 = (i-bin2)/nbins_st2;
+		binId = threadIdx.x+THREADS_PER_BLOCK*i;
 		//printf("bin %d %d\n", bin2, bin3);
 		// if parallel:
 		// bin3+=nbins_st3*i_thread;
@@ -350,6 +376,8 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 #ifdef DEBUG
 		if(blockIdx.x==345 && st3==4)printf("bin %d %d, nx %d %d \n", bin2, bin3, nx2, nx3);
 #endif		
+		//for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_bin[k][i] = 0;
+
 		// evaluating the number of combinations;
 		ncomb_x = nx2*nx3;
 		
@@ -359,20 +387,29 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			i_x2 = i_x%nx2;
 			i_x3 = (i_x-i_x2)/nx2;
 			
+			//for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl[k] = 0;
 			nhits_x = 0;
 			
 			if(hitpairs_x2[bin2+nbins_st2*i_x2].first>=0){
+				detID[nhits_x] = detid_list[0];
 				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].first;
 				X[nhits_x] = hits_st2x.pos(i_hit);
 				errX[nhits_x] = res_st2x;
 				Z[nhits_x] = z_st2x;
+				elID[nhits_x] = (short)hits_st2x.chan(i_hit);
+				tdc[nhits_x] = hits_st2x.tdc(i_hit);
+				drift[nhits_x] = hits_st2x.drift(i_hit);
 				nhits_x++;
 			}
 			if(hitpairs_x2[bin2+nbins_st2*i_x2].second>=0){
+				detID[nhits_x] = detid_list[1];
 				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].second;
 				X[nhits_x] = hits_st2xp.pos(i_hit);
 				errX[nhits_x] = res_st2xp;
 				Z[nhits_x] = z_st2xp;
+				elID[nhits_x] = (short)hits_st2xp.chan(i_hit);
+				tdc[nhits_x] = hits_st2xp.tdc(i_hit);
+				drift[nhits_x] = hits_st2xp.drift(i_hit);
 				nhits_x++;
 			}
 			
@@ -384,17 +421,25 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 #endif
 			
 			if(hitpairs_x3[bin3+nbins_st3*i_x3].first>=0){
+				detID[nhits_x] = detid_list[2];
 				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].first;
 				X[nhits_x] = hits_st3x.pos(i_hit);
 				errX[nhits_x] = res_st3x;
 				Z[nhits_x] = z_st3x;
+				elID[nhits_x] = (short)hits_st3x.chan(i_hit);
+				tdc[nhits_x] = hits_st3x.tdc(i_hit);
+				drift[nhits_x] = hits_st3x.drift(i_hit);
 				nhits_x++;
 			}
 			if(hitpairs_x3[bin3+nbins_st3*i_x3].second>=0){
+				detID[nhits_x] = detid_list[3];
 				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].second;
 				X[nhits_x] = hits_st3xp.pos(i_hit);
 				errX[nhits_x] = res_st3xp;
 				Z[nhits_x] = z_st3xp;
+				elID[nhits_x] = (short)hits_st3xp.chan(i_hit);
+				tdc[nhits_x] = hits_st3xp.tdc(i_hit);
+				drift[nhits_x] = hits_st3xp.drift(i_hit);
 				nhits_x++;
 			}
 			
@@ -457,86 +502,461 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				}
 			}
 			if(nprop==0)continue;
-			
-			/*
-			tkl[threadIdx.x].stationID = 3;
-			tkl[threadIdx.x].x0 = x0;
-			tkl[threadIdx.x].tx = tx;
-			tkl[threadIdx.x].err_x0 = ParErr[0];
-			tkl[threadIdx.x].err_tx = ParErr[1];
-			tkl[threadIdx.x].nHits = nhits_x;
-			for(int n = 0; n<nhits_x; n++){
-				tkl[threadIdx.x].
+			if(blockIdx.x==345){
+				printf("thread %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, binId, x0, tx, nhits_x);
 			}
-			*/
 			
-#ifdef TEST
-#endif
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][0] = threadIdx.x;//bend stationID to carry threadIdx...
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][1] = binId;
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][2] = nhits_x;
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][5] = tx;
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][7] = x0;
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][10] = ParErr[1];
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][12] = ParErr[0];
+			
+			for(int m = 0; m<nhits_x;m++){
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m] = detID[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x] = elID[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*2] = X[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*3] = tdc[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*4] = drift[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][105+m] = 0;
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][124+m] = 0;
+			}
+			if(blockIdx.x==345){
+				printf(" => again thread %d bin %1.0f x0 %1.4f tx %1.4f, nhits %1.0f \n", threadIdx.x, 
+					tkl_data_local[ntkl_per_thread[threadIdx.x]][1], 
+					tkl_data_local[ntkl_per_thread[threadIdx.x]][7], 
+					tkl_data_local[ntkl_per_thread[threadIdx.x]][5], 
+					tkl_data_local[ntkl_per_thread[threadIdx.x]][2]);
+			}
+			__syncthreads();
+			ntkl_per_thread[threadIdx.x]++;
+		}// end loop on hits
+		//if(ntkl_per_bin[threadIdx.x][i]>64)printf("block %d thread %d, bin %d %d ntkl %d \n", blockIdx.x, threadIdx.x, bin2, bin3, ntkl_per_bin[threadIdx.x][i]);
+		/*
+		//"dump" the tracklets at the end of the hit loop.
+		
+		for(int k = 0; k<THREADS_PER_BLOCK; k++){
+			for(int m = 0; m<ntkl_per_bin[k][i]; m++){
+				if(N_tracklets>=datasizes::TrackletSizeMax)continue;
+				//tklcoll->Tracklets[tkl_coll_offset+N_tracklets] = tkl[m];
+				N_tracklets++;
+			}
+			ntkl_per_thread[k]+= ntkl_per_bin[k][i];
 		}
-	}			
+		*/
+	}//end loop on bins
+	//evaluate number of tracklets
+	
+	__syncthreads();
+	int N_tracklets = 0;
+	__shared__ unsigned int array_offset[THREADS_PER_BLOCK];
+	for(int k = 0; k<THREADS_PER_BLOCK; k++){
+		N_tracklets+= ntkl_per_thread[k];
+		if(k==0){
+			array_offset[k] = 0;
+		}else{
+			array_offset[k] = array_offset[k-1]+ntkl_per_thread[k-1];
+		}
+	}
+	//at the end like that it's probably fine...
+	if(N_tracklets>=datasizes::TrackletSizeMax){
+		hastoomanyhits[blockIdx.x] = true;
+		tklcoll->NTracks[blockIdx.x] = 0;
+	}else{
+		tklcoll->NTracks[blockIdx.x] = N_tracklets;
+		for(int k = 0; k<THREADS_PER_BLOCK; k++){
+			for(int m = 0; m<ntkl_per_thread[k]; m++){
+				nhits_x = (int)tkl_data_local[m][1];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].stationID=(int)tkl_data_local[m][0];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].binID=nhits_x;
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].nHits=(int)tkl_data_local[m][2];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].tx=tkl_data_local[m][5];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].x0=tkl_data_local[m][7];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].err_tx=tkl_data_local[m][10];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].err_x0=tkl_data_local[m][12];
+				for(int n = 0; n<tkl_data_local[m][2];n++){
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].detectorID = tkl_data_local[m][16+n];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].elementID = tkl_data_local[m][16+n+nhits_x];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].pos = tkl_data_local[m][16+n+nhits_x*2];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].tdcTime = tkl_data_local[m][16+n+nhits_x*3];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].driftDistance = tkl_data_local[m][16+n+nhits_x*4];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hitsign[n] = tkl_data_local[m][105+n];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].residual[n] = tkl_data_local[m][124+n];
+				}
+			}
+		}
+	}
+	
+#ifdef DEBUG
+		// = 0;
+	//
+#endif	
+}
+
+__global__ void gKernel_test_prep(const gEventTrackCollection* tklcoll, bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	if(blockIdx.x==345){
+		const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
+		const int N_tracklets = tklcoll->NTracks[blockIdx.x];
+		
+		//gTracklet tkl_;
+		//const gTracklets tracks(tklcoll->TklArray, N_tracklets, tkl_coll_offset);
+		for(int i = 0; i<N_tracklets; i++){
+			//tkl_ = tracks.getTracklet(i);
+			printf("thread %d tracklet %d stid %d bin %d x0 %1.4f tx %1.4f nhits %d: \n", threadIdx.x, i, tklcoll->Tracklets[tkl_coll_offset+i].stationID, tklcoll->Tracklets[tkl_coll_offset+i].binID, tklcoll->Tracklets[tkl_coll_offset+i].x0, tklcoll->Tracklets[tkl_coll_offset+i].tx, tklcoll->Tracklets[tkl_coll_offset+i].nHits);
+		}
+	}
 	
 }
 
-/*
-__global__ void gKernel_XZ_tracking_prep(const gEventHitCollections* hitcolls, bool* hastoomanyhits, const gPlane* planes)
+
+////////////////////////////////////
+//
+//          YZ TRACKING
+//
+////////////////////////////////////
+
+__global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const gPlane* planes, int* eventID, bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x]){
+#ifdef DEBUG
+		if(threadIdx.x==0)printf("Evt %d discarded, too many hits\n", eventID[blockIdx.x]);
+#endif
 		return;
 	}
 	
-	gTrackingXZparams param;
+	const int nbins_st2 = 7;//28/4
+	const int nbins_st3 = 29;//58/2
 	
+	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
+	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	const int bin0_st3 = 0;
+	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
 
-	const unsigned int detid_prop = 47+threadIdx.x;
-	const unsigned int nhits_prop = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x];
-	const unsigned int offset_hitcoll_prop = blockIdx.x*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*threadIdx.x;
-		
-	unsigned int detid, nhits, offset_hitcoll;
+	short hitflag1[100];
+	short hitflag2[100];
 	
-	short stid;
-	short projid = 0;
-	
-	short detoff = 1;
-	stid = 1;
-	for(int i = 0; i<2; i++){
-		detid = detsuperid[stid][projid]-i;
-		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detid-detoff];
-		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-detoff);
-		param.hits_st2x[i] = gHits(hitcolls->HitsChambersRawData, nhits, offset_hitcoll);
+	// As a starting point we will process 8 bins per thread: x acceptance divided by 4 * 2 bins for d3p and d3m 
+	int nhitpairs_u2[nbins_st2];
+	int nhitpairs_u3[nbins_st3];
+        //pairs in station 2
+        thrust::pair<int, int> hitpairs_u2[nbins_st2*geometry::MaxHitsProj[1]];
+        //pairs in station 3
+        thrust::pair<int, int> hitpairs_u3[nbins_st3*geometry::MaxHitsProj[1]];
 
-		param.z_array[i] = planes.z[detid];
-		param.res_array[i] = planes.spacing[detid];
-	}
+	int nhitpairs_v2[nbins_st2];
+	int nhitpairs_v3[nbins_st3];
+        //pairs in station 2
+        thrust::pair<int, int> hitpairs_v2[nbins_st2*geometry::MaxHitsProj[2]];
+        //pairs in station 3
+        thrust::pair<int, int> hitpairs_v3[nbins_st3*geometry::MaxHitsProj[2]];
+
 	
+	unsigned int offset_hitcoll;
+	
+	short stid, projid, detid, detoff;
+	
+	projid = 1;
 	stid = 2;
-	for(int i = 0; i<4; i++){
-		if(i==2)stid+=1;
-		detid = detsuperid[stid][projid]-i%2;
-		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detid-detoff];
-		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[0]+datasizes::NHitsParam*datasizes::NMaxHitsChambers*(detid-detoff);
-		param.hits_st3x[i] = gHits(hitcolls->HitsChambersRawData, nhits, offset_hitcoll);
+	detoff = 1;
+	short detid_list[8];
+	
+	//Get the required hit collections here!
+	
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[0] = detid;
+	int nhits_st2u;
+	const gHits hits_st2u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2u);
+	const float z_st2u = planes->z[detid];
+	const float res_st2u = planes->spacing[detid];
+	
+	detid-= 1;
+	detid_list[1] = detid;
+	int nhits_st2up;
+	const gHits hits_st2up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2up);
+	const float z_st2up = planes->z[detid];
+	const float res_st2up = planes->spacing[detid];
+	
+	make_hitpairs_in_station_bins(hits_st2u, nhits_st2u, hits_st2up, nhits_st2up, hitpairs_u2, nhitpairs_u2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+	
+	projid = 2;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[2] = detid;
+	int nhits_st2v;
+	const gHits hits_st2v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2v);
+	const float z_st2v = planes->z[detid];
+	const float res_st2v = planes->spacing[detid];
+	
+	detid-= 1;
+	detid_list[3] = detid;
+	int nhits_st2vp;
+	const gHits hits_st2vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2vp);
+	const float z_st2vp = planes->z[detid];
+	const float res_st2vp = planes->spacing[detid];
+	
+	make_hitpairs_in_station_bins(hits_st2v, nhits_st2v, hits_st2vp, nhits_st2vp, hitpairs_v2, nhitpairs_v2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+		
+	projid = 1;
+	stid = st3;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[4] = detid;
+	int nhits_st3u;
+	const gHits hits_st3u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3u);
+	const float z_st3u = planes->z[detid];
+	const float res_st3u = planes->spacing[detid];
 
-		param.z_array[i+2] = planes.z[detid];
-		param.res_array[i+2] = planes.spacing[detid];
+	detid-= 1;
+	int nhits_st3up;
+	detid_list[5] = detid;
+	const gHits hits_st3up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3up);
+	const float z_st3up = planes->z[detid];
+	const float res_st3up = planes->spacing[detid];
+
+	make_hitpairs_in_station_bins(hits_st3u, nhits_st3u, hits_st3up, nhits_st3up, hitpairs_v3, nhitpairs_v3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
+
+	projid = 2;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[6] = detid;
+	int nhits_st3v;
+	const gHits hits_st3v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3v);
+	const float z_st3v = planes->z[detid];
+	const float res_st3v = planes->spacing[detid];
+
+	detid-= 1;
+	int nhits_st3vp;
+	detid_list[7] = detid;
+	const gHits hits_st3vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3vp);
+	const float z_st3vp = planes->z[detid];
+	const float res_st3vp = planes->spacing[detid];
+
+	make_hitpairs_in_station_bins(hits_st3v, nhits_st3v, hits_st3vp, nhits_st3vp, hitpairs_v3, nhitpairs_v3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
+	
+	
+	//variables for 2D track fit
+	short detID[8];
+	float Y[8];
+	float errY[8];
+	float Z[8];
+	
+	float A_[4];
+	float Ainv_[4];
+	float B_[2];
+	float Par[2];
+	float ParErr[2];
+	float chi2;
+
+	float y0, ty;
+	
+	//Arrays for other basic hit info
+	float elID[4];
+	float pos[4];
+	float drift[4];
+	float tdc[4];
+
+	short nhits_uv;
+	
+	short nhits_u2, nhits_u3;
+	short nhits_v2, nhits_v3;
+	
+	// if parallel:
+	// const short nbins_st3 = geometry::N_WCHitsBins[2];
+	const short nbins_total = nbins_st2*nbins_st3;
+	short bin2, bin3;
+	
+	int nu2, nv2, nu3, nv3;
+	
+	int ncomb_uv;
+	
+	short i_u2, i_u3, i_v2, i_v3;
+	
+	int i_uv, i_hit;
+
+	float y, err_y;
+	
+	float chi2min = 10000.1f;
+
+	int localbin;
+	
+	//TODO get Hodo hits stations 2, 3, 4...
+	
+	//get the tracks...
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
+	const int N_tracklets = tklcoll->NTracks[blockIdx.x];
+	
+	gTracklets tracks(tklcoll->Tracklets, N_tracklets, tkl_coll_offset);
+	
+	gTracklet tkl;
+	float x0, tx;
+	//
+	for(int i = 0; i<N_tracklets; i++){
+		tkl = tracks.getTracklet(i);
+		
+		//get the corresponding local bin!
+		if(threadIdx.x!=tkl.stationID)continue;
+		//binId = threadIdx.x+THREADS_PER_BLOCK*localbin;
+		localbin = (tkl.binID-tkl.stationID)/THREADS_PER_BLOCK;
+		
+		//retrieve the bins in st2, st3
+		bin2 = localbin%nbins_st2;
+		bin3 = (localbin-bin2)/nbins_st2;
+
+		nu2 = nhitpairs_u2[bin2];
+		nu3 = nhitpairs_u3[bin3];
+		
+		if(nu2 == 0 || nu3==0) continue;
+
+		nv2 = nhitpairs_v2[bin2];
+		nv3 = nhitpairs_v3[bin3];
+		
+		if(nv2 == 0 || nv3==0) continue;
+		
+		x0 = tkl.x0;
+		tx = tkl.tx;
+		
+		for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
+			nhits_uv = 0;
+			i_u2 = i_uv%nu2;
+			i_v2 = ((i_uv-i_u2)/nu2)%nv2;
+			i_u3 = (((i_uv-i_u2)/nu2-i_v2)/nv2)%nu3;
+			i_v3 = ((((i_uv-i_u2)/nu2)-i_v2)/nv2-i_u3)/nu3;
+			
+			nhits_uv = 0;
+			
+			if(hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
+				detID[nhits_uv] = detid_list[0];
+				i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].first;
+				Z[nhits_uv] = z_st2u;
+				elID[nhits_uv] = (short)hits_st2u.chan(i_hit);
+				tdc[nhits_uv] = hits_st2u.tdc(i_hit);
+				drift[nhits_uv] = hits_st2u.drift(i_hit);
+				pos[nhits_uv] = hits_st2u.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			if(hitpairs_u2[bin2+nbins_st2*i_u2].second>=0){
+				detID[nhits_uv] = detid_list[1];
+				i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].second;
+				Z[nhits_uv] = z_st2up;
+				elID[nhits_uv] = (short)hits_st2up.chan(i_hit);
+				tdc[nhits_uv] = hits_st2up.tdc(i_hit);
+				drift[nhits_uv] = hits_st2up.drift(i_hit);
+				pos[nhits_uv] = hits_st2up.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			
+			nhits_u2 = nhits_uv;
+			if(nhits_u2==0) continue;
+
+			if(hitpairs_v2[bin2+nbins_st2*i_v2].first>=0){
+				detID[nhits_uv] = detid_list[2];
+				i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].first;
+				Z[nhits_uv] = z_st2v;
+				elID[nhits_uv] = (short)hits_st2v.chan(i_hit);
+				tdc[nhits_uv] = hits_st2v.tdc(i_hit);
+				drift[nhits_uv] = hits_st2v.drift(i_hit);
+				pos[nhits_uv] = hits_st2v.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			if(hitpairs_v2[bin2+nbins_st2*i_v2].second>=0){
+				detID[nhits_uv] = detid_list[3];
+				i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].second;
+				Z[nhits_uv] = z_st2vp;
+				elID[nhits_uv] = (short)hits_st2vp.chan(i_hit);
+				tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
+				drift[nhits_uv] = hits_st2vp.drift(i_hit);
+				pos[nhits_uv] = hits_st2vp.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			
+			nhits_v2 = nhits_uv-nhits_u2;
+			if(nhits_v2==0) continue;
+
+			if(hitpairs_u3[bin3+nbins_st3*i_u3].first>=0){
+				detID[nhits_uv] = detid_list[0];
+				i_hit = hitpairs_u3[bin3+nbins_st3*i_u3].first;
+				Z[nhits_uv] = z_st3u;
+				elID[nhits_uv] = (short)hits_st3u.chan(i_hit);
+				tdc[nhits_uv] = hits_st3u.tdc(i_hit);
+				drift[nhits_uv] = hits_st3u.drift(i_hit);
+				pos[nhits_uv] = hits_st3u.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			if(hitpairs_u3[bin3+nbins_st3*i_u3].second>=0){
+				detID[nhits_uv] = detid_list[1];
+				i_hit = hitpairs_u3[bin3+nbins_st3*i_u3].second;
+				Z[nhits_uv] = z_st3up;
+				elID[nhits_uv] = (short)hits_st3up.chan(i_hit);
+				tdc[nhits_uv] = hits_st3up.tdc(i_hit);
+				drift[nhits_uv] = hits_st3up.drift(i_hit);
+				pos[nhits_uv] = hits_st3up.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			
+			nhits_u3 = nhits_uv-nhits_u2-nhits_v2;
+			if(nhits_u3==0) continue;
+
+			if(hitpairs_v3[bin3+nbins_st3*i_v3].first>=0){
+				detID[nhits_uv] = detid_list[3];
+				i_hit = hitpairs_v3[bin3+nbins_st3*i_v3].first;
+				Z[nhits_uv] = z_st3v;
+				elID[nhits_uv] = (short)hits_st3v.chan(i_hit);
+				tdc[nhits_uv] = hits_st3v.tdc(i_hit);
+				drift[nhits_uv] = hits_st3v.drift(i_hit);
+				pos[nhits_uv] = hits_st3v.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			if(hitpairs_v3[bin3+nbins_st3*i_v3].second>=0){
+				detID[nhits_uv] = detid_list[3];
+				i_hit = hitpairs_v3[bin3+nbins_st3*i_v3].second;
+				Z[nhits_uv] = z_st3vp;
+				elID[nhits_uv] = (short)hits_st3vp.chan(i_hit);
+				tdc[nhits_uv] = hits_st3vp.tdc(i_hit);
+				drift[nhits_uv] = hits_st3vp.drift(i_hit);
+				pos[nhits_uv] = hits_st3vp.pos(i_hit);
+				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+				Y[nhits_uv] = y;
+				errY[nhits_uv] = err_y;
+				nhits_uv++;
+			}
+			
+			nhits_v3 = nhits_uv-nhits_u2-nhits_v2-nhits_u3;
+			if(nhits_v3==0) continue;
+			
+			fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+			
+			y0 = Par[0];
+			ty = Par[1];
+			
+		}
+
 	}
 	
-	stid = 5;
-	detoff = 47;
-	for(int i = 0; i<4; i++){
-		if(i==2)stid+=1;
-		detid = detsuperid[stid][projid]-i%2;
-		nhits = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+detoff];
-		offset_hitcoll = blockIdx.x*datasizes::eventhitsize[2]+datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*detoff;
-		param.hits_px[i] = gHits(hitcolls->HitsPropTubesRawData, nhits, offset_hitcoll);
-
-		param.z_array[i+6] = planes.z[detid];
-		param.res_array[i+6] = planes.spacing[detid];
-	}
 	
-	
-	gKernel_XZ_tracking<<<1,THREADS_PER_BLOCK>>>(param);
 }
-*/
 
 #ifdef OLDCODE
 

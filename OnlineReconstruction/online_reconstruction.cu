@@ -531,7 +531,7 @@ int main(int argn, char * argv[]) {
 	//     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
 	//     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
 		<< "; planes info: " << NBytesAllPlanes << endl;  
-		
+	
 	gEvent* host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gEvent* host_output_gHits = (gEvent*)malloc(NBytesAllHits);
 	gOutputEvent* host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
@@ -594,14 +594,24 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
 	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane->z, device_gPlane->spacing, device_gEvent->EventID, device_gEvent->HasTooManyHits);
-	//gKernel_XZ_YZ_tracking_new<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
-	
+
+	gKernel_test_prep<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits);
+
 	auto cp5 = std::chrono::system_clock::now();
-	auto gpu_st = cp5-cp4;
-	cout<<"GPU: straight tracking: "<<gpu_st.count()/1000000000.<<endl;
+	auto gpu_stx = cp5-cp4;
+	cout<<"GPU: XZ straight tracking: "<<gpu_stx.count()/1000000000.<<endl;
+
+	gKernel_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	
+	auto cp6 = std::chrono::system_clock::now();
+	auto gpu_sty = cp6-cp5;
+	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 
 	//release here the memory for straight track builders and straight track fitters	
 	//cudaFree( device_gStraightTrackBuilder );
@@ -618,8 +628,8 @@ int main(int argn, char * argv[]) {
 
 	//gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
 	
-	auto cp6 = std::chrono::system_clock::now();
-	auto gpu_gt = cp6-cp5;
+	auto cp7 = std::chrono::system_clock::now();
+	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
@@ -627,10 +637,9 @@ int main(int argn, char * argv[]) {
 	//gpuErrchk( cudaPeekAtLastError() );
 	//gpuErrchk( cudaDeviceSynchronize() );
 	
-
-	auto cp7 = std::chrono::system_clock::now();
-	auto gpu_kf = cp7-cp6;
-	cout<<"GPU: kalman filtering: "<<gpu_gt.count()/1000000000.<<endl;
+	//auto cp8 = std::chrono::system_clock::now();
+	//auto gpu_kf = cp8-cp7;
+	//cout<<"GPU: kalman filtering: "<<gpu_gt.count()/1000000000.<<endl;
 
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
