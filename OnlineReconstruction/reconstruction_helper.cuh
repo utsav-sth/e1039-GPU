@@ -1,6 +1,72 @@
 #include "reconstruction_classes.cuh"
 
 
+// --------------------------------------------------------------- //
+// functions to calculate bottom and top end wire points for a hit //
+// --------------------------------------------------------------- //
+
+
+__device__ float x_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1x_w1[detid]+plane->dp1x[detid]*(elid-1);
+}
+
+__device__ float x_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return x_bep(detid, elid, plane)+plane->deltapx[detid];
+}
+
+__device__ float y_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1y_w1[detid]+plane->dp1y[detid]*(elid-1);
+}
+
+__device__ float y_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return y_bep(detid, elid, plane)+plane->deltapy[detid];
+}
+
+__device__ float z_bep(const int detid, const int elid, const gPlane* plane)
+{
+	return plane->p1z_w1[detid]+plane->dp1z[detid]*(elid-1);
+}
+
+__device__ float z_tep(const int detid, const int elid, const gPlane* plane)
+{
+	return z_bep(detid, elid, plane)+plane->deltapz[detid];
+}
+
+
+// --------------------------------------------------------------- //
+// calculation of y for UV hits
+// --------------------------------------------------------------- //
+
+__device__ bool calculate_y_uvhit(const int detid, const int elid, const float drift, const short hitsign, const float x0, const float tx, const gPlane* planes, float &y, float &err_y){
+	float p1x = x_bep(detid, elid, planes);
+	float p1y = y_bep(detid, elid, planes);
+	float p2x = x_tep(detid, elid, planes);
+	
+	float x_trk = x0+planes->z[ detid ]*tx;
+
+	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
+	
+	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
+	if(hitsign==0){
+		if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk+drift<p1x && x_trk+drift<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+
+		y = max(y, p1y);
+		y = min(y, p1y+planes->deltapy[ detid ]);
+	}else{
+		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+	}
+
+	err_y = planes->spacing[ detid ]/3.4641f * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
+	return true;
+}
+
+
 __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int detid, const int nhits) {
 	float w_max; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
 	
@@ -162,6 +228,9 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 	return nAH_reduced;
 }
 
+// --------------------------------------------------------------- //
+// Hit pairing functions
+// --------------------------------------------------------------- //
 
 __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID, const int projID){
 	// I think we assume that by default we want to know where we are
@@ -248,73 +317,101 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 }
 
 
-// --------------------------------------------------------------- //
-// functions to calculate bottom and top end wire points for a hit //
-// --------------------------------------------------------------- //
 
-
-__device__ float x_bep(const int detid, const int elid, const gPlane* plane)
-{
-	return plane->p1x_w1[detid]+plane->dp1x[detid]*(elid-1);
-}
-
-__device__ float x_tep(const int detid, const int elid, const gPlane* plane)
-{
-	return x_bep(detid, elid, plane)+plane->deltapx[detid];
-}
-
-__device__ float y_bep(const int detid, const int elid, const gPlane* plane)
-{
-	return plane->p1y_w1[detid]+plane->dp1y[detid]*(elid-1);
-}
-
-__device__ float y_tep(const int detid, const int elid, const gPlane* plane)
-{
-	return y_bep(detid, elid, plane)+plane->deltapy[detid];
-}
-
-__device__ float z_bep(const int detid, const int elid, const gPlane* plane)
-{
-	return plane->p1z_w1[detid]+plane->dp1z[detid]*(elid-1);
-}
-
-__device__ float z_tep(const int detid, const int elid, const gPlane* plane)
-{
-	return z_bep(detid, elid, plane)+plane->deltapz[detid];
-}
-
-//calculation of y
-
-__device__ bool calculate_y_uvhit(const int detid, const int elid, const float drift, const short hitsign, const float x0, const float tx, const gPlane* planes, float &y, float &err_y){
-	float p1x = x_bep(detid, elid, planes);
-	float p1y = y_bep(detid, elid, planes);
-	float p2x = x_tep(detid, elid, planes);
+__device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, short* hitidx1, short* hitidx2, short* hitflag1, short* hitflag2, const int stID, const int projID, const gPlane* planes, const float xmin, const float xmax){
+	// I think we assume that by default we want to know where we are
+	int npairs = 0;
 	
-	float x_trk = x0+planes->z[ detid ]*tx;
-
-	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
-	
-	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
-	if(hitsign==0){
-		if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
-		if( x_trk+drift<p1x && x_trk+drift<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
-
-		y = max(y, p1y);
-		y = min(y, p1y+planes->deltapy[ detid ]);
-	}else{
-		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
-		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitidx1[i] = hitidx2[i] = 0;
+		hitflag1[i] = hitflag2[i] = 0;
 	}
-
-	err_y = planes->spacing[ detid ]/3.4641f * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
-	return true;
+	
+	//building the lists of hits for each detector plane
+	const int detid1 = geometry::detsuperid[stID][projID]*2;
+	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	const int superdetid = geometry::detsuperid[stID][projID];
+	float p1x, p2x;
+	int hitctr1 = 0, hitctr2 = 0;
+	for(int i = 0; i<nhits1; i++){
+		//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
+		if(planes->deltapx[ detid1 ]>0){
+			p1x = x_bep(detid1, hitcoll1.chan(i), planes);
+			p2x = x_tep(detid1, hitcoll1.chan(i), planes);
+		}else{
+			p1x = x_tep(detid1, hitcoll1.chan(i), planes);
+			p2x = x_bep(detid1, hitcoll1.chan(i), planes);
+		}
+		//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
+		//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+		if( (p1x <= xmax) && (p2x >= xmin) ){ 
+			hitidx1[hitctr1] = i;
+			hitctr1++;
+		}
+	}
+	for(int i = 0; i<nhits2; i++){
+		//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
+		if(planes[ detid2 ].deltapx>0){
+			p1x = x_bep(detid2, hitcoll2.chan(i), planes);
+			p2x = x_tep(detid2, hitcoll2.chan(i), planes);
+		}else{
+			p1x = x_tep(detid2, hitcoll2.chan(i), planes);
+			p2x = x_bep(detid2, hitcoll2.chan(i), planes);
+		}
+		//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
+		//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+		if( (p1x <= xmax) && (p2x >= xmin) ){ 
+			hitidx2[hitctr2] = i;
+			hitctr2++;
+		}
+	}
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	for(int i = 0; i<hitctr1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<hitctr2; j++){
+			idx2++;
+			if( abs( hitcoll1.pos(hitidx1[idx1]) - hitcoll2.pos(hitidx2[idx2]) ) > geometry::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			hitpairs[npairs] = thrust::make_pair(hitidx1[idx1], hitidx2[idx2]);
+			npairs++;
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<hitctr1; i++){
+		if(hitflag1[i]<1){
+			hitpairs[npairs] = thrust::make_pair(hitidx1[i], -1);
+			npairs++;
+		}
+	}
+	for(int i = 0; i<hitctr2; i++){
+		if(hitflag2[i]<1){
+			hitpairs[npairs] = thrust::make_pair(-1, hitidx2[i]);
+			npairs++;
+		}
+	}
+	   	   
+	return npairs;
 }
 
-// --------------------------------------------------------------- //
-// functions to calculate bottom and top end wire points for a hit //
-// --------------------------------------------------------------- //
+
 
 #ifdef OLDCODE
+
+// --------------------------------------------------------------- //
+// functions to calculate bottom and top end wire points for a hit //
+// --------------------------------------------------------------- //
 
 __device__ float x_bep(const gHit hit, const gPlane* plane)
 {

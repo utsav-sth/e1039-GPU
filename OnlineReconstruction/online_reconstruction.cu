@@ -598,7 +598,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_test_prep<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 345);
 
 	auto cp5 = std::chrono::system_clock::now();
 	auto gpu_stx = cp5-cp4;
@@ -608,6 +608,8 @@ int main(int argn, char * argv[]) {
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
+
+	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 345);
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_sty = cp6-cp5;

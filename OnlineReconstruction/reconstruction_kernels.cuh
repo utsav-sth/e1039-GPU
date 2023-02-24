@@ -312,7 +312,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	
 	//tracklet container://limit the access to the large tracklet arrays.
 	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
-		
+	
 	//variables for 2D track fit
 	short detID[4];
 	float X[4];
@@ -329,7 +329,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	float x0, tx;
 	
 	//Arrays for other basic hit info
-	float elID[4];
+	short elID[4];
 	float drift[4];
 	float tdc[4];
 	
@@ -502,50 +502,46 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				}
 			}
 			if(nprop==0)continue;
+			
+#ifdef DEBUG
 			if(blockIdx.x==345){
 				printf("thread %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, binId, x0, tx, nhits_x);
+				for(int m = 0; m<nhits_x; m++){
+					printf("thread %d bin %d hit %d det %d chan %d pos %1.4f tdc %1.4f\n", threadIdx.x, binId, m, detID[m], elID[m], X[m], tdc[m]); 
+				}
 			}
-			
-			tkl_data_local[ntkl_per_thread[threadIdx.x]][0] = threadIdx.x;//bend stationID to carry threadIdx...
-			tkl_data_local[ntkl_per_thread[threadIdx.x]][1] = binId;
-			tkl_data_local[ntkl_per_thread[threadIdx.x]][2] = nhits_x;
+			if(ntkl_per_thread[threadIdx.x]>=datasizes::TrackletSizeMax)printf("block %d thread %d bin %d ntkl_per_thread %d \n", blockIdx.x, threadIdx.x, binId, ntkl_per_thread[threadIdx.x]);
+			if(nhits_x >= datasizes::MaxHitsPerTrack)printf("block %d thread %d bin %d nhits x %d \n", blockIdx.x, threadIdx.x, binId, nhits_x);
+#endif
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][0] = (float)binId;//bend stationID to carry binId...
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][1] = (float)threadIdx.x;
+			tkl_data_local[ntkl_per_thread[threadIdx.x]][2] = (float)nhits_x;
 			tkl_data_local[ntkl_per_thread[threadIdx.x]][5] = tx;
 			tkl_data_local[ntkl_per_thread[threadIdx.x]][7] = x0;
 			tkl_data_local[ntkl_per_thread[threadIdx.x]][10] = ParErr[1];
 			tkl_data_local[ntkl_per_thread[threadIdx.x]][12] = ParErr[0];
-			
+		
 			for(int m = 0; m<nhits_x;m++){
-				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m] = detID[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x] = elID[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m] = (float)detID[m];
+				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x] = (float)elID[m];
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*2] = X[m];
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*3] = tdc[m];
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][16+m+nhits_x*4] = drift[m];
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][105+m] = 0;
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][124+m] = 0;
 			}
+#ifdef DEBUG
 			if(blockIdx.x==345){
-				printf(" => again thread %d bin %1.0f x0 %1.4f tx %1.4f, nhits %1.0f \n", threadIdx.x, 
+				printf(" => again thread %d, %1.0f bin %1.0f x0 %1.4f tx %1.4f, nhits %1.0f \n", threadIdx.x, 
+					tkl_data_local[ntkl_per_thread[threadIdx.x]][0], 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][1], 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][7], 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][5], 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][2]);
 			}
-			__syncthreads();
+#endif
 			ntkl_per_thread[threadIdx.x]++;
 		}// end loop on hits
-		//if(ntkl_per_bin[threadIdx.x][i]>64)printf("block %d thread %d, bin %d %d ntkl %d \n", blockIdx.x, threadIdx.x, bin2, bin3, ntkl_per_bin[threadIdx.x][i]);
-		/*
-		//"dump" the tracklets at the end of the hit loop.
-		
-		for(int k = 0; k<THREADS_PER_BLOCK; k++){
-			for(int m = 0; m<ntkl_per_bin[k][i]; m++){
-				if(N_tracklets>=datasizes::TrackletSizeMax)continue;
-				//tklcoll->Tracklets[tkl_coll_offset+N_tracklets] = tkl[m];
-				N_tracklets++;
-			}
-			ntkl_per_thread[k]+= ntkl_per_bin[k][i];
-		}
-		*/
 	}//end loop on bins
 	//evaluate number of tracklets
 	
@@ -568,49 +564,41 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		tklcoll->NTracks[blockIdx.x] = N_tracklets;
 		for(int k = 0; k<THREADS_PER_BLOCK; k++){
 			for(int m = 0; m<ntkl_per_thread[k]; m++){
-				nhits_x = (int)tkl_data_local[m][1];
+#ifdef DEBUG
+				if(tkl_coll_offset+array_offset[k]+m==353280)printf("block %d thread %d offset %d + %d + %d \n", blockIdx.x, threadIdx.x, tkl_coll_offset, array_offset[k], m);
+#endif
+				nhits_x = (int)tkl_data_local[m][2];
 				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].stationID=(int)tkl_data_local[m][0];
-				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].binID=nhits_x;
-				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].nHits=(int)tkl_data_local[m][2];
+				/*
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].threadID=(int)tkl_data_local[m][1];
+				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].nHits=nhits_x;
 				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].tx=tkl_data_local[m][5];
 				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].x0=tkl_data_local[m][7];
 				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].err_tx=tkl_data_local[m][10];
 				tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].err_x0=tkl_data_local[m][12];
-				for(int n = 0; n<tkl_data_local[m][2];n++){
+				for(int n = 0; n<nhits_x;n++){
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].detectorID = tkl_data_local[m][16+n];
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].elementID = tkl_data_local[m][16+n+nhits_x];
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].pos = tkl_data_local[m][16+n+nhits_x*2];
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].tdcTime = tkl_data_local[m][16+n+nhits_x*3];
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hits[n].driftDistance = tkl_data_local[m][16+n+nhits_x*4];
-					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hitsign[n] = tkl_data_local[m][105+n];
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].hitsign[n] = tkl_data_local[m][106+n];
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].residual[n] = tkl_data_local[m][124+n];
 				}
+				*/
+#ifdef DEBUG
+				if(blockIdx.x==345)printf(" thread: %d,  %d, %d, offset %d stid/bin?  %d %1.0f thread %d %1.0f nhits %d %1.f \n", 
+					threadIdx.x, k, m, tkl_coll_offset+array_offset[k], 
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].stationID, tkl_data_local[m][0], 
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].threadID, tkl_data_local[m][1], 
+					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].nHits, tkl_data_local[m][2]);
+#endif
 			}
 		}
 	}
 	
-#ifdef DEBUG
 		// = 0;
 	//
-#endif	
-}
-
-__global__ void gKernel_test_prep(const gEventTrackCollection* tklcoll, bool* hastoomanyhits)
-{
-	if(hastoomanyhits[blockIdx.x])return;
-	
-	if(blockIdx.x==345){
-		const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
-		const int N_tracklets = tklcoll->NTracks[blockIdx.x];
-		
-		//gTracklet tkl_;
-		//const gTracklets tracks(tklcoll->TklArray, N_tracklets, tkl_coll_offset);
-		for(int i = 0; i<N_tracklets; i++){
-			//tkl_ = tracks.getTracklet(i);
-			printf("thread %d tracklet %d stid %d bin %d x0 %1.4f tx %1.4f nhits %d: \n", threadIdx.x, i, tklcoll->Tracklets[tkl_coll_offset+i].stationID, tklcoll->Tracklets[tkl_coll_offset+i].binID, tklcoll->Tracklets[tkl_coll_offset+i].x0, tklcoll->Tracklets[tkl_coll_offset+i].tx, tklcoll->Tracklets[tkl_coll_offset+i].nHits);
-		}
-	}
-	
 }
 
 
@@ -781,6 +769,8 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 	int localbin;
 	
+	static float tkl_data_local[datasizes::TrackletSizeMax][142];
+	
 	//TODO get Hodo hits stations 2, 3, 4...
 	
 	//get the tracks...
@@ -791,14 +781,16 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	
 	gTracklet tkl;
 	float x0, tx;
+	int nhits_x;
+	bool update_track;
 	//
 	for(int i = 0; i<N_tracklets; i++){
 		tkl = tracks.getTracklet(i);
-		
+		update_track = false;
 		//get the corresponding local bin!
-		if(threadIdx.x!=tkl.stationID)continue;
+		if(threadIdx.x!=tkl.threadID)continue;
 		//binId = threadIdx.x+THREADS_PER_BLOCK*localbin;
-		localbin = (tkl.binID-tkl.stationID)/THREADS_PER_BLOCK;
+		localbin = (tkl.stationID-tkl.threadID)/THREADS_PER_BLOCK;
 		
 		//retrieve the bins in st2, st3
 		bin2 = localbin%nbins_st2;
@@ -950,13 +942,127 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			
 			y0 = Par[0];
 			ty = Par[1];
+
+			//TODO: hodoscope matching
+
+			//TODO: chi2 evaluation of track candidate
+
+			//TODO: LR ambiguity resolution
+			
+			if(blockIdx.x==345){
+				printf("thread %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
+			}
+			
+			//if(chi2>chi2min){
+			//chi2min = chi2
+			update_track = true;
+			tkl_data_local[i][2] = nhits_uv;
+			tkl_data_local[i][6] = ty;
+			tkl_data_local[i][8] = y0;
+			tkl_data_local[i][11] = ParErr[1];
+			tkl_data_local[i][13] = ParErr[0];
+			
+			for(int m = 0; m<nhits_uv;m++){
+				tkl_data_local[i][16+m] = detID[m];
+				tkl_data_local[i][16+m+nhits_x] = elID[m];
+				tkl_data_local[i][16+m+nhits_x*2] = pos[m];
+				tkl_data_local[i][16+m+nhits_x*3] = tdc[m];
+				tkl_data_local[i][16+m+nhits_x*4] = drift[m];
+				tkl_data_local[i][105+m] = 0;
+				tkl_data_local[i][124+m] = 0;
+			}
+			//}
 			
 		}
-
-	}
+		
+		if(update_track){
+			nhits_x = tkl.nHits;
+			nhits_uv = tkl_data_local[i][2];
+			tklcoll->Tracklets[tkl_coll_offset+i].stationID=5;
+			tklcoll->Tracklets[tkl_coll_offset+i].nHits=nhits_x+nhits_uv;
+			tklcoll->Tracklets[tkl_coll_offset+i].ty=tkl_data_local[i][6];
+			tklcoll->Tracklets[tkl_coll_offset+i].y0=tkl_data_local[i][8];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_ty=tkl_data_local[i][11];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_y0=tkl_data_local[i][13];
+			for(int n = 0; n<nhits_uv;n++){
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits_x+n].detectorID = tkl_data_local[i][16+n];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits_x+n].elementID = tkl_data_local[i][16+n+nhits_uv];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits_x+n].pos = tkl_data_local[i][16+n+nhits_uv*2];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits_x+n].tdcTime = tkl_data_local[i][16+n+nhits_uv*3];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits_x+n].driftDistance = tkl_data_local[i][16+n+nhits_uv*4];
+				tklcoll->Tracklets[tkl_coll_offset+i].hitsign[nhits_x+n] = tkl_data_local[i][105+n];
+				tklcoll->Tracklets[tkl_coll_offset+i].residual[nhits_x+n] = tkl_data_local[i][124+n];
+			}
+		}else{
+			tklcoll->Tracklets[tkl_coll_offset+i].stationID=3;
+		}
+		
+		
+	}//end loop on existing tracklets
+	
 	
 	
 }
+
+
+////////////////////////////////////
+//
+//          GLOBAL TRACKING
+//
+////////////////////////////////////
+
+__global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const gPlane* planes, int* eventID, bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x]){
+#ifdef DEBUG
+		if(threadIdx.x==0)printf("Evt %d discarded, too many hits\n", eventID[blockIdx.x]);
+#endif
+		return;
+	}
+	
+	const int nbins_st2 = 7;//28/4
+	const int nbins_st3 = 29;//58/2
+	
+	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
+	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	const int bin0_st3 = 0;
+	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
+
+	short hitflag1[100];
+	short hitflag2[100];
+	
+	// As a starting point we will process 8 bins per thread: x acceptance divided by 4 * 2 bins for d3p and d3m 
+	int nhitpairs_x1;
+	int nhitpairs_u1;
+	int nhitpairs_v1;
+        //pairs in station 1
+        thrust::pair<int, int> hitpairs_x1[100];
+        thrust::pair<int, int> hitpairs_u1[100];
+        thrust::pair<int, int> hitpairs_v1[100];
+
+	
+}
+
+// simple track printing function for debugging. 
+
+__global__ void gKernel_check_tracks(const gEventTrackCollection* tklcoll, const bool* hastoomanyhits, const int blockID)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	if(blockIdx.x==blockID){
+		const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
+		const int N_tracklets = tklcoll->NTracks[blockIdx.x];
+		
+		//gTracklet tkl_;
+		//const gTracklets tracks(tklcoll->TklArray, N_tracklets, tkl_coll_offset);
+		for(int i = 0; i<N_tracklets; i++){
+			//tkl_ = tracks.getTracklet(i);
+			printf("thread %d tracklet %d thread %d bin/stid %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f nhits %d: \n", threadIdx.x, i, tklcoll->Tracklets[tkl_coll_offset+i].threadID, tklcoll->Tracklets[tkl_coll_offset+i].stationID, tklcoll->Tracklets[tkl_coll_offset+i].x0, tklcoll->Tracklets[tkl_coll_offset+i].tx, tklcoll->Tracklets[tkl_coll_offset+i].y0, tklcoll->Tracklets[tkl_coll_offset+i].ty, tklcoll->Tracklets[tkl_coll_offset+i].nHits);
+		}
+	}
+	
+}
+
 
 #ifdef OLDCODE
 

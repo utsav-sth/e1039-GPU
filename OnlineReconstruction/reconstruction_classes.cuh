@@ -67,7 +67,7 @@ struct gTracklet {
       }
 	            
       short stationID;//0
-      short binID;//1
+      short threadID;//1
       short nHits;//2
       float chisq;//3
       float chisq_vtx;//4
