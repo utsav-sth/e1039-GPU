@@ -112,15 +112,15 @@ struct gTrack2D {
 
 struct gEvent {
 	public:
-	int RunID[EstnEvtMax]; // Run Number
+	//int RunID[EstnEvtMax]; // Run Number
 	int EventID[EstnEvtMax]; // Event number
-	int SpillID[EstnEvtMax]; // Spill number
+	//int SpillID[EstnEvtMax]; // Spill number
 	int TriggerBits[EstnEvtMax]; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
 	short TargetPos[EstnEvtMax]; // target position: proxy for target ID?
-	int TurnID[EstnEvtMax]; // => related to beam intensity
-	int RFID[EstnEvtMax]; // => related to beam intensity
-	int Intensity[EstnEvtMax*33]; //  16 before, one onset, and 16 after
-	short TriggerEmu[EstnEvtMax]; // 1 if MC event
+	//int TurnID[EstnEvtMax]; // => related to beam intensity
+	//int RFID[EstnEvtMax]; // => related to beam intensity
+	//int Intensity[EstnEvtMax*33]; //  16 before, one onset, and 16 after
+	//short TriggerEmu[EstnEvtMax]; // 1 if MC event
 	short NRoads[EstnEvtMax*4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
 	int NHits[EstnEvtMax*nDetectors]; // number of hits in each detector plane
 	int nAH[EstnEvtMax]; // size of AllHits

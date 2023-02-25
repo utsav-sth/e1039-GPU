@@ -342,17 +342,17 @@ int main(int argn, char * argv[]) {
 		if(e906data){
 			if(i==0)firstevent = rawEvent->fEventID;
 
-			host_gEvent.RunID[i] = rawEvent->fRunID;
+			//host_gEvent.RunID[i] = rawEvent->fRunID;
 			host_gEvent.EventID[i] = rawEvent->fEventID;
-			host_gEvent.SpillID[i] = rawEvent->fSpillID;
+			//host_gEvent.SpillID[i] = rawEvent->fSpillID;
 			host_gEvent.TriggerBits[i] = rawEvent->fTriggerBits;
-			host_gEvent.TargetPos[i] = rawEvent->fTargetPos;
-			host_gEvent.TurnID[i] = rawEvent->fTurnID;
-			host_gEvent.RFID[i] = rawEvent->fRFID;
-			for(int j=0; j<33; j++) {
-				host_gEvent.Intensity[i*33+j] = rawEvent->fIntensity[j];
-			}
-			host_gEvent.TriggerEmu[i] = rawEvent->fTriggerEmu;
+			//host_gEvent.TargetPos[i] = rawEvent->fTargetPos;
+			//host_gEvent.TurnID[i] = rawEvent->fTurnID;
+			//host_gEvent.RFID[i] = rawEvent->fRFID;
+			//for(int j=0; j<33; j++) {
+			//	host_gEvent.Intensity[i*33+j] = rawEvent->fIntensity[j];
+			//}
+			//host_gEvent.TriggerEmu[i] = rawEvent->fTriggerEmu;
 			for(int k=0; k<4; k++) {
 				host_gEvent.NRoads[i*4+k] = rawEvent->fNRoads[k];
 			}
@@ -615,21 +615,11 @@ int main(int argn, char * argv[]) {
 	auto gpu_sty = cp6-cp5;
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 
-	//release here the memory for straight track builders and straight track fitters	
-	//cudaFree( device_gStraightTrackBuilder );
-	
-	//gpuErrchk( cudaMalloc((void**)&device_gFullTrackBuilder, NBytesFullTrackBuilders));
-
-	CUDA_CHECK_STATUS(cudaMemGetInfo(&free_bytes, &total_bytes));
-	cout << "Current memory foot print: " << free_bytes << " / " << total_bytes << endl;
-	
-	//gKernel_GlobalTrack_building<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gFullTrackBuilder, device_gFitArrays, device_gPlane, 1);
+	gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	//gpuErrchk( cudaMalloc((void**)&device_gKalmanFitArrays, NBytesKalmanFilterTools));
-	
 	auto cp7 = std::chrono::system_clock::now();
 	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;

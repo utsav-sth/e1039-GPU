@@ -5,7 +5,6 @@
 // functions to calculate bottom and top end wire points for a hit //
 // --------------------------------------------------------------- //
 
-
 __device__ float x_bep(const int detid, const int elid, const gPlane* plane)
 {
 	return plane->p1x_w1[detid]+plane->dp1x[detid]*(elid-1);
@@ -34,6 +33,30 @@ __device__ float z_bep(const int detid, const int elid, const gPlane* plane)
 __device__ float z_tep(const int detid, const int elid, const gPlane* plane)
 {
 	return z_bep(detid, elid, plane)+plane->deltapz[detid];
+}
+
+// ---------------------------------------------------------------- //
+//
+// ---------------------------------------------------------------- //
+
+__device__ float x_trk(const float x0, const float tx, const float z)
+{
+	return z*tx+x0;
+}
+
+__device__ float err_x_trk(const float errx0, const float errtx, const float z)
+{
+	return z*errtx+errx0;
+}
+
+__device__ float y_trk(const float y0, const float ty, const float z)
+{
+	return z*ty+y0;
+}
+
+__device__ float err_y_trk(const float erry0, const float errty, const float z)
+{
+	return z*errty+erry0;
 }
 
 
@@ -404,6 +427,112 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 	   	   
 	return npairs;
 }
+
+
+// ----------------------------------------------------------------- //
+// functions for selection of station 1 hits for back partial tracks //
+// ----------------------------------------------------------------- // 
+
+__device__ void SagittaRatioInStation1(const gTracklet tkl, float* pos_exp, float* window, const float* z_, const float* costheta_, const float* sintheta_)
+{
+	float z_st3 = z_[tkl.hits[tkl.nHits-1].detectorID];
+	float x_st3 = tkl.x0+tkl.tx*z_st3;
+	float y_st3 = tkl.y0+tkl.ty*z_st3;
+
+	//printf("det id %d z %1.3f x %1.3f y %1.3f \n", tkl.hits[tkl.nXHits+tkl.nUHits+tkl.nVHits-1].detectorID, z_st3, x_st3, y_st3);
+	
+	float z_st1;
+	float z_st2, x_st2, y_st2;
+		
+	short detid, detid_2, idx;
+	float pos_st3, pos_st2;
+	
+	float s2_target, s2_dump;
+	
+	float pos_exp_target, pos_exp_dump;
+	float win_target, win_dump;
+	float p_min, p_max;
+	
+	for(int i = 0; i<3; i++){
+		detid = 2*i+2;
+		idx = geometry::planetype[detid/2-1];
+		detid_2 = geometry::detsuperid[2][idx]*2;
+		
+		pos_st3 = x_st3*costheta_[detid_2] + y_st3*sintheta_[detid_2];
+
+		//printf(" i %d idx %d  pos %1.3f \n", i, idx, pos_st3);
+		
+		z_st1 = z_[detid];
+		z_st2 = z_[detid_2];
+		
+		x_st2 = tkl.x0+tkl.tx*z_st2;
+		y_st2 = tkl.y0+tkl.ty*z_st2;
+		
+		pos_st2 = x_st2*costheta_[detid_2] + y_st2*sintheta_[detid_2];
+		
+		//printf("det id %d z %1.3f s_det id %d z %1.3f x %1.3f y %1.3f \n", detid, z_st1, detid_2, z_st2, x_st2, y_st2);
+		
+        	s2_target = pos_st2 - pos_st3*(z_st2 - geometry::Z_TARGET)/(z_st3 - geometry::Z_TARGET);
+        	s2_dump   = pos_st2 - pos_st3*(z_st2 - geometry::Z_DUMP)/(z_st3 - geometry::Z_DUMP);
+
+		pos_exp_target = geometry::SAGITTA_TARGET_CENTER*s2_target + pos_st3*(z_st1 - geometry::Z_TARGET)/(z_st3 - geometry::Z_TARGET);
+		pos_exp_dump   = geometry::SAGITTA_DUMP_CENTER*s2_dump + pos_st3*(z_st1 - geometry::Z_DUMP)/(z_st3 - geometry::Z_DUMP);
+		win_target = fabs(s2_target*geometry::SAGITTA_TARGET_WIDTH);
+		win_dump   = fabs(s2_dump*geometry::SAGITTA_DUMP_WIDTH);
+		
+		p_min = min(pos_exp_target - win_target, pos_exp_dump - win_dump);
+		p_max = max(pos_exp_target + win_target, pos_exp_dump + win_dump);
+		
+		pos_exp[idx] = 0.5*(p_max + p_min);
+		window[idx]  = 0.5*(p_max - p_min);
+		//printf("idx %d pos_exp %1.3f window %1.3f \n", idx, pos_exp[idx], window[idx]);
+	}
+}
+
+
+
+// --------------------------------------------- //
+// functions to calculate x0 and tx in station 1 //
+// and function to calculate inverse momentum    //
+// --------------------------------------------- //
+
+
+__device__ void calculate_x0_tx_st1(const gTracklet tkl, float &x0, float &tx)
+{	
+	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
+	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
+}
+
+__device__ void calculate_x0_tx_st1_with_errors(const gTracklet tkl, float &x0, float &tx, float &err_x0, float &err_tx)
+{	
+	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
+	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
+	
+	err_tx = tkl.err_tx + fabs(tkl.err_invP*geometry::PT_KICK_KMAG);
+        err_x0 = tkl.err_x0 + fabs(tkl.err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
+}
+
+__device__ float calculate_invP(float tx, float tx_st1, const short charge)
+{
+	return (tx_st1 - tx)*charge / geometry::PT_KICK_KMAG;
+}
+
+__device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
+{
+	float invP = (tx_st1 - tx) / geometry::PT_KICK_KMAG;
+	if(invP<0){
+		charge = -1;
+		invP*= charge;
+	}else{
+		charge = +1;
+	}
+}
+
+
+__device__ float calculate_invP_error(float err_tx, float err_tx_st1)
+{
+	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
+} 
 
 
 

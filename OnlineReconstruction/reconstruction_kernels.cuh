@@ -356,8 +356,6 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	
 	static float tkl_data_local[datasizes::TrackletSizeMax][142];
 	
-	//__shared__ gTracklet tkl[THREADS_PER_BLOCK];
-	//__shared__ short ntkl[THREADS_PER_BLOCK];
 	__shared__ int ntkl_per_thread[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_thread[k] = 0;
 			
@@ -1020,28 +1018,312 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 		return;
 	}
 	
-	const int nbins_st2 = 7;//28/4
-	const int nbins_st3 = 29;//58/2
-	
-	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
-	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
-	const int bin0_st3 = 0;
-	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
-
+	short hitidx1[100];
+	short hitidx2[100];
 	short hitflag1[100];
 	short hitflag2[100];
 	
-	// As a starting point we will process 8 bins per thread: x acceptance divided by 4 * 2 bins for d3p and d3m 
-	int nhitpairs_x1;
-	int nhitpairs_u1;
-	int nhitpairs_v1;
+	int nx1, nu1, nv1;
+	
         //pairs in station 1
         thrust::pair<int, int> hitpairs_x1[100];
         thrust::pair<int, int> hitpairs_u1[100];
         thrust::pair<int, int> hitpairs_v1[100];
-
 	
+	//get the hits
+	unsigned int offset_hitcoll;
+	
+	short stid, projid, detid, detoff;
+	
+	projid = 0;
+	stid = 0;
+	detoff = 1;
+	short detid_list[8];
+	
+	//Get the required hit collections here!
+	projid = 0;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[0] = detid;
+	int nhits_st1x;
+	const gHits hits_st1x = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1x);
+	const float z_st1x = planes->z[detid];
+	const float res_st1x = planes->spacing[detid];
+	
+	detid-= 1;
+	detid_list[1] = detid;
+	int nhits_st1xp;
+	const gHits hits_st1xp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1xp);
+	const float z_st1xp = planes->z[detid];
+	const float res_st1xp = planes->spacing[detid];
+	
+	projid = 1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[0] = detid;
+	int nhits_st1u;
+	const gHits hits_st1u = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1u);
+	const float z_st1u = planes->z[detid];
+	const float res_st1u = planes->spacing[detid];
+	
+	detid-= 1;
+	detid_list[1] = detid;
+	int nhits_st1up;
+	const gHits hits_st1up = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1up);
+	const float z_st1up = planes->z[detid];
+	const float res_st1up = planes->spacing[detid];
+	
+	projid = 2;
+	detid = geometry::detsuperid[stid][projid]*2;
+	detid_list[2] = detid;
+	int nhits_st1v;
+	const gHits hits_st1v = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1v);
+	const float z_st1v = planes->z[detid];
+	const float res_st1v = planes->spacing[detid];
+	
+	detid-= 1;
+	detid_list[3] = detid;
+	int nhits_st1vp;
+	const gHits hits_st1vp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1vp);
+	const float z_st1vp = planes->z[detid];
+	const float res_st1vp = planes->spacing[detid];
+
+	//get the tracks...
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
+	const int N_tracklets = tklcoll->NTracks[blockIdx.x];
+	
+	gTracklets tracks(tklcoll->Tracklets, N_tracklets, tkl_coll_offset);
+	
+	gTracklet tkl;
+	
+	//Sagitta ratio
+	float pos_exp[3];
+	float window[3];
+	
+	//full track calculation
+	float x0_st1, tx_st1;
+	float errx0_st1, errtx_st1;
+
+	float x0, tx;
+	float errx0, errtx;
+	float y0, ty;
+	float erry0, errty;
+	
+	float invP, errinvP;
+	short charge;
+	
+	bool update_track;
+	short nhits, nhits_new;
+	
+	//variables for the loop
+	int i_x, i_u, i_v, i_uv;
+	int ncomb_uv;
+	int nhits_x, nhits_u, nhits_v, nhits_uv;
+	int i_hit;
+	
+	//variables for 2D track fit
+	short detID[6];
+	float elID[6];
+	float pos[6];
+	float drift[6];
+	float tdc[6];
+
+	float X[3];
+	float errX[3];
+	float Z[3];
+	
+	float y, err_y;
+			
+	float A_[4];
+	float Ainv_[4];
+	float B_[2];
+	float Par[2];
+	float ParErr[2];
+	float chi2;	
+
+	static float tkl_data_local[datasizes::TrackletSizeMax][142];
+		
+	for(int i = 0; i<N_tracklets; i++){
+		tkl = tracks.getTracklet(i);
+		update_track = false;
+		if(threadIdx.x!=tkl.threadID)continue;
+		
+		x0 = tkl.x0;
+		tx = tkl.tx;
+		errx0 = tkl.err_x0;
+		errtx = tkl.err_tx;
+
+		y0 = tkl.err_y0;
+		ty = tkl.err_ty;
+		erry0 = tkl.err_y0;
+		errty = tkl.err_ty;
+		
+		SagittaRatioInStation1(tkl, pos_exp, window, planes->z, planes->costheta, planes->sintheta);
+		
+		projid = 0;
+		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
+		
+		projid = 1;
+		nu1 = make_hitpairs_in_station(hits_st1u, nhits_st1u, hits_st1up, nhits_st1up, hitpairs_u1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
+		
+		projid = 2;
+		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
+		
+		if(nx1==0 || nu1==0 || nv1==0)continue;
+		
+		ncomb_uv = nu1*nv1;
+		
+		//triple loop on hits
+		for(i_x = 0; i_x<nx1; i_x++){
+			nhits_x = 0;
+			if(hitpairs_x1[i_x].first>=0){
+				detID[nhits_x] = detid_list[0];
+				i_hit = hitpairs_x1[i_x].first;
+				X[nhits_x] = hits_st1x.pos(i_hit);
+				errX[nhits_x] = res_st1x;
+				Z[nhits_x] = z_st1x;
+				elID[nhits_x] = (short)hits_st1x.chan(i_hit);
+				tdc[nhits_x] = hits_st1x.tdc(i_hit);
+				drift[nhits_x] = hits_st1x.drift(i_hit);
+				nhits_x++;
+			}
+			if(hitpairs_x1[i_x].second>=0){
+				detID[nhits_x] = detid_list[1];
+				i_hit = hitpairs_x1[i_x].second;
+				X[nhits_x] = hits_st1xp.pos(i_hit);
+				errX[nhits_x] = res_st1xp;
+				Z[nhits_x] = z_st1xp;
+				elID[nhits_x] = (short)hits_st1xp.chan(i_hit);
+				tdc[nhits_x] = hits_st1xp.tdc(i_hit);
+				drift[nhits_x] = hits_st1xp.drift(i_hit);
+				nhits_x++;
+			}
+			
+			if(nhits_x==0) continue;
+			
+			X[nhits_x] = x0+tx*geometry::Z_KMAG_BEND;
+			errX[nhits_x] = errx0+errtx*geometry::Z_KMAG_BEND;
+			Z[nhits_x] = geometry::Z_KMAG_BEND;
+			
+			fit_2D_track(nhits_x+1, X, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
+			x0_st1 = Par[0];
+			tx_st1 = Par[1];
+
+			errx0_st1 = Par[0];
+			errtx_st1 = Par[1];
+			
+			invP = calculate_invP_charge(tx, tx_st1, charge);
+			errinvP = calculate_invP_error(errtx, errtx_st1);
+			
+			//add the UV hits
+			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
+				i_u = i_uv%nu1;
+				i_v = (i_uv-i_u)/nu1;
+				
+				nhits_uv = 0;
+				if(hitpairs_u1[i_u].first>=0){
+					detID[nhits_x+nhits_uv] = detid_list[0];
+					i_hit = hitpairs_u1[i_u].first;
+					elID[nhits_x+nhits_uv] = (short)hits_st1u.chan(i_hit);
+					tdc[nhits_x+nhits_uv] = hits_st1u.tdc(i_hit);
+					drift[nhits_x+nhits_uv] = hits_st1u.drift(i_hit);
+					pos[nhits_x+nhits_uv] = hits_st1u.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
+						nhits_uv++;
+				}
+				if(hitpairs_u1[i_u].second>=0){
+					detID[nhits_uv] = detid_list[1];
+					i_hit = hitpairs_u1[i_u].second;
+					Z[nhits_uv] = z_st1up;
+					elID[nhits_uv] = (short)hits_st1up.chan(i_hit);
+					tdc[nhits_uv] = hits_st1up.tdc(i_hit);
+					drift[nhits_uv] = hits_st1up.drift(i_hit);
+					pos[nhits_uv] = hits_st1up.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
+						nhits_uv++;
+				}
+				nhits_u = nhits_uv;
+				if(nhits_u==0)continue;
+				
+				if(hitpairs_v1[i_v].first>=0){
+					detID[nhits_x+nhits_uv] = detid_list[0];
+					i_hit = hitpairs_v1[i_v].first;
+					elID[nhits_x+nhits_uv] = (short)hits_st1v.chan(i_hit);
+					tdc[nhits_x+nhits_uv] = hits_st1v.tdc(i_hit);
+					drift[nhits_x+nhits_uv] = hits_st1v.drift(i_hit);
+					pos[nhits_x+nhits_uv] = hits_st1v.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
+						nhits_uv++;
+				}
+				if(hitpairs_v1[i_v].second>=0){
+					detID[nhits_uv] = detid_list[1];
+					i_hit = hitpairs_v1[i_v].second;
+					Z[nhits_uv] = z_st1vp;
+					elID[nhits_uv] = (short)hits_st1vp.chan(i_hit);
+					tdc[nhits_uv] = hits_st1vp.tdc(i_hit);
+					drift[nhits_uv] = hits_st1vp.drift(i_hit);
+					pos[nhits_uv] = hits_st1vp.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
+						nhits_uv++;
+				}
+				nhits_v = nhits_uv-nhits_u;
+				if(nhits_v==0)continue;
+				
+				//TODO: matching hodoscope, 
+				
+				
+				//TODO: resolve left right...
+				
+				
+				//if(chi2>chi2min){
+				//chi2min = chi2
+				update_track = true;
+				tkl_data_local[i][2] = nhits_x+nhits_uv;
+				tkl_data_local[i][9] = invP;
+				tkl_data_local[i][14] = errinvP;
+				tkl_data_local[i][15] = charge;
+				
+				for(int m = 0; m<nhits_x+nhits_uv;m++){
+				tkl_data_local[i][16+m] = detID[m];
+				tkl_data_local[i][16+m+nhits_x] = elID[m];
+				tkl_data_local[i][16+m+nhits_x*2] = pos[m];
+				tkl_data_local[i][16+m+nhits_x*3] = tdc[m];
+				tkl_data_local[i][16+m+nhits_x*4] = drift[m];
+				tkl_data_local[i][105+m] = 0;
+				tkl_data_local[i][124+m] = 0;
+				}
+				//}
+
+				
+			}
+			
+		}//end
+		
+		if(update_track){
+			nhits = tkl.nHits;
+			nhits_new = tkl_data_local[i][2];
+			tklcoll->Tracklets[tkl_coll_offset+i].stationID=6;
+			tklcoll->Tracklets[tkl_coll_offset+i].nHits=nhits+nhits_new;
+			tklcoll->Tracklets[tkl_coll_offset+i].ty=tkl_data_local[i][6];
+			tklcoll->Tracklets[tkl_coll_offset+i].y0=tkl_data_local[i][8];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_ty=tkl_data_local[i][11];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_y0=tkl_data_local[i][13];
+			for(int n = 0; n<nhits_new;n++){
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].detectorID = tkl_data_local[i][16+n];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].elementID = tkl_data_local[i][16+n+nhits_new];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].pos = tkl_data_local[i][16+n+nhits_new*2];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].tdcTime = tkl_data_local[i][16+n+nhits_new*3];
+				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].driftDistance = tkl_data_local[i][16+n+nhits_new*4];
+				tklcoll->Tracklets[tkl_coll_offset+i].hitsign[nhits+n] = tkl_data_local[i][105+n];
+				tklcoll->Tracklets[tkl_coll_offset+i].residual[nhits+n] = tkl_data_local[i][124+n];
+			}
+		}
+	}//end tracklets loop
 }
+
+
 
 // simple track printing function for debugging. 
 
