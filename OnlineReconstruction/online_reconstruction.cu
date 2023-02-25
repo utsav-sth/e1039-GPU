@@ -1,3 +1,5 @@
+#define E1039
+
 #include "gpufit.h"
 #include "interface.h"
 #include <cstdio>
@@ -133,7 +135,7 @@ int main(int argn, char * argv[]) {
 
 	//by default we should use e1039 
 	bool e906data = true;
-	//if(argn>4)e906data = atoi(argv[4]);
+	if(argn>4)e906data = atoi(argv[4]);
 	
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
@@ -462,16 +464,17 @@ int main(int argn, char * argv[]) {
 #ifdef E1039
 			//Default option: e1039
 			//if(_event_id<20)cout << " evt: " << _event_id << " nhits = " << hit_vec.size() << endl; 
-			host_gEvent.RunID[i] = _run_id;
-			host_gEvent.SpillID[i] = _spill_id;
+			if(i==0)firstevent = _event_id;
+			//host_gEvent.RunID[i] = _run_id;
+			//host_gEvent.SpillID[i] = _spill_id;
 			host_gEvent.EventID[i] = _event_id;
 			host_gEvent.TriggerBits[i] = _trigger;
 			//for(int k = 0; k<4; k++)host_gEvent[i].NRoads[i*4+k] = _qie_presums[k];
-			host_gEvent.TurnID[i] = _qie_turn_id;
-			host_gEvent.RFID[i] = _qie_rf_id;
+			//host_gEvent.TurnID[i] = _qie_turn_id;
+			//host_gEvent.RFID[i] = _qie_rf_id;
 			//for(int k = 0; k<33; k++)host_gEvent.Intensity[i*33+k] = _qie_rf_inte[k];
 			
-			for(int k = 0; k<nDetectors; k++)host_gEvent[i].NHits[k] = 0;//we will increment those in the vector hit loop
+			for(int k = 0; k<nDetectors; k++)host_gEvent.NHits[i*nDetectors+k-1] = 0;//we will increment those in the vector hit loop
 			int ntrighits = 0;
 			host_gEvent.nAH[i] = 0;//hit_vec.size();
 			for(int m = 0; m<hit_vec.size(); m++){
@@ -480,8 +483,29 @@ int main(int argn, char * argv[]) {
 					continue;
 					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
 				}
-				//host_gEvent.nAH[i]++;
-				//host_gEvent.NHits[i*nDetectors+hit_vec[m]->get_detector_id()]++;
+				host_gEvent.nAH[i]++;
+				host_gEvent.NHits[i*nDetectors+hit_vec[m]->get_detector_id()-1]++;
+			}
+			host_gEvent.nTH[i] = ntrighits;
+			//reloop :(
+			for(int m = 0; m<hit_vec.size(); m++){
+				if(hit_vec[m]->get_detector_id()>54){
+					//if(_event_id<20)cout << " dark photon plane hit! " << hit_vec[m]->get_detector_id() << endl;
+					continue;
+					//dark photon planes; I don't think we care about those for the purpose of online reconstruction... do we?
+				}
+				detid = hit_vec[m]->get_detector_id();
+				nhits = host_gEvent.NHits[i*nDetectors+detid-1];
+#ifdef DEBUG
+				if(rawEvent->fEventID==){
+					cout << detid << " " << (rawEvent->fAllHits[m]).elementID << " " 
+						<< wire_position[detid][(rawEvent->fAllHits[m]).elementID] << " " 
+						<< (rawEvent->fAllHits[m]).tdcTime << " " << (rawEvent->fAllHits[m]).flag << " " 
+						<< (rawEvent->fAllHits[m]).driftDistance << endl;
+				}
+#endif				
+
+				/*
 				//host_gEvent.AllHits[i+EstnAHMax*m].index=hit_vec[m]->get_hit_id();
 				//host_gEvent.AllHits[i+EstnAHMax*m].detectorID=hit_vec[m]->get_detector_id();
 				//host_gEvent.AllHits[i+EstnAHMax*m].elementID=hit_vec[m]->get_element_id();
@@ -499,10 +523,56 @@ int main(int argn, char * argv[]) {
 					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].driftDistance=fabs(hit_vec[m]->get_drift_distance());
 					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].pos=wire_position[hit_vec[m]->get_detector_id()][hit_vec[m]->get_element_id()];
 					//host_gEvent.TriggerHits[i*EstnTHMax+ntrighits].flag=(1<<hit_vec[m]->is_in_time());
-				//	ntrighits++;
+					ntrighits++;
 				//}
+				*/
+
+				//host_gEvent.AllHits[i+EstnAHMax*m].driftDistance=fabs(hit_vec[m]->get_drift_distance());
+				
+				if(1 <= detid && detid <= 30){
+					if((_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers)
+					cout << _event_id << " " << detid <<  " " << (_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsChambers << " " << m-hit_offset[detid] << endl;
+					
+#ifdef DEBUG
+					if(_event_id==2044)cout << "hit offsets " << detid << " " << (_event_id-firstevent)*datasizes::eventhitsize[0] << " " << evhitarrayoffset[detid] << " " << (_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid] << ": " << (_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+m-hit_offset[detid] << " " << hit_vec[m]->get_element_id() << " " << (_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits << " " << wire_position[detid][hit_vec[m]->get_element_id()] << endl;
+#endif					
+					host_gEventHits.HitsChambersRawData[(_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])] = (float)hit_vec[m]->get_element_id();
+					host_gEventHits.HitsChambersRawData[(_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] = (float)wire_position[detid][hit_vec[m]->get_element_id()];
+					host_gEventHits.HitsChambersRawData[(_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+2*nhits] = (float)hit_vec[m]->get_tdc_time();
+					host_gEventHits.HitsChambersRawData[(_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+3*nhits] = (float)(1<<hit_vec[m]->is_in_time());
+					host_gEventHits.HitsChambersRawData[(_event_id-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits] = (float)fabs(hit_vec[m]->get_drift_distance());
+				}
+
+				if(31 <= detid && detid <= 46){
+					if((_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
+					cout << _event_id << " " << detid <<  " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << m-hit_offset[detid] << endl;
+
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])] = (float)hit_vec[m]->get_element_id();
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] = (float) wire_position[detid][hit_vec[m]->get_element_id()];
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])+2*nhits] = (float)hit_vec[m]->get_tdc_time();
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])+3*nhits] = (float)(1<<hit_vec[m]->is_in_time());
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits] = (float)fabs(hit_vec[m]->get_drift_distance());
+				}
+
+				if(47 <= detid && detid <= 54){
+					if( (_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes)
+					cout << _event_id << " " << detid <<  " " << (_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])*4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes << " " << m-hit_offset[detid] << endl;
+
+#ifdef DEBUG
+					if(_event_id==2044)cout << "hit offsets " << detid << " " << (_event_id-firstevent)*datasizes::eventhitsize[2] << " " << evhitarrayoffset[detid] << " " << (_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid] << ": " << (_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+m-hit_offset[detid] << " " << hit_vec[m]->get_element_id() << " " << (_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits << " " << wire_position[detid][hit_vec[m]->get_element_id()] << endl;
+#endif
+					host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])] = (float)hit_vec[m]->get_element_id();
+					host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] = (float) wire_position[detid][hit_vec[m]->get_element_id()];
+					host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+2*nhits] = (float) hit_vec[m]->get_tdc_time();
+					host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+3*nhits] = (float) (1<<hit_vec[m]->is_in_time());
+					host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+4*nhits] = (float) fabs(hit_vec[m]->get_drift_distance());
+#ifdef DEBUG					
+					if(_event_id==2044)cout << host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])] << " " << host_gEventHits.HitsPropTubesRawData[(_event_id-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(m-hit_offset[detid])+nhits] << endl;
+#endif
+				}
+
 			}
-			host_gEvent.nTH[i] = ntrighits;
+			
 #endif
 		}
 	}
@@ -598,7 +668,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 345);
+	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 13);
 
 	auto cp5 = std::chrono::system_clock::now();
 	auto gpu_stx = cp5-cp4;
@@ -609,7 +679,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 345);
+	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, 13);
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_sty = cp6-cp5;

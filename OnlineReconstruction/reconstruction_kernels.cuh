@@ -140,8 +140,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	if(station_mult[3]>180)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[4]>375)hastoomanyhits[blockIdx.x] = true;
 
-#ifdef DEBUG
-	if(blockIdx.x==345){
+	if(blockIdx.x==13){
 		for(int k = 0; k<3; k++){
 		int nhits_chambers_ = hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[k]-1];
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers_, offsets_hitcoll_chambers[k]);
@@ -152,6 +151,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 		}
 		}
 	}
+#ifdef DEBUG
 		int nhits_hodo_ = hitcolls->NHitsHodo[blockIdx.x*nHodoPlanes+threadIdx.x];
 		gHits hitcoll_hodo = gHits(hitcolls->HitsHodoRawData, nhits_hodo_, offsets_hitcoll_hodo[0]);
 		printf(" det offset %d array offset %d nhits_hodo(%d) = %d \n", blockIdx.x*nChamberPlanes+threadIdx.x, offsets_hitcoll_hodo[0], detid_hodo[0], nhits_hodo_);
@@ -243,7 +243,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	int nhits_st3x;
 	const gHits hits_st3x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3x);
 #ifdef DEBUG	
-	if(blockIdx.x==345 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3x, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
+	if(blockIdx.x==13 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3x, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3x = z_array[detid];
 	const float res_st3x = res_array[detid];
@@ -253,7 +253,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	detid_list[3] = detid;
 	const gHits hits_st3xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3xp);
 #ifdef DEBUG	
-	if(blockIdx.x==345 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
+	if(blockIdx.x==13 && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3xp = z_array[detid];
 	const float res_st3xp = res_array[detid];
@@ -261,7 +261,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
 
 #ifdef DEBUG	
-	if(blockIdx.x==345 && st3==4){
+	if(blockIdx.x==13 && st3==4){
 		printf("nhits %d %d \n", nhits_st3x, nhits_st3xp);
 		for(int i = 0; i<nbins_st3; i++){
 			printf("thread %d npairs %d \n", threadIdx.x, nhitpairs_x3[i]);
@@ -372,7 +372,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		
 		if(nx2 == 0 || nx3==0) continue;
 #ifdef DEBUG
-		if(blockIdx.x==345 && st3==4)printf("bin %d %d, nx %d %d \n", bin2, bin3, nx2, nx3);
+		if(blockIdx.x==13 && st3==4)printf("bin %d %d, nx %d %d \n", bin2, bin3, nx2, nx3);
 #endif		
 		//for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_bin[k][i] = 0;
 
@@ -415,7 +415,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			if(nhits_x2==0) continue;
 
 #ifdef DEBUG
-			if(blockIdx.x==345 && st3==4) printf("thread %d in loop (i_x2 %d i_x3 %d): < %d , %d >\n", threadIdx.x, i_x2, i_x3, hitpairs_x3[bin3+nbins_st3*i_x3].first, hitpairs_x3[bin3+nbins_st3*i_x3].second);
+			if(blockIdx.x==13 && st3==4) printf("thread %d in loop (i_x2 %d i_x3 %d): < %d , %d >\n", threadIdx.x, i_x2, i_x3, hitpairs_x3[bin3+nbins_st3*i_x3].first, hitpairs_x3[bin3+nbins_st3*i_x3].second);
 #endif
 			
 			if(hitpairs_x3[bin3+nbins_st3*i_x3].first>=0){
@@ -502,7 +502,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			if(nprop==0)continue;
 			
 #ifdef DEBUG
-			if(blockIdx.x==345){
+			if(blockIdx.x==13){
 				printf("thread %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, binId, x0, tx, nhits_x);
 				for(int m = 0; m<nhits_x; m++){
 					printf("thread %d bin %d hit %d det %d chan %d pos %1.4f tdc %1.4f\n", threadIdx.x, binId, m, detID[m], elID[m], X[m], tdc[m]); 
@@ -529,7 +529,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				tkl_data_local[ntkl_per_thread[threadIdx.x]][124+m] = 0;
 			}
 #ifdef DEBUG
-			if(blockIdx.x==345){
+			if(blockIdx.x==13){
 				printf(" => again thread %d, %1.0f bin %1.0f x0 %1.4f tx %1.4f, nhits %1.0f \n", threadIdx.x, 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][0], 
 					tkl_data_local[ntkl_per_thread[threadIdx.x]][1], 
@@ -585,7 +585,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				}
 				*/
 #ifdef DEBUG
-				if(blockIdx.x==345)printf(" thread: %d,  %d, %d, offset %d stid/bin?  %d %1.0f thread %d %1.0f nhits %d %1.f \n", 
+				if(blockIdx.x==13)printf(" thread: %d,  %d, %d, offset %d stid/bin?  %d %1.0f thread %d %1.0f nhits %d %1.f \n", 
 					threadIdx.x, k, m, tkl_coll_offset+array_offset[k], 
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].stationID, tkl_data_local[m][0], 
 					tklcoll->Tracklets[tkl_coll_offset+array_offset[k]+m].threadID, tkl_data_local[m][1], 
@@ -947,7 +947,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 			//TODO: LR ambiguity resolution
 			
-			if(blockIdx.x==345){
+			if(blockIdx.x==13){
 				printf("thread %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
 			}
 			
