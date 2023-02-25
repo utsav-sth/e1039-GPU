@@ -1306,10 +1306,9 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 			nhits_new = tkl_data_local[i][2];
 			tklcoll->Tracklets[tkl_coll_offset+i].stationID=6;
 			tklcoll->Tracklets[tkl_coll_offset+i].nHits=nhits+nhits_new;
-			tklcoll->Tracklets[tkl_coll_offset+i].ty=tkl_data_local[i][6];
-			tklcoll->Tracklets[tkl_coll_offset+i].y0=tkl_data_local[i][8];
-			tklcoll->Tracklets[tkl_coll_offset+i].err_ty=tkl_data_local[i][11];
-			tklcoll->Tracklets[tkl_coll_offset+i].err_y0=tkl_data_local[i][13];
+			tklcoll->Tracklets[tkl_coll_offset+i].invP=tkl_data_local[i][9];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_invP=tkl_data_local[i][14];
+			tklcoll->Tracklets[tkl_coll_offset+i].err_y0=tkl_data_local[i][15];
 			for(int n = 0; n<nhits_new;n++){
 				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].detectorID = tkl_data_local[i][16+n];
 				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].elementID = tkl_data_local[i][16+n+nhits_new];
