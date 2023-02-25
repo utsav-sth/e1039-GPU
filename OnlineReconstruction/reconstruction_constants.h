@@ -1,3 +1,4 @@
+#define E1039
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
