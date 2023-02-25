@@ -105,3 +105,6 @@ namespace extrapolation_tools{
 	__device__ constexpr float err_invP_x0[2] = {0.0041388368, 0.0061518968};
 }
 
+namespace debug{
+  __host__ __device__ constexpr unsigned int EvRef = 13;
+}

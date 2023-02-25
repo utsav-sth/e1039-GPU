@@ -181,7 +181,7 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 				  		++cluster_iAH_arr_size;
 					}
 					
-					//if(blockIdx.x==2043 && detid>24 && detid<31)printf("%d %1.0f %1.0f %d \n", detid, hitcoll.chan(cluster_iAH_arr[0]), hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]), cluster_iAH_arr_size ); 
+					//if(blockIdx.x==debug::EvRef && detid>24 && detid<31)printf("%d %1.0f %1.0f %d \n", detid, hitcoll.chan(cluster_iAH_arr[0]), hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]), cluster_iAH_arr_size ); 
 
 					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size == 2) {
@@ -284,14 +284,14 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	int idx1 = -1;
 	int idx2 = -1;
 	
-	//if(blockIdx.x==2044 && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
+	//if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
 
 	for(int i = 0; i<nhits1; i++){
 		idx1++;
 		idx2 = -1;
 		for(int j = 0; j<nhits2; j++){
 			idx2++;
-			//if(blockIdx.x==2044 && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
+			//if(blockIdx.x==debug::EvRef && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
 
 			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > geometry::spacingplane[superdetid] ){
 				continue;
