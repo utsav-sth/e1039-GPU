@@ -73,6 +73,8 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 
 	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
 	
+	if(blockIdx.x==debug::EvRef)printf("det %d chan %d p1x %1.4f p1y %1.4f p2x %1.4f dpy %1.4f dpx% 1.4f x_trk %1.4f y %1.4f \n", detid, elid, p1x, p1y, p2x, planes->deltapy[ detid ], planes->deltapx[ detid ], x_trk, y );
+
 	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
 	if(hitsign==0){
 		if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible

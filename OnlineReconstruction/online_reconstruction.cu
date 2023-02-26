@@ -464,7 +464,7 @@ int main(int argn, char * argv[]) {
 #ifdef E1039
 			//Default option: e1039
 			if(i==0)firstevent = _event_id;
-			if(_event_id<20)cout << " evt: " << _event_id << " + " << firstevent << " nhits = " << hit_vec.size() << endl; 
+			//if(_event_id<20)cout << " evt: " << _event_id << " + " << firstevent << " nhits = " << hit_vec.size() << endl; 
 			//host_gEvent.RunID[i] = _run_id;
 			//host_gEvent.SpillID[i] = _spill_id;
 			host_gEvent.EventID[i] = _event_id;
@@ -491,7 +491,9 @@ int main(int argn, char * argv[]) {
 			for(int l=1; l<nDetectors; l++) {
 				hit_ctr[l] = 0;//counter needs to be initialized properly...
 				if(1 <= l && l <= 30){
+#ifdef DEBUG
 					if(_event_id==debug::EvRef+firstevent)cout << " det offset ("<< l << "): " << (_event_id-firstevent)*nChamberPlanes+l-1 << endl;
+#endif
 					host_gEventHits.NHitsChambers[(_event_id-firstevent)*nChamberPlanes+l-1] = host_gEvent.NHits[i*nDetectors+l-1];
 				}
 				if(31 <= l && l <= 46){
@@ -566,7 +568,9 @@ int main(int argn, char * argv[]) {
 					if((_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
 					cout << _event_id << " " << detid <<  " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << hit_ctr[detid] << endl;
 
+#ifdef DEBUG
 					if(_event_id==debug::EvRef+firstevent)cout << "hit offsets " << detid << " " << (_event_id-firstevent)*datasizes::eventhitsize[1] << " " << evhitarrayoffset[detid] << " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid] << ": " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid] << " " << hit_vec[m]->get_element_id() << " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+nhits << " el " << hit_vec[m]->get_element_id() << " " << wire_position[detid][hit_vec[m]->get_element_id()] << endl;
+#endif
 					
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] = (float)hit_vec[m]->get_element_id();
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+nhits] = (float) wire_position[detid][hit_vec[m]->get_element_id()];

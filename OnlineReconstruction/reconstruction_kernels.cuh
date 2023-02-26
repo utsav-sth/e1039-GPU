@@ -868,7 +868,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			if(nhits_v2==0) continue;
 			
 			if(hitpairs_u3[bin3+nbins_st3*i_u3].first>=0){
-				detID[nhits_uv] = detid_list[0];
+				detID[nhits_uv] = detid_list[4];
 				i_hit = hitpairs_u3[bin3+nbins_st3*i_u3].first;
 				Z[nhits_uv] = z_st3u;
 				elID[nhits_uv] = (short)hits_st3u.chan(i_hit);
@@ -881,7 +881,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				nhits_uv++;
 			}
 			if(hitpairs_u3[bin3+nbins_st3*i_u3].second>=0){
-				detID[nhits_uv] = detid_list[1];
+				detID[nhits_uv] = detid_list[5];
 				i_hit = hitpairs_u3[bin3+nbins_st3*i_u3].second;
 				Z[nhits_uv] = z_st3up;
 				elID[nhits_uv] = (short)hits_st3up.chan(i_hit);
@@ -898,7 +898,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			if(nhits_u3==0) continue;
 			
 			if(hitpairs_v3[bin3+nbins_st3*i_v3].first>=0){
-				detID[nhits_uv] = detid_list[3];
+				detID[nhits_uv] = detid_list[6];
 				i_hit = hitpairs_v3[bin3+nbins_st3*i_v3].first;
 				Z[nhits_uv] = z_st3v;
 				elID[nhits_uv] = (short)hits_st3v.chan(i_hit);
@@ -911,7 +911,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				nhits_uv++;
 			}
 			if(hitpairs_v3[bin3+nbins_st3*i_v3].second>=0){
-				detID[nhits_uv] = detid_list[3];
+				detID[nhits_uv] = detid_list[7];
 				i_hit = hitpairs_v3[bin3+nbins_st3*i_v3].second;
 				Z[nhits_uv] = z_st3vp;
 				elID[nhits_uv] = (short)hits_st3vp.chan(i_hit);
@@ -1160,6 +1160,8 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 		
 		projid = 2;
 		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
+
+		if(blockIdx.x==debug::EvRef)printf("nx1 %d nu1 %d nv1 %d \n", nx1, nu1, nv1);
 		
 		if(nx1==0 || nu1==0 || nv1==0)continue;
 		
@@ -1207,11 +1209,11 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 			invP = calculate_invP_charge(tx, tx_st1, charge);
 			errinvP = calculate_invP_error(errtx, errtx_st1);
 
-#ifdef debug
+//#ifdef debug
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
 			}
-#endif
+//#endif
 							
 			//add the UV hits
 			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
@@ -1227,8 +1229,8 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 					drift[nhits_x+nhits_uv] = hits_st1u.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1u.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
-						nhits_uv++;
+					//if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
+					nhits_uv++;
 				}
 				if(hitpairs_u1[i_u].second>=0){
 					detID[nhits_uv] = detid_list[1];
@@ -1239,8 +1241,8 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 					drift[nhits_uv] = hits_st1up.drift(i_hit);
 					pos[nhits_uv] = hits_st1up.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
-						nhits_uv++;
+					//if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
+					nhits_uv++;
 				}
 				nhits_u = nhits_uv;
 				if(nhits_u==0)continue;
@@ -1253,8 +1255,8 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 					drift[nhits_x+nhits_uv] = hits_st1v.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1v.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
-						nhits_uv++;
+					//if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
+					nhits_uv++;
 				}
 				if(hitpairs_v1[i_v].second>=0){
 					detID[nhits_uv] = detid_list[1];
@@ -1265,8 +1267,8 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 					drift[nhits_uv] = hits_st1vp.drift(i_hit);
 					pos[nhits_uv] = hits_st1vp.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
-						nhits_uv++;
+					//if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
+					nhits_uv++;
 				}
 				nhits_v = nhits_uv-nhits_u;
 				if(nhits_v==0)continue;
