@@ -84,6 +84,7 @@ namespace geometry{
 
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
+	__host__ __device__ constexpr int NTracksParam = 142;
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;
 	__host__ __device__ constexpr int NMaxHitsHodoscopes = 60;
 	__host__ __device__ constexpr int NMaxHitsPropTubes = 120;

@@ -433,13 +433,13 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 // functions for selection of station 1 hits for back partial tracks //
 // ----------------------------------------------------------------- // 
 
-__device__ void SagittaRatioInStation1(const gTracklet tkl, float* pos_exp, float* window, const float* z_, const float* costheta_, const float* sintheta_)
+__device__ void SagittaRatioInStation1(const float x0, const float tx, const float y0, const float ty, int detid_lasthit, float* pos_exp, float* window, const float* z_, const float* costheta_, const float* sintheta_)
 {
-	float z_st3 = z_[tkl.hits[tkl.nHits-1].detectorID];
-	float x_st3 = tkl.x0+tkl.tx*z_st3;
-	float y_st3 = tkl.y0+tkl.ty*z_st3;
+	float z_st3 = z_[detid_lasthit];
+	float x_st3 = x0+tx*z_st3;
+	float y_st3 = y0+ty*z_st3;
 
-	//printf("det id %d z %1.3f x %1.3f y %1.3f \n", tkl.hits[tkl.nXHits+tkl.nUHits+tkl.nVHits-1].detectorID, z_st3, x_st3, y_st3);
+	//printf("det id %d z %1.3f x %1.3f y %1.3f \n", detid_lasthit, z_st3, x_st3, y_st3);
 	
 	float z_st1;
 	float z_st2, x_st2, y_st2;
@@ -465,8 +465,8 @@ __device__ void SagittaRatioInStation1(const gTracklet tkl, float* pos_exp, floa
 		z_st1 = z_[detid];
 		z_st2 = z_[detid_2];
 		
-		x_st2 = tkl.x0+tkl.tx*z_st2;
-		y_st2 = tkl.y0+tkl.ty*z_st2;
+		x_st2 = x0+tx*z_st2;
+		y_st2 = y0+ty*z_st2;
 		
 		pos_st2 = x_st2*costheta_[detid_2] + y_st2*sintheta_[detid_2];
 		

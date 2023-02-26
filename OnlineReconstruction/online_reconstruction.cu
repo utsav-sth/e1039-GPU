@@ -692,7 +692,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+	gKernel_check_tracks<<<BLOCKS_NUM,8>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
 
 	auto cp5 = std::chrono::system_clock::now();
 	auto gpu_stx = cp5-cp4;
@@ -703,13 +703,13 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,1>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+	gKernel_check_tracks<<<BLOCKS_NUM,8>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_sty = cp6-cp5;
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 	
-	gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
+	//gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -755,6 +755,7 @@ int main(int argn, char * argv[]) {
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
 	for(int n = 0; n<nEvtMax; n++){
+#ifdef TEST	
 		if(host_output_eR->nAH[n]==0)continue;
 		nEvtsTotal++;
 		if(host_output_eR->HasTooManyHits[n])continue;
@@ -788,7 +789,7 @@ int main(int argn, char * argv[]) {
 			}
 		}
 
-#ifdef TEST	
+//
 		for(int k = 0; k<host_output_eR->nAH[n]; k++ ){
 			out << host_output_eR->AllHits[n*EstnAHMax+k].detectorID << " " << host_output_eR->AllHits[n*EstnAHMax+k].elementID << " " << host_output_eR->AllHits[k].driftDistance*host_output_eR->AllHits[n*EstnAHMax+k].sign_mc << endl;
 		}
