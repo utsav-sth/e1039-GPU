@@ -93,23 +93,6 @@ struct gTracklet {
       float residual[datasizes::MaxHitsPerTrack];//124-141
 };
 
-struct gTrack2D {
-      public:
-      // note: x_ is to be understood as either x or y...
-      float tx_;
-      float x_0;
-      
-      float err_tx_;
-      float err_x_0;
-      
-      float chisq;
-              
-      short nhits;
-      int hitlist[8];
-      short hitsign[8];
-      
-};
-
 struct gEvent {
 	public:
 	//int RunID[EstnEvtMax]; // Run Number
@@ -129,9 +112,9 @@ struct gEvent {
 	//float HitsChambersReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsChambers];
 	//float HitsPropTubesReducedData[EstnEvtMax*nChamberPlanes*5*datasizes::NMaxHitsPropTubes*2];
 	//float HitsHodoReducedData[EstnEvtMax*nChamberPlanes*4*datasizes::NMaxHitsHodoscopes];
-
 	//gHit AllHits[EstnEvtMax*EstnAHMax]; // array of all hits
 	//gHit TriggerHits[EstnEvtMax*EstnTHMax]; // array of trigger hits
+	int nTracklets[EstnEvtMax];
 	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
 };
 
@@ -165,7 +148,6 @@ struct gEventHitCollections {
 
 };
 
-/*
 struct gTracks {
 	public:
 	const unsigned int NTracksTotal;
@@ -178,13 +160,154 @@ struct gTracks {
 			static_assert(sizeof(float) == sizeof(unsigned));
 			assert((((size_t) basedata) & sizeof(float)) == 0);
 		}
+
+	__host__ __device__ inline float stationID(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[index];
+		}
+
+	__host__ __device__ inline float threadID(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal + index];
+		}
+
+	__host__ __device__ inline float nHits(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*2 + index];
+		}
+	
+	__host__ __device__ inline float chisq(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*3 + index];
+		}
+	
+	__host__ __device__ inline float chisq_vtx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*4 + index];
+		}
+
+	//track parameters
+	__host__ __device__ inline float tx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*5 + index];
+		}
+
+	__host__ __device__ inline float ty(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*6 + index];
+		}
+
+	__host__ __device__ inline float x0(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*7 + index];
+		}
+
+	__host__ __device__ inline float y0(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*8 + index];
+		}
+
+	__host__ __device__ inline float invP(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*9 + index];
+		}
+
+	__host__ __device__ inline float err_tx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*10 + index];
+		}
+
+	__host__ __device__ inline float err_ty(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*11 + index];
+		}
+
+	__host__ __device__ inline float err_x0(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*12 + index];
+		}
+
+	__host__ __device__ inline float err_y0(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*13 + index];
+		}
+
+	__host__ __device__ inline float err_invP(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*14 + index];
+		}
+
+	__host__ __device__ inline float charge(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*15 + index];
+		}
+
+	__host__ __device__ inline float hits_detid(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*16 + index + ihit * datasizes::NHitsParam ];
+		}
+
+	__host__ __device__ inline float hits_elid(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*16 + index + ihit * datasizes::NHitsParam+1 ];
+		}
+
+	__host__ __device__ inline float hits_pos(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*16 + index + ihit * datasizes::NHitsParam+2 ];
+		}
+
+	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*16 + index + ihit * datasizes::NHitsParam+3 ];
+		}
+
+	__host__ __device__ inline float hits_drift(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*16 + index + ihit * datasizes::NHitsParam+4 ];
+		}
+	
+	__host__ __device__ inline float hits_sign(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*106 + index + ihit ];
+		}
+	
+	__host__ __device__ inline float hits_residual(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_hitdata[NTracksTotal*124 + index + ihit ];
+		}
+	
+	
 };
-*/
 
 struct gTracklets {
 	public:
 	const unsigned int ntkl;
 	gTracklet* tkl_list;
+	
 	
 	__host__ __device__ gTracklets(gTracklet* baselist, const unsigned total_number_of_tracks, const unsigned offset = 0) :
 		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
@@ -218,45 +341,6 @@ struct gEventTrackCollection{
 
 };
 
-
-/*
-struct gTrackingXZparams{
-	public:
-	gTrackingXZparams();
-	//utils
-	float z_array[10];
-	float res_array[10];
-	
-	//input
-	gHits hits_st2x;
-	gHits hits_st2xp;
-	gHits hits_st3px;
-	gHits hits_st3pxp;
-	gHits hits_st3mx;
-	gHits hits_st3mxp;
-
-	gHits hits_p1x1;
-	gHits hits_p1x2;
-	gHits hits_p2x1;
-	gHits hits_p2x2;
-	gHits hits_st2x[2];
-	gHits hits_st3x[4];
-	gHits hits_px[4];
-	
-	//output
-	gTracklets Tracks;
-};
-*/
-
-
-struct gOutputEvent {
-public:
-	int EventID[EstnEvtMax];
-	int nAH[EstnEvtMax];
-	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
-	int nTracklets[EstnEvtMax];
-//	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
-};
 
 //geometry carrier
 struct gPlane {
@@ -295,3 +379,60 @@ struct gPlane {
       float slope_max[nDetectors];
       float inter_max[nDetectors];
 };
+
+#ifdef OLDCODE
+
+struct gTrack2D {
+      public:
+      // note: x_ is to be understood as either x or y...
+      float tx_;
+      float x_0;
+      
+      float err_tx_;
+      float err_x_0;
+      
+      float chisq;
+              
+      short nhits;
+      int hitlist[8];
+      short hitsign[8];
+      
+};
+
+struct gTrackingXZparams{
+	public:
+	gTrackingXZparams();
+	//utils
+	float z_array[10];
+	float res_array[10];
+	
+	//input
+	gHits hits_st2x;
+	gHits hits_st2xp;
+	gHits hits_st3px;
+	gHits hits_st3pxp;
+	gHits hits_st3mx;
+	gHits hits_st3mxp;
+
+	gHits hits_p1x1;
+	gHits hits_p1x2;
+	gHits hits_p2x1;
+	gHits hits_p2x2;
+	gHits hits_st2x[2];
+	gHits hits_st3x[4];
+	gHits hits_px[4];
+	
+	//output
+	gTracklets Tracks;
+};
+
+struct gOutputEvent {
+public:
+	int EventID[EstnEvtMax];
+	int nAH[EstnEvtMax];
+	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
+	int nTracklets[EstnEvtMax];
+//	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
+};
+#endif
+
