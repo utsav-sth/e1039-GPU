@@ -360,10 +360,10 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	__shared__ unsigned int ntkl_per_thread[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_thread[k] = 0;
 	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
-	const unsigned int nhits_thread_max = datasizes::TrackletSizeMax/THREADS_PER_BLOCK;
+	//const unsigned int nhits_thread_max = datasizes::TrackletSizeMax/THREADS_PER_BLOCK;
 	const unsigned int tklmult_idx = blockIdx.x*THREADS_PER_BLOCK+threadIdx.x;
 
-	tklcoll->NTracks[tklmult_idx] = nhits_thread_max;
+	tklcoll->NTracks[tklmult_idx] = 0;
 	
 	for(short i = 0; i<nbins_total; i++){
 		bin2 = i%nbins_st2;
@@ -506,91 +506,46 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				}
 			}
 			if(nprop==0)continue;
-			
-			//what if we try to fill the large arrays straight from here?...
-			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], binId);
-			tklcoll->setThreadID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], threadIdx.x);
-			tklcoll->setnHits(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], nhits_x);
-			tklcoll->setTx(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], tx);
-			tklcoll->setX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], x0);
-			tklcoll->setErrTx(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[1]);
-			tklcoll->setErrX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[0]);
 
-//#ifdef DEBUG
-			if(blockIdx.x==debug::EvRef){
-				printf("thread %d n_ %d offset %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, ntkl_per_thread[threadIdx.x], tkl_coll_offset+array_thread_offset, binId, x0, tx, nhits_x);
-				//for(int m = 0; m<nhits_x; m++){
-				//	printf("thread %d bin %d hit %d det %d chan %d pos %1.4f tdc %1.4f\n", threadIdx.x, binId, m, detID[m], elID[m], X[m], tdc[m]); 
-				//}
+			if(ntkl_per_thread[threadIdx.x]<datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
+				//what if we try to fill the large arrays straight from here?...
+				tklcoll->setStationID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], binId);
+				tklcoll->setThreadID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], threadIdx.x);
+				tklcoll->setnHits(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], nhits_x);
+				tklcoll->setTx(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], tx);
+				tklcoll->setX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], x0);
+				tklcoll->setErrTx(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[1]);
+				tklcoll->setErrX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[0]);
+				tklcoll->NTracks[tklmult_idx]++;
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef){
+					printf("thread %d n_ %d offset %d bin %d x0 %1.4f tx %1.4f, nhits %d \n", threadIdx.x, ntkl_per_thread[threadIdx.x], tkl_coll_offset+array_thread_offset, binId, x0, tx, nhits_x);
+					//for(int m = 0; m<nhits_x; m++){
+					//	printf("thread %d bin %d hit %d det %d chan %d pos %1.4f tdc %1.4f\n", threadIdx.x, binId, m, detID[m], elID[m], X[m], tdc[m]); 
+					//}
+				}
+				if(ntkl_per_thread[threadIdx.x]>=datasizes::TrackletSizeMax)printf("block %d thread %d bin %d ntkl_per_thread %d \n", blockIdx.x, threadIdx.x, binId, ntkl_per_thread[threadIdx.x]);
+				if(nhits_x >= datasizes::MaxHitsPerTrack)printf("block %d thread %d bin %d nhits x %d \n", blockIdx.x, threadIdx.x, binId, nhits_x);
+#endif
 			}
-			if(ntkl_per_thread[threadIdx.x]>=datasizes::TrackletSizeMax)printf("block %d thread %d bin %d ntkl_per_thread %d \n", blockIdx.x, threadIdx.x, binId, ntkl_per_thread[threadIdx.x]);
-			if(nhits_x >= datasizes::MaxHitsPerTrack)printf("block %d thread %d bin %d nhits x %d \n", blockIdx.x, threadIdx.x, binId, nhits_x);
-//#endif
-			if(ntkl_per_thread[threadIdx.x]>=datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
-				break;
-			}
-/*
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][0] = (float)binId;//bend stationID to carry binId...
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][1] = (float)threadIdx.x;
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][2] = (float)nhits_x;
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][5] = tx;
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][7] = x0;
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][10] = ParErr[1];
-			tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][12] = ParErr[0];
-			
-			for(int m = 0; m<nhits_x;m++){
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][16+m] = (float)detID[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][16+m+nhits_x] = (float)elID[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][16+m+nhits_x*2] = X[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][16+m+nhits_x*3] = tdc[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][16+m+nhits_x*4] = drift[m];
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][105+m] = 0;
-				tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][124+m] = 0;
-			}
-//#ifdef DEBUG
-			if(blockIdx.x==debug::EvRef){
-				printf(" => again thread %d, n_%d, %1.0f bin %1.0f x0 %1.4f tx %1.4f, nhits %1.0f \n", threadIdx.x, ntkl_per_thread[threadIdx.x],
-					tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][0], 
-					tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][1], 
-					tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][7], 
-					tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][5], 
-					tkl_data_local[ntkl_per_thread[threadIdx.x]+array_thread_offset_2][2]);
-			}
-//#endif
-*/
+
 			ntkl_per_thread[threadIdx.x]++;
 		}// end loop on hits
 	}//end loop on bins
 	//evaluate number of tracklets
 
-#ifdef DEBUG
-	if(blockIdx.x==debug::EvRef)
-		for(int m = 0; m<ntkl_per_thread[threadIdx.x]; m++){
-			printf(" thread: %d, m %d stid/bin?  %1.0f thread %1.0f nhits %1.0f \n", 
-				threadIdx.x, m, tkl_data_local[m+array_thread_offset_2][0], tkl_data_local[m+array_thread_offset_2][1], tkl_data_local[m+array_thread_offset_2][2]);
-		}
-	
-
-	if(blockIdx.x==debug::EvRef)printf("thread %d  tracklets per thread: %d \n", threadIdx.x, ntkl_per_thread[threadIdx.x]);
-	if(blockIdx.x==debug::EvRef)
-		for(int m = 0; m<ntkl_per_thread[threadIdx.x]; m++){
-			printf(" thread: %d, m %d stid/bin?  %1.0f thread %1.0f nhits %1.0f \n", 
-				threadIdx.x, m, tkl_data_local[m+array_thread_offset_2][0], tkl_data_local[m+array_thread_offset_2][1], tkl_data_local[m+array_thread_offset_2][2]);
-		}
-#endif
-
 	__syncthreads();
 	
 	int N_tracklets = 0;
 
-	__shared__ unsigned int array_thread_offset[THREADS_PER_BLOCK];
+	//__shared__ unsigned int array_thread_offset[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++){
 		N_tracklets+= ntkl_per_thread[k];
-		array_thread_offset[k] = k*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+		//array_thread_offset[k] = k*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	}
 	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
-		//printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
-		//hastoomanyhits[blockIdx.x] = true;
+		printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
+		hastoomanyhits[blockIdx.x] = true;
 	}
 
 	//at the end like that it's probably fine...
@@ -601,59 +556,18 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	}
 #ifdef DEBUG
 	else{
-		//tklcoll->NTracks[blockIdx.x] = N_tracklets;
-		//for(int k = 0; k<THREADS_PER_BLOCK; k++){
-			for(int m = 0; m<ntkl_per_thread[threadIdx.x]; m++){
-				//if(tkl_coll_offset+array_thread_offset[k]+m==353280)
-				//if(blockIdx.x==debug::EvRef)printf("block %d thread %d offset %d + %d + %d \n", blockIdx.x, threadIdx.x, tkl_coll_offset, array_thread_offset, m);
-				/*
-//#endif
-				nhits_x = (int)tkl_data_local[m][2];
-				tklcoll->setStationID(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][0]);
-				tklcoll->setThreadID(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][1]);
-				tklcoll->setnHits(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][2]);
-				tklcoll->setTx(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][5]);
-				tklcoll->setX0(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][7]);
-				tklcoll->setErrTx(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][10]);
-				tklcoll->setErrX0(tkl_coll_offset+array_thread_offset, m, tkl_data_local[m+array_thread_offset_2][12]);
-				
-				tklcoll->TrackRawData[tkl_coll_offset+array_thread_offset[k]+m]=(int)tkl_data_local[m][0];
-				tklcoll->TrackRawData[tkl_coll_offset+array_thread_offset[k]+m]=(int)tkl_data_local[m][0];
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].threadID=(int)tkl_data_local[m][1];
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].nHits=nhits_x;
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].tx=tkl_data_local[m][5];
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].x0=tkl_data_local[m][7];
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].err_tx=tkl_data_local[m][10];
-				tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].err_x0=tkl_data_local[m][12];
-				for(int n = 0; n<nhits_x;n++){
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hits[n].detectorID = tkl_data_local[m][16+n];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hits[n].elementID = tkl_data_local[m][16+n+nhits_x];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hits[n].pos = tkl_data_local[m][16+n+nhits_x*2];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hits[n].tdcTime = tkl_data_local[m][16+n+nhits_x*3];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hits[n].driftDistance = tkl_data_local[m][16+n+nhits_x*4];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].hitsign[n] = tkl_data_local[m][106+n];
-					tklcoll->Tracklets[tkl_coll_offset+array_thread_offset[k]+m].residual[n] = tkl_data_local[m][124+n];
-				}
-//#ifdef DEBUG
-				if(blockIdx.x==debug::EvRef)printf(" thread: %d, m %d, offset %d stid/bin?  %1.0f %1.0f thread %1.0f %1.0f nhits %1.0f %1.0f \n", 
-					threadIdx.x, m, tkl_coll_offset+array_thread_offset, 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m], tkl_data_local[m+array_thread_offset_2][0], 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*ntkl_per_thread[threadIdx.x]], tkl_data_local[m+array_thread_offset_2][1], 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*ntkl_per_thread[threadIdx.x]*2], tkl_data_local[m+array_thread_offset_2][2]);
-				*/
-				if(blockIdx.x==debug::EvRef)printf(" thread: %d, m %d, offset %d stid/bin?  %1.0f thread %1.0f nhits %1.0f x0 %1.4f tx %1.4f \n", 
-					threadIdx.x, m, tkl_coll_offset+array_thread_offset, 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam],  
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+1],  
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+2], 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+7], 
-					tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+5]
-					);
-
-			}
-		//}
-#endif
+		for(int m = 0; m<ntkl_per_thread[threadIdx.x]; m++){
+			if(blockIdx.x==debug::EvRef)printf(" thread: %d, m %d, offset %d stid/bin?  %1.0f thread %1.0f nhits %1.0f x0 %1.4f tx %1.4f \n", 
+				threadIdx.x, m, tkl_coll_offset+array_thread_offset, 
+				tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam],  
+				tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+1],  
+				tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+2], 
+				tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+7], 
+				tklcoll->TracksRawData[tkl_coll_offset+array_thread_offset+m*datasizes::NTracksParam+5]
+				);
+		}
 	}
+#endif
 		
 }
 
@@ -1416,7 +1330,7 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 		const gTracks Tracks = tklcoll->tracks(blockID, threadIdx.x, nTracks);
 		
 		for(int i = 0; i<nTracks; i++){
-		//	printf("thread %d tracklet %d thread %d bin/stid %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f nhits %d: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.nHits(i));
+			printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f nhits %1.0f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.nHits(i));
 		}
 	}
 	
