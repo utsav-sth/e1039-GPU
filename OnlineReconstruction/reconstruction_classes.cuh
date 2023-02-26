@@ -264,7 +264,7 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+16 + ihit ];
 		}
 
-	__host__ __device__ inline float hits_elid(const unsigned index, const unsigned ihit) const
+	__host__ __device__ inline float hits_chan(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+34 + ihit ];
@@ -389,7 +389,33 @@ struct gEventTrackCollection{
 	__device__ void setErrinvP(const unsigned int evt_offset, const unsigned int itrack, const float errinvp) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+14] = errinvp;
 	}
+	__device__ void setCharge(const unsigned int evt_offset, const unsigned int itrack, const float charge) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+15] = charge;
+	}
+	//hit info
+	__device__ void setHitDetID(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float detid) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+16+ihit] = detid;
+	}
+	__device__ void setHitChan(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float chan) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+34+ihit] = chan;
+	}
+	__device__ void setHitPos(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float pos) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+52+ihit] = pos;
+	}
+	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float tdc) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+70+ihit] = tdc;
+	}
+	__device__ void setHitDrift(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float drift) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = drift;
+	}
+	__device__ void setHitSign(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float sign) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = sign;
+	}
+	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = resid;
+	}
 	
+
 	/*
 	__device__ void setStationID(const unsigned int event, const unsigned int itrack, const float stid) {
 		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack] = stid;

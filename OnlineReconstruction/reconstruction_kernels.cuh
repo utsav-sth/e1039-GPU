@@ -516,6 +516,17 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				tklcoll->setX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], x0);
 				tklcoll->setErrTx(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[1]);
 				tklcoll->setErrX0(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], ParErr[0]);
+				
+				for(int n = 0; n<nhits_x; n++){
+					tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, detID[n]);
+					tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, elID[n]);
+					tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, X[n]);
+					tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, tdc[n]);
+					tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, drift[n]);
+					tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, 0.0);
+					tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, 0.0);
+				}
+				
 				tklcoll->NTracks[tklmult_idx]++;
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
@@ -544,7 +555,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		//array_thread_offset[k] = k*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	}
 	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
-		printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
+		//printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
 		hastoomanyhits[blockIdx.x] = true;
 	}
 
