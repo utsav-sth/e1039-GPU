@@ -785,7 +785,8 @@ int main(int argn, char * argv[]) {
 		}
 		out<<n<<" "<< host_output_eR->nAH[n] <<" "<<host_output_eR->nTracklets[n] <<endl;
 		if(n==debug::EvRef)cout << n<<" "<< host_output_eR->nAH[n] <<" "<< nTracklets <<endl;
-		//tklctr+= host_output_TKL->nTracklets[n];
+		tklctr+= nTracklets;
+		
 		for(int k = 1; k<=nChamberPlanes; k++ )out << host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1] << " ";
 		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )out << host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1] << " ";
 		for(int k = nChamberPlanes+nHodoPlanes+1; k<=nDetectors; k++ )out << host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1] << " ";
