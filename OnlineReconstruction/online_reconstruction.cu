@@ -687,7 +687,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
 	
-	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane->z, device_gPlane->spacing, device_gEvent->EventID, device_gEvent->HasTooManyHits);
+	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane->z, device_gPlane->spacing, device_gEvent->EventID, device_gEvent->nTracklets, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -746,7 +746,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaMemcpy(host_output_gHits, device_gHits, NBytesAllHits, cudaMemcpyDeviceToHost));
 	cudaFree(device_gHits);
 
-	gpuErrchk( cudaMemcpy(host_output_gTracks, device_gTracks, NBytesAllHits, cudaMemcpyDeviceToHost));
+	gpuErrchk( cudaMemcpy(host_output_gTracks, device_gTracks, NBytesAllTracks, cudaMemcpyDeviceToHost));
 	cudaFree(device_gHits);
 	
 	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
@@ -761,6 +761,11 @@ int main(int argn, char * argv[]) {
 	cout << nGood << " events over " << EstnEvtMax << endl;
 	
 //#define TEST 1
+	unsigned int tkl_coll_offset;
+	unsigned int array_thread_offset;
+	unsigned int tklmult_idx;
+	int nTracklets;
+	int nhits_tkl;
 	ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
@@ -771,8 +776,15 @@ int main(int argn, char * argv[]) {
 		nEvtsTotal++;
 		if(host_output_eR->HasTooManyHits[n])continue;
 		nEvtsPass++;
-		out<<n<<" "<< host_output_eR->nAH[n] <<" "<< 0 << endl;//host_output_TKL->nTracklets[n] <<endl;
-
+		
+		tkl_coll_offset = n*datasizes::TrackletSizeMax*datasizes::NTracksParam;
+		nTracklets = 0;
+		for(int m = 0; m<THREADS_PER_BLOCK; m++){
+			tklmult_idx = n*THREADS_PER_BLOCK+m;
+			nTracklets+= host_output_gTracks->NTracks[tklmult_idx];
+		}
+		out<<n<<" "<< host_output_eR->nAH[n] <<" "<<host_output_eR->nTracklets[n] <<endl;
+		if(n==debug::EvRef)cout << n<<" "<< host_output_eR->nAH[n] <<" "<< nTracklets <<endl;
 		//tklctr+= host_output_TKL->nTracklets[n];
 		for(int k = 1; k<=nChamberPlanes; k++ )out << host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1] << " ";
 		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )out << host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1] << " ";
@@ -797,6 +809,28 @@ int main(int argn, char * argv[]) {
 			for(int l = 0; l<nhits; l++){
 				out << k << " " << host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l] << " " 
 				    << host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+4*nhits] << endl;
+			}
+		}
+		
+		for(int m = 0; m<THREADS_PER_BLOCK; m++){
+			tklmult_idx = n*THREADS_PER_BLOCK+m;
+			array_thread_offset = m*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+			nTracklets = host_output_gTracks->NTracks[tklmult_idx];
+			for(int k = 0; k<nTracklets; k++ ){
+				out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam] << " " //stid
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+7] << " " //x0
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+8] << " " //y0
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+5] << " " //tx
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+6] << " " //ty
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+9] << " " //invP
+				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2] << endl; //Nhits
+				nhits_tkl = host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
+				for(int l = 0; l<nhits_tkl; l++){
+					out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l] << " " //detid
+					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l] << " " //elid (chan)
+					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l] << " " //drift
+					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l] << endl; //pos
+				}
 			}
 		}
 		

@@ -180,7 +180,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 //
 ////////////////////////////////////
 
-__global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const float* z_array, const float* res_array, const int* eventID, bool* hastoomanyhits)
+__global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const float* z_array, const float* res_array, int* nTracklets, const int* eventID, bool* hastoomanyhits)
 //(gTrackingXZparams* parameters)			
 {
 	if(hastoomanyhits[blockIdx.x]){
@@ -557,7 +557,7 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		//printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
 		hastoomanyhits[blockIdx.x] = true;
 	}
-
+	nTracklets[blockIdx.x] = N_tracklets;
 	//at the end like that it's probably fine...
 	if(N_tracklets>=datasizes::TrackletSizeMax){
 		printf("block %d thread %d tracklets total %d \n", blockIdx.x, threadIdx.x, N_tracklets);

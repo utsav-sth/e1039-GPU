@@ -303,32 +303,6 @@ struct gTracks {
 	
 };
 
-struct gTracklets {
-	public:
-	const unsigned int ntkl;
-	gTracklet* tkl_list;
-	
-	
-	__host__ __device__ gTracklets(gTracklet* baselist, const unsigned total_number_of_tracks, const unsigned offset = 0) :
-		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
-		{
-			static_assert(sizeof(float) == sizeof(unsigned));
-			assert((((size_t) baselist) & sizeof(gTracklet)) == 0);
-		}
-	
-	__host__ __device__ inline gTracklet getTracklet(const unsigned index) const
-		{
-			assert(index < ntkl);
-			return tkl_list[index];
-		}
-		
-	__host__ __device__ inline void setTracklet(const unsigned index, gTracklet tkl) const
-		{
-			assert(index < ntkl);
-			tkl_list[index] = tkl;
-		}
-};
-
 struct gEventTrackCollection{
 	unsigned short NTracks[EstnEvtMax*THREADS_PER_BLOCK];
 	float TracksRawData[EstnEvtMax*datasizes::TrackletSizeMax*datasizes::NTracksParam];
@@ -506,6 +480,33 @@ struct gPlane {
 };
 
 #ifdef OLDCODE
+
+struct gTracklets {
+	public:
+	const unsigned int ntkl;
+	gTracklet* tkl_list;
+	
+	
+	__host__ __device__ gTracklets(gTracklet* baselist, const unsigned total_number_of_tracks, const unsigned offset = 0) :
+		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
+		{
+			static_assert(sizeof(float) == sizeof(unsigned));
+			assert((((size_t) baselist) & sizeof(gTracklet)) == 0);
+		}
+	
+	__host__ __device__ inline gTracklet getTracklet(const unsigned index) const
+		{
+			assert(index < ntkl);
+			return tkl_list[index];
+		}
+		
+	__host__ __device__ inline void setTracklet(const unsigned index, gTracklet tkl) const
+		{
+			assert(index < ntkl);
+			tkl_list[index] = tkl;
+		}
+};
+
 
 struct gTrack2D {
       public:
