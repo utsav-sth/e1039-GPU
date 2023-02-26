@@ -692,7 +692,10 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,8>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 
 	auto cp5 = std::chrono::system_clock::now();
 	auto gpu_stx = cp5-cp4;
@@ -703,13 +706,21 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_check_tracks<<<BLOCKS_NUM,8>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 	
 	auto cp6 = std::chrono::system_clock::now();
 	auto gpu_sty = cp6-cp5;
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 	
-	//gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
+	gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gTracks, device_gPlane, device_gEvent->EventID, device_gEvent->HasTooManyHits);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -717,6 +728,7 @@ int main(int argn, char * argv[]) {
 	auto cp7 = std::chrono::system_clock::now();
 	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+
 
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
