@@ -778,6 +778,8 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 		//localbin = (tkl.stationID-tkl.threadID)/THREADS_PER_BLOCK;
 		localbin = (Tracks.stationID(i)-Tracks.threadID(i))/THREADS_PER_BLOCK;
 		
+		tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 3);
+		
 		//retrieve the bins in st2, st3
 		bin2 = localbin%nbins_st2;
 		bin3 = (localbin-bin2)/nbins_st2;
@@ -936,14 +938,16 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 			//TODO: LR ambiguity resolution
 			
+#ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
 			}
-			
+#endif
 			//if(chi2>chi2min){
 			//chi2min = chi2
 			update_track = true;
 			besttrackYZdata[threadIdx.x][2] = nhits_uv;
+			besttrackYZdata[threadIdx.x][3] = chi2;
 			besttrackYZdata[threadIdx.x][6] = ty;
 			besttrackYZdata[threadIdx.x][8] = y0;
 			besttrackYZdata[threadIdx.x][11] = ParErr[1];
@@ -966,6 +970,7 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 			nhits_x = Tracks.nHits(i);
 			nhits_uv = besttrackYZdata[threadIdx.x][2];
 			tklcoll->setnHits(tkl_coll_offset+array_thread_offset, i, nhits_x+nhits_uv);
+			tklcoll->setChisq(tkl_coll_offset+array_thread_offset, i, besttrackYZdata[threadIdx.x][3]);
 			tklcoll->setTy(tkl_coll_offset+array_thread_offset, i, besttrackYZdata[threadIdx.x][6]);
 			tklcoll->setY0(tkl_coll_offset+array_thread_offset, i, besttrackYZdata[threadIdx.x][8]);
 			tklcoll->setErrTy(tkl_coll_offset+array_thread_offset, i, besttrackYZdata[threadIdx.x][11]);
@@ -980,8 +985,6 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][124+n]);
 			}
-		}else{
-			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 3);
 		}
 		
 		
@@ -1074,14 +1077,6 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 	const gHits hits_st1vp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1vp);
 	const float z_st1vp = planes->z[detid];
 	const float res_st1vp = planes->spacing[detid];
-
-	//get the tracks...
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax;
-	const int N_tracklets = tklcoll->NTracks[blockIdx.x];
-	
-	gTracks tracks(tklcoll->TracksRawData, N_tracklets, tkl_coll_offset);
-	
-	//gTracklet tkl;
 	
 	//Sagitta ratio
 	float pos_exp[3];
@@ -1100,7 +1095,7 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 	short charge;
 	
 	bool update_track;
-	short nhits, nhits_new;
+	short nhits_st23, nhits_st1;
 	
 	//variables for the loop
 	int i_x, i_u, i_v, i_uv;
@@ -1127,38 +1122,35 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 	float Par[2];
 	float ParErr[2];
 	float chi2;	
-
-	float tkl_data_local[datasizes::TrackletSizeMax][142];
-		
-	for(int i = 0; i<N_tracklets; i++){
-		//tkl = tracks.getTracklet(i);
+	
+	//get the tracks...
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	__shared__ float besttrackdata[THREADS_PER_BLOCK][datasizes::NTracksParam];
+	
+	unsigned int Ntracks;
+	gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	for(int i = 0; i<Ntracks; i++){
+		//tkl = Tracks.getTracklet(i);
 		update_track = false;
-		/*
-		if(threadIdx.x!=tkl.threadID)continue;
-		x0 = tkl.x0;
-		tx = tkl.tx;
-		errx0 = tkl.err_x0;
-		errtx = tkl.err_tx;
-
-		y0 = tkl.err_y0;
-		ty = tkl.err_ty;
-		erry0 = tkl.err_y0;
-		errty = tkl.err_ty;
-		*/
+		nhits_st23 = Tracks.nHits(i);
 		
-		if(threadIdx.x!=tracks.threadID(i))continue;
+		if(threadIdx.x!=Tracks.threadID(i))continue;
+		if(Tracks.stationID(i)<5)continue;
 		
-		x0 = tracks.x0(i);
-		tx = tracks.tx(i);
-		errx0 = tracks.err_x0(i);
-		errtx = tracks.err_tx(i);
+		x0 = Tracks.x0(i);
+		tx = Tracks.tx(i);
+		errx0 = Tracks.err_x0(i);
+		errtx = Tracks.err_tx(i);
 
-		y0 = tracks.y0(i);
-		ty = tracks.ty(i);
-		erry0 = tracks.err_y0(i);
-		errty = tracks.err_ty(i);
+		y0 = Tracks.y0(i);
+		ty = Tracks.ty(i);
+		erry0 = Tracks.err_y0(i);
+		errty = Tracks.err_ty(i);
 
-		SagittaRatioInStation1(x0, tx, y0, ty, tracks.hits_detid(i, tracks.nHits(i)-1), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
+		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.hits_detid(i, Tracks.nHits(i)-1), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
 		
 		projid = 0;
 		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
@@ -1214,7 +1206,13 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 			
 			invP = calculate_invP_charge(tx, tx_st1, charge);
 			errinvP = calculate_invP_error(errtx, errtx_st1);
-			
+
+#ifdef debug
+			if(blockIdx.x==debug::EvRef){
+				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
+			}
+#endif
+							
 			//add the UV hits
 			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
 				i_u = i_uv%nu1;
@@ -1279,22 +1277,30 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 				//TODO: resolve left right...
 				
 				
+				//TODO: chi2 fit...
+
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef){
+					printf("thread %d invP %1.4f charge %d nhits %d \n", threadIdx.x, invP, charge, nhits_st23);
+				}
+#endif				
 				//if(chi2>chi2min){
 				//chi2min = chi2
 				update_track = true;
-				tkl_data_local[i][2] = nhits_x+nhits_uv;
-				tkl_data_local[i][9] = invP;
-				tkl_data_local[i][14] = errinvP;
-				tkl_data_local[i][15] = charge;
+				besttrackdata[threadIdx.x][2] = nhits_x+nhits_uv;
+				besttrackdata[threadIdx.x][3] = chi2;
+				besttrackdata[threadIdx.x][9] = invP;
+				besttrackdata[threadIdx.x][14] = errinvP;
+				besttrackdata[threadIdx.x][15] = charge;
 				
 				for(int m = 0; m<nhits_x+nhits_uv;m++){
-				tkl_data_local[i][16+m] = detID[m];
-				tkl_data_local[i][16+m+nhits_x] = elID[m];
-				tkl_data_local[i][16+m+nhits_x*2] = pos[m];
-				tkl_data_local[i][16+m+nhits_x*3] = tdc[m];
-				tkl_data_local[i][16+m+nhits_x*4] = drift[m];
-				tkl_data_local[i][105+m] = 0;
-				tkl_data_local[i][124+m] = 0;
+				besttrackdata[threadIdx.x][16+m] = detID[m];
+				besttrackdata[threadIdx.x][16+m+nhits_x] = elID[m];
+				besttrackdata[threadIdx.x][16+m+nhits_x*2] = pos[m];
+				besttrackdata[threadIdx.x][16+m+nhits_x*3] = tdc[m];
+				besttrackdata[threadIdx.x][16+m+nhits_x*4] = drift[m];
+				besttrackdata[threadIdx.x][105+m] = 0;
+				besttrackdata[threadIdx.x][124+m] = 0;
 				}
 				//}
 
@@ -1304,24 +1310,23 @@ __global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTr
 		}//end
 		
 		if(update_track){
-			nhits = tracks.nHits(i);
-			nhits_new = tkl_data_local[i][2];
-			/*
-			tklcoll->Tracklets[tkl_coll_offset+i].stationID=6;
-			tklcoll->Tracklets[tkl_coll_offset+i].nHits=nhits+nhits_new;
-			tklcoll->Tracklets[tkl_coll_offset+i].invP=tkl_data_local[i][9];
-			tklcoll->Tracklets[tkl_coll_offset+i].err_invP=tkl_data_local[i][14];
-			tklcoll->Tracklets[tkl_coll_offset+i].err_y0=tkl_data_local[i][15];
-			for(int n = 0; n<nhits_new;n++){
-				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].detectorID = tkl_data_local[i][16+n];
-				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].elementID = tkl_data_local[i][16+n+nhits_new];
-				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].pos = tkl_data_local[i][16+n+nhits_new*2];
-				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].tdcTime = tkl_data_local[i][16+n+nhits_new*3];
-				tklcoll->Tracklets[tkl_coll_offset+i].hits[nhits+n].driftDistance = tkl_data_local[i][16+n+nhits_new*4];
-				tklcoll->Tracklets[tkl_coll_offset+i].hitsign[nhits+n] = tkl_data_local[i][105+n];
-				tklcoll->Tracklets[tkl_coll_offset+i].residual[nhits+n] = tkl_data_local[i][124+n];
+			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 6);
+			nhits_st1 = besttrackdata[threadIdx.x][2];
+			tklcoll->setnHits(tkl_coll_offset+array_thread_offset, i, nhits_st23+nhits_st1);
+			tklcoll->setChisq(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][3]);
+			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][9]);
+			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
+			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
+				
+			for(int n = 0; n<nhits_uv; n++){
+				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][16+n]);
+				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][34+n]);
+				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][52+n]);
+				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][70+n]);
+				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][88+n]);
+				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][106+n]);
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][124+n]);
 			}
-			*/
 		}
 	}//end tracklets loop
 }

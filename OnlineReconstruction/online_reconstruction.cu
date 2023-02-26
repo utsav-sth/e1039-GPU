@@ -767,7 +767,6 @@ int main(int argn, char * argv[]) {
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
 	for(int n = 0; n<nEvtMax; n++){
-#ifdef TEST	
 		if(host_output_eR->nAH[n]==0)continue;
 		nEvtsTotal++;
 		if(host_output_eR->HasTooManyHits[n])continue;
@@ -800,7 +799,9 @@ int main(int argn, char * argv[]) {
 				    << host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+4*nhits] << endl;
 			}
 		}
-
+		
+		
+#ifdef TEST	
 //
 		for(int k = 0; k<host_output_eR->nAH[n]; k++ ){
 			out << host_output_eR->AllHits[n*EstnAHMax+k].detectorID << " " << host_output_eR->AllHits[n*EstnAHMax+k].elementID << " " << host_output_eR->AllHits[k].driftDistance*host_output_eR->AllHits[n*EstnAHMax+k].sign_mc << endl;

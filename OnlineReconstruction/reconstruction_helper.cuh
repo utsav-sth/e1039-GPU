@@ -526,6 +526,7 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
 	}else{
 		charge = +1;
 	}
+	return invP;
 }
 
 
