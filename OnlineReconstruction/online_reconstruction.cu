@@ -765,6 +765,7 @@ int main(int argn, char * argv[]) {
 	cout << nGood << " events over " << EstnEvtMax << endl;
 	
 //#define TEST 1
+	unsigned nhits_total;
 	unsigned int tkl_coll_offset;
 	unsigned int array_thread_offset;
 	unsigned int tklmult_idx;
@@ -780,20 +781,25 @@ int main(int argn, char * argv[]) {
 		nEvtsTotal++;
 		if(host_output_eR->HasTooManyHits[n])continue;
 		nEvtsPass++;
-		
+
+		nhits_total = 0;
+		for(int k = 1; k<=nChamberPlanes; k++ )nhits_total+= host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
+		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
+		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
+
 		tkl_coll_offset = n*datasizes::TrackletSizeMax*datasizes::NTracksParam;
 		nTracklets = 0;
 		for(int m = 0; m<THREADS_PER_BLOCK; m++){
 			tklmult_idx = n*THREADS_PER_BLOCK+m;
 			nTracklets+= host_output_gTracks->NTracks[tklmult_idx];
 		}
-		out<<n<<" "<< host_output_eR->nAH[n] <<" "<<host_output_eR->nTracklets[n] <<endl;
+		out<<n<<" "<< nhits_total <<" "<<nTracklets <<endl;
 		if(n==debug::EvRef)cout << n<<" "<< host_output_eR->nAH[n] <<" "<< nTracklets <<endl;
 		tklctr+= nTracklets;
 		
 		for(int k = 1; k<=nChamberPlanes; k++ )out << host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1] << " ";
 		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )out << host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1] << " ";
-		for(int k = nChamberPlanes+nHodoPlanes+1; k<=nDetectors; k++ )out << host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1] << " ";
+		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )out << host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1] << " ";
 		out << endl;
 		for(int k = 1; k<=nChamberPlanes; k++ ){
 			nhits = host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
@@ -829,6 +835,7 @@ int main(int argn, char * argv[]) {
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+6] << " " //ty
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+9] << " " //invP
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2] << endl; //Nhits
+/*
 				nhits_tkl = host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
 				for(int l = 0; l<nhits_tkl; l++){
 					out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l] << " " //detid
@@ -836,6 +843,7 @@ int main(int argn, char * argv[]) {
 					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l] << " " //drift
 					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l] << endl; //pos
 				}
+*/
 			}
 		}
 		
