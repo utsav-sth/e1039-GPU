@@ -680,7 +680,7 @@ int main(int argn, char * argv[]) {
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
 	//gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
-	gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gHits, device_gEvent->HasTooManyHits);
+	gkernel_eR<<<BLOCKS_NUM,8>>>(device_gHits, device_gEvent->HasTooManyHits);
 	
 	// check status of device and synchronize;
 	size_t nEvents = EstnEvtMax;

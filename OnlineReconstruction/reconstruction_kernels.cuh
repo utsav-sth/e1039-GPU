@@ -191,13 +191,24 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	}
 	
 	const int nbins_st2 = 7;//28/4
-	const int nbins_st3 = 29;//58/2
+	//const int nbins_st3 = 29;//58/2
+	const int nbins_st3 = 7;
 	
-	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
-	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
-	const int bin0_st3 = 0;
+	// 8 threads...
+	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; ...
+	// const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	// const int bin0_st3 = 0;
+	// 32 threads
+	// thread 0: bin0_st2 = 0/8*7 = 0, st3 = 3; bin0_st3 = (0%8/2 = 0)*7 = 0; thread 1: bin0_st2 = (1/8 = 0)*7 = 0, st3 = 4, bin0_st3 = (1%8/2 = 0)*7 = 0; 
+	// thread 2: bin0_st2 = 2/8*7 = 0, st3 = 3; bin0_st3 = (2%8/2 = 1)*7 = 7; thread 3: bin0_st2 = (3/8 = 0)*7 = 0, st3 = 4; bin0_st3 = (3%8/2 = 1)*7 = 7; 
+	const int bin0_st2 = (threadIdx.x/8)*nbins_st2;
+	const int bin0_st3 = (threadIdx.x%8/2)*nbins_st3;
 	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
-
+	
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" thread %d bin0 st2 %d bin0 st3 %d \n", threadIdx.x, bin0_st2, bin0_st3);
+#endif
+	
 	short hitflag1[100];
 	short hitflag2[100];
 	
@@ -208,7 +219,6 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
         thrust::pair<int, int> hitpairs_x2[nbins_st2*geometry::MaxHitsProj[0]];
         //pairs in station 3
         thrust::pair<int, int> hitpairs_x3[nbins_st3*geometry::MaxHitsProj[0]];
-
 	
 	unsigned int offset_hitcoll;
 	
@@ -598,12 +608,23 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	}
 	
 	const int nbins_st2 = 7;//28/4
-	const int nbins_st3 = 29;//58/2
+	//const int nbins_st3 = 29;//58/2
+	const int nbins_st3 = 7;
 	
-	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; 
-	const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
-	const int bin0_st3 = 0;
+	// 8 threads...
+	// thread 0: bin0_st2 = 0/2*7, st3 = 3; thread 1: bin0_st2 = (1/2 = 0)*7, st3 = 1; thread 2: bin0_st2 = 2/2*7, st3 = 3; thread 3: bin0_st2 = (3/2 = 1)*7, st3 = 4; ...
+	// const int bin0_st2 = (threadIdx.x/2)*nbins_st2;
+	// const int bin0_st3 = 0;
+	// 32 threads
+	// thread 0: bin0_st2 = 0/8*7 = 0, st3 = 3; bin0_st3 = (0%8/2 = 0)*7 = 0; thread 1: bin0_st2 = (1/8 = 0)*7 = 0, st3 = 4, bin0_st3 = (1%8/2 = 0)*7 = 0; 
+	// thread 2: bin0_st2 = 2/8*7 = 0, st3 = 3; bin0_st3 = (2%8/2 = 1)*7 = 7; thread 3: bin0_st2 = (3/8 = 0)*7 = 0, st3 = 4; bin0_st3 = (3%8/2 = 1)*7 = 7; 
+	const int bin0_st2 = (threadIdx.x/8)*nbins_st2;
+	const int bin0_st3 = (threadIdx.x%8/2)*nbins_st3;
 	int st3 = 3+threadIdx.x%2;//check d3p for even threads, d3m for odd threads...
+	
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" thread %d bin0 st2 %d bin0 st3 %d \n", threadIdx.x, bin0_st2, bin0_st3);
+#endif
 
 	short hitflag1[100];
 	short hitflag2[100];

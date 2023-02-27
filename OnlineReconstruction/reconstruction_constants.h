@@ -11,7 +11,7 @@
 using namespace std;
 
 const int EstnEvtMax = 8192;
-const int THREADS_PER_BLOCK = 8;
+const int THREADS_PER_BLOCK = 32;//8;
 // eight threads per block for ER: do 3 chambers, 2 hodoscopes, 1 prop tube per thread! 
 // eight threads per block for XZ tracking, YZ tracking: do 7 bins in st2 * 29 bins in st3!
 int BLOCKS_NUM = EstnEvtMax;///THREADS_PER_BLOCK;
