@@ -809,11 +809,11 @@ __global__ void gKernel_YZ_tracking(
 	
 	int nu2, nv2, nu3, nv3;
 	
-	int ncomb_uv;
+	int ncomb_uv3, ncomb_uv2;
 	
 	short i_u2, i_u3, i_v2, i_v3;
 	
-	int i_uv, i_hit;
+	int i_uv3, i_uv2, i_hit;
 
 	float y, err_y;
 	
@@ -868,77 +868,17 @@ __global__ void gKernel_YZ_tracking(
 		
 		//x0 = tkl.x0;
 		//tx = tkl.tx;
-		ncomb_uv = nu2*nu3*nv2*nv3;
+		ncomb_uv3 = nu3*nv3;
+		ncomb_uv2 = nu2*nv2;
+
+		ty = 0;
 		
-		for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
-			nhits_uv = 0;
-			i_u2 = i_uv%nu2;
-			i_v2 = ((i_uv-i_u2)/nu2)%nv2;
-			i_u3 = (((i_uv-i_u2)/nu2-i_v2)/nv2)%nu3;
-			i_v3 = ((((i_uv-i_u2)/nu2)-i_v2)/nv2-i_u3)/nu3;
+		for(i_uv3 = 0; i_uv3<ncomb_uv3; i_uv3++){
+			i_u3 = i_uv3%nu3;
+			i_v3 = (i_uv3-i_u3)/nu3;
 			
 			nhits_uv = 0;
-			
-			if(hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
-				detID[nhits_uv] = detid_list[0];
-				i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].first;
-				Z[nhits_uv] = z_st2u;
-				elID[nhits_uv] = (short)hits_st2u.chan(i_hit);
-				tdc[nhits_uv] = hits_st2u.tdc(i_hit);
-				drift[nhits_uv] = hits_st2u.drift(i_hit);
-				pos[nhits_uv] = hits_st2u.pos(i_hit);
-				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-				Y[nhits_uv] = y;
-				errY[nhits_uv] = err_y;
-				nhits_uv++;
-			}
-			if(hitpairs_u2[bin2+nbins_st2*i_u2].second>=0){
-				detID[nhits_uv] = detid_list[1];
-				i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].second;
-				Z[nhits_uv] = z_st2up;
-				elID[nhits_uv] = (short)hits_st2up.chan(i_hit);
-				tdc[nhits_uv] = hits_st2up.tdc(i_hit);
-				drift[nhits_uv] = hits_st2up.drift(i_hit);
-				pos[nhits_uv] = hits_st2up.pos(i_hit);
-				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-				Y[nhits_uv] = y;
-				errY[nhits_uv] = err_y;
-				nhits_uv++;
-			}
-			
-			nhits_u2 = nhits_uv;
-			if(nhits_u2==0) continue;
-			
-			if(hitpairs_v2[bin2+nbins_st2*i_v2].first>=0){
-				detID[nhits_uv] = detid_list[2];
-				i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].first;
-				Z[nhits_uv] = z_st2v;
-				elID[nhits_uv] = (short)hits_st2v.chan(i_hit);
-				tdc[nhits_uv] = hits_st2v.tdc(i_hit);
-				drift[nhits_uv] = hits_st2v.drift(i_hit);
-				pos[nhits_uv] = hits_st2v.pos(i_hit);
-				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-				Y[nhits_uv] = y;
-				errY[nhits_uv] = err_y;
-				nhits_uv++;
-			}
-			if(hitpairs_v2[bin2+nbins_st2*i_v2].second>=0){
-				detID[nhits_uv] = detid_list[3];
-				i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].second;
-				Z[nhits_uv] = z_st2vp;
-				elID[nhits_uv] = (short)hits_st2vp.chan(i_hit);
-				tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
-				drift[nhits_uv] = hits_st2vp.drift(i_hit);
-				pos[nhits_uv] = hits_st2vp.pos(i_hit);
-				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-				Y[nhits_uv] = y;
-				errY[nhits_uv] = err_y;
-				nhits_uv++;
-			}
-			
-			nhits_v2 = nhits_uv-nhits_u2;
-			if(nhits_v2==0) continue;
-			
+
 			if(hitpairs_u3[bin3+nbins_st3*i_u3].first>=0){
 				detID[nhits_uv] = detid_list[4];
 				i_hit = hitpairs_u3[bin3+nbins_st3*i_u3].first;
@@ -951,6 +891,7 @@ __global__ void gKernel_YZ_tracking(
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
+				ty+= y/z_st3u;
 			}
 			if(hitpairs_u3[bin3+nbins_st3*i_u3].second>=0){
 				detID[nhits_uv] = detid_list[5];
@@ -964,9 +905,10 @@ __global__ void gKernel_YZ_tracking(
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
+				ty+= y/z_st3up;
 			}
 			
-			nhits_u3 = nhits_uv-nhits_u2-nhits_v2;
+			nhits_u3 = nhits_uv;
 			if(nhits_u3==0) continue;
 			
 			if(hitpairs_v3[bin3+nbins_st3*i_v3].first>=0){
@@ -981,6 +923,7 @@ __global__ void gKernel_YZ_tracking(
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
+				ty+= y/z_st3v;
 			}
 			if(hitpairs_v3[bin3+nbins_st3*i_v3].second>=0){
 				detID[nhits_uv] = detid_list[7];
@@ -994,38 +937,115 @@ __global__ void gKernel_YZ_tracking(
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
+				ty+= y/z_st3vp;
 			}
 			
-			nhits_v3 = nhits_uv-nhits_u2-nhits_v2-nhits_u3;
+			nhits_v3 = nhits_uv-nhits_u3;
 			if(nhits_v3==0) continue;
 
-			fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+			ty = ty/nhits_uv;
 			
-			y0 = Par[0];
-			ty = Par[1];
+			for(i_uv2 = 0; i_uv2<ncomb_uv2; i_uv2++){
+				i_u2 = i_uv2%nu2;
+				i_v2 = (i_uv2-i_u2)/nu2;
 
-			//TODO: hodoscope matching
-
-			//TODO: chi2 evaluation of track candidate
-
-			//TODO: LR ambiguity resolution
-			
+				nhits_uv = nhits_u3+nhits_v3;
+				
+				if(hitpairs_u2[bin2+nbins_st2*i_u2].first>=0){
+					detID[nhits_uv] = detid_list[0];
+					i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].first;
+					Z[nhits_uv] = z_st2u;
+					elID[nhits_uv] = (short)hits_st2u.chan(i_hit);
+					tdc[nhits_uv] = hits_st2u.tdc(i_hit);
+					drift[nhits_uv] = hits_st2u.drift(i_hit);
+					pos[nhits_uv] = hits_st2u.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( (y-ty*z_st2u)/err_y<3.f ){//since ty is *very* rough let's be generous...				
+						Y[nhits_uv] = y;
+						errY[nhits_uv] = err_y;
+						nhits_uv++;
+					}
+				}
+				if(hitpairs_u2[bin2+nbins_st2*i_u2].second>=0){
+					detID[nhits_uv] = detid_list[1];
+					i_hit = hitpairs_u2[bin2+nbins_st2*i_u2].second;
+					Z[nhits_uv] = z_st2up;
+					elID[nhits_uv] = (short)hits_st2up.chan(i_hit);
+					tdc[nhits_uv] = hits_st2up.tdc(i_hit);
+					drift[nhits_uv] = hits_st2up.drift(i_hit);
+					pos[nhits_uv] = hits_st2up.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( fabs(y-ty*z_st2up)/err_y<3.f ){//since ty is *very* rough let's be generous...				
+						Y[nhits_uv] = y;
+						errY[nhits_uv] = err_y;
+						nhits_uv++;
+					}
+				}
+				
+				nhits_u2 = nhits_uv;
+				if(nhits_u2==0) continue;
+				
+				if(hitpairs_v2[bin2+nbins_st2*i_v2].first>=0){
+					detID[nhits_uv] = detid_list[2];
+					i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].first;
+					Z[nhits_uv] = z_st2v;
+					elID[nhits_uv] = (short)hits_st2v.chan(i_hit);
+					tdc[nhits_uv] = hits_st2v.tdc(i_hit);
+					drift[nhits_uv] = hits_st2v.drift(i_hit);
+					pos[nhits_uv] = hits_st2v.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( fabs(y-ty*z_st2v)/err_y<3.f ){//since ty is *very* rough let's be generous...				
+						Y[nhits_uv] = y;
+						errY[nhits_uv] = err_y;
+						nhits_uv++;
+					}
+				}
+				if(hitpairs_v2[bin2+nbins_st2*i_v2].second>=0){
+					detID[nhits_uv] = detid_list[3];
+					i_hit = hitpairs_v2[bin2+nbins_st2*i_v2].second;
+					Z[nhits_uv] = z_st2vp;
+					elID[nhits_uv] = (short)hits_st2vp.chan(i_hit);
+					tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
+					drift[nhits_uv] = hits_st2vp.drift(i_hit);
+					pos[nhits_uv] = hits_st2vp.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if( fabs(y-ty*z_st2vp)/err_y<3.f ){//since ty is *very* rough let's be generous...				
+						Y[nhits_uv] = y;
+						errY[nhits_uv] = err_y;
+						nhits_uv++;
+					}
+				}
+				
+				nhits_v2 = nhits_uv-nhits_u2;
+				if(nhits_v2==0) continue;
+				
+				fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+				
+				y0 = Par[0];
+				ty = Par[1];
+				
+				//TODO: hodoscope matching
+				
+				//TODO: chi2 evaluation of track candidate
+				
+				//TODO: LR ambiguity resolution
+				
 #ifdef DEBUG
-			if(blockIdx.x==debug::EvRef){
-				printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
-			}
+				if(blockIdx.x==debug::EvRef){
+					printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
+				}
 #endif
-			//if(chi2>chi2min){
-			//chi2min = chi2
-			update_track = true;
-			besttrackYZdata[threadIdx.x][2] = nhits_uv;
-			besttrackYZdata[threadIdx.x][3] = chi2;
-			besttrackYZdata[threadIdx.x][6] = ty;
-			besttrackYZdata[threadIdx.x][8] = y0;
-			besttrackYZdata[threadIdx.x][11] = ParErr[1];
-			besttrackYZdata[threadIdx.x][13] = ParErr[0];
-			
-			for(int n = 0; n<nhits_uv;n++){
+				//if(chi2>chi2min && ){
+				//chi2min = chi2
+				update_track = true;
+				besttrackYZdata[threadIdx.x][2] = nhits_uv;
+				besttrackYZdata[threadIdx.x][3] = chi2;
+				besttrackYZdata[threadIdx.x][6] = ty;
+				besttrackYZdata[threadIdx.x][8] = y0;
+				besttrackYZdata[threadIdx.x][11] = ParErr[1];
+				besttrackYZdata[threadIdx.x][13] = ParErr[0];
+				
+				for(int n = 0; n<nhits_uv;n++){
 				besttrackYZdata[threadIdx.x][16+n] = detID[n];
 				besttrackYZdata[threadIdx.x][34+n] = elID[n];
 				besttrackYZdata[threadIdx.x][52+n] = pos[n];
@@ -1035,8 +1055,10 @@ __global__ void gKernel_YZ_tracking(
 				besttrackYZdata[threadIdx.x][106+n] = tdc[n];
 				besttrackYZdata[threadIdx.x][124+n] = 0;
 #endif
+				}
+				//}
+				
 			}
-			//}
 		}
 		
 		if(update_track){
@@ -1312,7 +1334,7 @@ __global__ void gKernel_Global_tracking(
 					drift[nhits_x+nhits_uv] = hits_st1u.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1u.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					//if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
+					if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
 					nhits_uv++;
 				}
 				if(hitpairs_u1[i_u].second>=0){
@@ -1324,7 +1346,7 @@ __global__ void gKernel_Global_tracking(
 					drift[nhits_uv] = hits_st1up.drift(i_hit);
 					pos[nhits_uv] = hits_st1up.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					//if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
+					if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
 					nhits_uv++;
 				}
 				nhits_u = nhits_uv;
@@ -1338,7 +1360,7 @@ __global__ void gKernel_Global_tracking(
 					drift[nhits_x+nhits_uv] = hits_st1v.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1v.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					//if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
+					if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
 					nhits_uv++;
 				}
 				if(hitpairs_v1[i_v].second>=0){
@@ -1350,7 +1372,7 @@ __global__ void gKernel_Global_tracking(
 					drift[nhits_uv] = hits_st1vp.drift(i_hit);
 					pos[nhits_uv] = hits_st1vp.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
-					//if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
+					if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
 					nhits_uv++;
 				}
 				nhits_v = nhits_uv-nhits_u;

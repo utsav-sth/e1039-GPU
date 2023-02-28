@@ -96,7 +96,7 @@ namespace datasizes{
 		nHodoPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes, 
 		nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes
 	};
-	__host__ __device__ constexpr int TrackletSizeMax = 1280;
+	__host__ __device__ constexpr int TrackletSizeMax = 1600;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 
 }
