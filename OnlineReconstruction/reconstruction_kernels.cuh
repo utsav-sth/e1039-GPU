@@ -180,7 +180,16 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 //
 ////////////////////////////////////
 
-__global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const float* z_array, const float* res_array, int* nTracklets, const int* eventID, bool* hastoomanyhits)
+__global__ void gKernel_XZ_tracking(
+	gEventHitCollections* hitcolls,
+	gEventTrackCollection* tklcoll,
+	const float* z_array,
+	const float* res_array,
+	int* nTracklets,
+#ifdef DEBUG
+	   const int* eventID,
+#endif
+	bool* hastoomanyhits)
 //(gTrackingXZparams* parameters)			
 {
 	if(hastoomanyhits[blockIdx.x]){
@@ -313,11 +322,15 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
 		if(nhitpairs_x2[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
-		//if(nhitpairs_x2[bin])printf("evt %d bin %d nhits x2 = %d\n", ic[index].EventID, bin, nhitpairs_x2[bin]);
+#ifdef DEBUG
+		if(nhitpairs_x2[bin])printf("evt %d bin %d nhits x2 = %d\n", eventID[blockIdx.x], bin, nhitpairs_x2[bin]);
+#endif
 	}
 	for(int bin = 0; bin<nbins_st3; bin++){
 		if(nhitpairs_x3[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
-		//if(nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", ic[index].EventID, bin, nhitpairs_x3[bin]);
+#ifdef DEBUG
+		if(nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", eventID[blockIdx.x], bin, nhitpairs_x3[bin]);
+#endif
 	}
 	if(bin_overflows){
 		hastoomanyhits[blockIdx.x] = true;
@@ -602,7 +615,14 @@ __global__ void gKernel_XZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 //
 ////////////////////////////////////
 
-__global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const gPlane* planes, int* eventID, bool* hastoomanyhits)
+__global__ void gKernel_YZ_tracking(
+	gEventHitCollections* hitcolls,
+	gEventTrackCollection* tklcoll,
+	const gPlane* planes,
+#ifdef DEBUG
+	int* eventID,
+#endif
+	bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x]){
 #ifdef DEBUG
@@ -732,6 +752,27 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 
 	make_hitpairs_in_station_bins(hits_st3v, nhits_st3v, hits_st3vp, nhits_st3vp, hitpairs_v3, nhitpairs_v3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
 	
+	bool bin_overflows = false;
+	for(int bin = 0; bin<nbins_st2; bin++){
+		if(nhitpairs_u2[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
+		if(nhitpairs_v2[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
+#ifdef DEBUG
+		if(nhitpairs_u2[bin])printf("evt %d bin %d nhits u2 = %d\n", eventID[blockIdx.x], bin, nhitpairs_u2[bin]);
+		if(nhitpairs_v2[bin])printf("evt %d bin %d nhits v2 = %d\n", eventID[blockIdx.x], bin, nhitpairs_v2[bin]);
+#endif
+	}
+	for(int bin = 0; bin<nbins_st3; bin++){
+		if(nhitpairs_u3[bin]>geometry::MaxHitsProj[1])bin_overflows = true;
+		if(nhitpairs_v3[bin]>geometry::MaxHitsProj[2])bin_overflows = true;
+#ifdef DEBUG
+		if(nhitpairs_u3[bin])printf("evt %d bin %d nhits u3 = %d\n", eventID[blockIdx.x], bin, nhitpairs_u3[bin]);
+		if(nhitpairs_v3[bin])printf("evt %d bin %d nhits v3 = %d\n", eventID[blockIdx.x], bin, nhitpairs_v3[bin]);
+#endif
+	}
+	if(bin_overflows){
+		hastoomanyhits[blockIdx.x] = true;
+		return;
+	}
 	
 	//variables for 2D track fit
 	short detID[8];
@@ -1030,7 +1071,14 @@ __global__ void gKernel_YZ_tracking(gEventHitCollections* hitcolls, gEventTrackC
 //
 ////////////////////////////////////
 
-__global__ void gKernel_Global_tracking(gEventHitCollections* hitcolls, gEventTrackCollection* tklcoll, const gPlane* planes, int* eventID, bool* hastoomanyhits)
+__global__ void gKernel_Global_tracking(
+	gEventHitCollections* hitcolls,
+	gEventTrackCollection* tklcoll,
+	const gPlane* planes,
+#ifdef DEBUG
+	int* eventID,
+#endif
+	bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x]){
 #ifdef DEBUG
