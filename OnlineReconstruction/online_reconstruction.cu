@@ -133,7 +133,9 @@ int main(int argn, char * argv[]) {
 
 	//by default we should use e1039 
 	bool e906data = true;
+#ifdef E1039
 	if(argn>4)e906data = atoi(argv[4]);
+#endif
 	
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
@@ -793,7 +795,6 @@ int main(int argn, char * argv[]) {
 	for(int i = 0; i<EstnEvtMax; i++)if(host_output_eR->HasTooManyHits[i])nGood--;
 	cout << nGood << " events over " << EstnEvtMax << endl;
 	
-//#define TEST 1
 	unsigned nhits_total;
 	unsigned int tkl_coll_offset;
 	unsigned int array_thread_offset;
@@ -864,7 +865,6 @@ int main(int argn, char * argv[]) {
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+6] << " " //ty
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+9] << " " //invP
 				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2] << endl; //Nhits
-/*
 				nhits_tkl = host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
 				for(int l = 0; l<nhits_tkl; l++){
 					out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l] << " " //detid
@@ -872,30 +872,8 @@ int main(int argn, char * argv[]) {
 					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l] << " " //drift
 					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l] << endl; //pos
 				}
-*/
 			}
 		}
-		
-		
-#ifdef TEST	
-//
-		for(int k = 0; k<host_output_eR->nAH[n]; k++ ){
-			out << host_output_eR->AllHits[n*EstnAHMax+k].detectorID << " " << host_output_eR->AllHits[n*EstnAHMax+k].elementID << " " << host_output_eR->AllHits[k].driftDistance*host_output_eR->AllHits[n*EstnAHMax+k].sign_mc << endl;
-		}
-		
-		for(int k = 0; k<host_output_TKL->nTracklets[n]; k++ ){
-			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0 = -1000;
-			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0 = -1000;
-			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP = -1.0;
-			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx = -1.0;
-			if(isnan(host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty))host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty = -1.0;
-			out << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].stationID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].x0 << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].y0 << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].tx << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].ty << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].invP << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nXHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nUHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nVHits << endl;
-			//if(n<100 && host_output_TKL[n].nTracklets>1)cout << n << " " << host_output_TKL[n].AllTracklets[k].stationID << " " << host_output_TKL[n].AllTracklets[k].nXHits<< " " <<host_output_TKL[n].AllTracklets[k].nUHits<< " " <<host_output_TKL[n].AllTracklets[k].nVHits << endl;
-			for(int l = 0; l<host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nXHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nUHits+host_output_TKL->AllTracklets[n*TrackletSizeMax+k].nVHits; l++){
-				out << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].detectorID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].elementID << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].driftDistance*host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hitsign[l] << " " << host_output_TKL->AllTracklets[n*TrackletSizeMax+k].hits[l].pos << endl;
-			}
-		}
-#endif
 	}
 	
 	cout << tklctr << " total tracks reconstructed" << endl;

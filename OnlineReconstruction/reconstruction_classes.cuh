@@ -276,30 +276,29 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+52 + ihit ];
 		}
 
-	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+70 + ihit ];
-		}
-
 	__host__ __device__ inline float hits_drift(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+88 + ihit ];
+			return m_trackdata[TrackSize*index+70 + ihit ];
 		}
 	
 	__host__ __device__ inline float hits_sign(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+106 + ihit ];
+			return m_trackdata[TrackSize*index+88 + ihit ];
 		}
-	
+#ifdef FULLCODE	
+	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+124 + ihit ];
+		}
 	__host__ __device__ inline float hits_residual(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+124 + ihit ];
 		}
-	
+#endif
 	
 };
 
@@ -376,68 +375,20 @@ struct gEventTrackCollection{
 	__device__ void setHitPos(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float pos) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+52+ihit] = pos;
 	}
-	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float tdc) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+70+ihit] = tdc;
-	}
 	__device__ void setHitDrift(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float drift) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = drift;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+70+ihit] = drift;
 	}
 	__device__ void setHitSign(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float sign) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = sign;
 	}
+#ifdef FULLCODE
+	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+ihit] = resid;
+	}
 	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = resid;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+124+ihit] = resid;
 	}
-	
-
-	/*
-	__device__ void setStationID(const unsigned int event, const unsigned int itrack, const float stid) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack] = stid;
-	}
-	__device__ void setThreadID(const unsigned int event, const unsigned int itrack, const float threadid) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]] = threadid;
-	}
-	__device__ void setnHits(const unsigned int event, const unsigned int itrack, const float nhits) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*2] = nhits;
-	}
-	__device__ void setChisq(const unsigned int event, const unsigned int itrack, const float chisq) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*3] = chisq;
-	}
-	__device__ void setChisqVtx(const unsigned int event, const unsigned int itrack, const float chisq_vtx) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*4] = chisq_vtx;
-	}
-	//track parameters
-	__device__ void setTx(const unsigned int event, const unsigned int itrack, const float tx) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*5] = tx;
-	}
-	__device__ void setTy(const unsigned int event, const unsigned int itrack, const float ty) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*6] = ty;
-	}
-	__device__ void setX0(const unsigned int event, const unsigned int itrack, const float x0) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*7] = x0;
-	}
-	__device__ void setY0(const unsigned int event, const unsigned int itrack, const float y0) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*8] = y0;
-	}
-	__device__ void setinvP(const unsigned int event, const unsigned int itrack, const float invp) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*9] = invp;
-	}
-	__device__ void setErrTx(const unsigned int event, const unsigned int itrack, const float errtx) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*10] = errtx;
-	}
-	__device__ void setErrTy(const unsigned int event, const unsigned int itrack, const float errty) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*11] = errty;
-	}
-	__device__ void setErrX0(const unsigned int event, const unsigned int itrack, const float errx0) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*12] = errx0;
-	}
-	__device__ void setErrY0(const unsigned int event, const unsigned int itrack, const float erry0) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*13] = erry0;
-	}
-	__device__ void setErrinvP(const unsigned int event, const unsigned int itrack, const float errinvp) {
-		TracksRawData[event*datasizes::TrackletSizeMax*datasizes::NTracksParam+itrack*NTracks[event]*14] = errinvp;
-	}
-	*/
+#endif
 };
 
 
@@ -481,84 +432,5 @@ struct gPlane {
 
 #ifdef OLDCODE
 
-struct gTracklets {
-	public:
-	const unsigned int ntkl;
-	gTracklet* tkl_list;
-	
-	
-	__host__ __device__ gTracklets(gTracklet* baselist, const unsigned total_number_of_tracks, const unsigned offset = 0) :
-		tkl_list(baselist + offset), ntkl(total_number_of_tracks)
-		{
-			static_assert(sizeof(float) == sizeof(unsigned));
-			assert((((size_t) baselist) & sizeof(gTracklet)) == 0);
-		}
-	
-	__host__ __device__ inline gTracklet getTracklet(const unsigned index) const
-		{
-			assert(index < ntkl);
-			return tkl_list[index];
-		}
-		
-	__host__ __device__ inline void setTracklet(const unsigned index, gTracklet tkl) const
-		{
-			assert(index < ntkl);
-			tkl_list[index] = tkl;
-		}
-};
-
-
-struct gTrack2D {
-      public:
-      // note: x_ is to be understood as either x or y...
-      float tx_;
-      float x_0;
-      
-      float err_tx_;
-      float err_x_0;
-      
-      float chisq;
-              
-      short nhits;
-      int hitlist[8];
-      short hitsign[8];
-      
-};
-
-struct gTrackingXZparams{
-	public:
-	gTrackingXZparams();
-	//utils
-	float z_array[10];
-	float res_array[10];
-	
-	//input
-	gHits hits_st2x;
-	gHits hits_st2xp;
-	gHits hits_st3px;
-	gHits hits_st3pxp;
-	gHits hits_st3mx;
-	gHits hits_st3mxp;
-
-	gHits hits_p1x1;
-	gHits hits_p1x2;
-	gHits hits_p2x1;
-	gHits hits_p2x2;
-	gHits hits_st2x[2];
-	gHits hits_st3x[4];
-	gHits hits_px[4];
-	
-	//output
-	gTracklets Tracks;
-};
-
-struct gOutputEvent {
-public:
-	int EventID[EstnEvtMax];
-	int nAH[EstnEvtMax];
-	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
-	int nTracklets[EstnEvtMax];
-//	gTracklet AllTracklets[EstnEvtMax*TrackletSizeMax];
-};
 #endif
 

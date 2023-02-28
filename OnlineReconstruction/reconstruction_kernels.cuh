@@ -545,10 +545,12 @@ __global__ void gKernel_XZ_tracking(
 					tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, detID[n]);
 					tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, elID[n]);
 					tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, X[n]);
-					tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, tdc[n]);
 					tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, drift[n]);
 					tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, 0.0);
+#ifdef FULLCODE
+					tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, tdc[n]);
 					tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], n, 0.0);
+#endif
 				}
 				
 				tklcoll->NTracks[tklmult_idx]++;
@@ -1027,10 +1029,12 @@ __global__ void gKernel_YZ_tracking(
 				besttrackYZdata[threadIdx.x][16+n] = detID[n];
 				besttrackYZdata[threadIdx.x][34+n] = elID[n];
 				besttrackYZdata[threadIdx.x][52+n] = pos[n];
-				besttrackYZdata[threadIdx.x][70+n] = tdc[n];
-				besttrackYZdata[threadIdx.x][88+n] = drift[n];
-				besttrackYZdata[threadIdx.x][106+n] = 0;
+				besttrackYZdata[threadIdx.x][70+n] = drift[n];
+				besttrackYZdata[threadIdx.x][88+n] = 0;
+#ifdef FULLCODE
+				besttrackYZdata[threadIdx.x][106+n] = tdc[n];
 				besttrackYZdata[threadIdx.x][124+n] = 0;
+#endif
 			}
 			//}
 		}
@@ -1050,10 +1054,12 @@ __global__ void gKernel_YZ_tracking(
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][16+n]);
 				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][34+n]);
 				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][52+n]);
-				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][70+n]);
-				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][88+n]);
-				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
+				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][70+n]);
+				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][88+n]);
+#ifdef FULLCODE
+				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][124+n]);
+#endif
 			}
 		}
 		
@@ -1374,12 +1380,14 @@ __global__ void gKernel_Global_tracking(
 				
 				for(int m = 0; m<nhits_x+nhits_uv;m++){
 				besttrackdata[threadIdx.x][16+m] = detID[m];
-				besttrackdata[threadIdx.x][16+m+nhits_x] = elID[m];
-				besttrackdata[threadIdx.x][16+m+nhits_x*2] = pos[m];
-				besttrackdata[threadIdx.x][16+m+nhits_x*3] = tdc[m];
-				besttrackdata[threadIdx.x][16+m+nhits_x*4] = drift[m];
-				besttrackdata[threadIdx.x][105+m] = 0;
+				besttrackdata[threadIdx.x][34+m] = elID[m];
+				besttrackdata[threadIdx.x][52+m] = pos[m];
+				besttrackdata[threadIdx.x][70+m] = drift[m];
+				besttrackdata[threadIdx.x][88+m] = 0;
+#ifdef FULLCODE
+				besttrackdata[threadIdx.x][105+m] = tdc[m];
 				besttrackdata[threadIdx.x][124+m] = 0;
+#endif
 				}
 				//}
 
@@ -1401,10 +1409,12 @@ __global__ void gKernel_Global_tracking(
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][16+n]);
 				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][34+n]);
 				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][52+n]);
-				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][70+n]);
-				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][88+n]);
-				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][106+n]);
+				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][70+n]);
+				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][88+n]);
+#ifdef FULLCODE
+				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][106+n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][124+n]);
+#endif
 			}
 		}
 	}//end tracklets loop

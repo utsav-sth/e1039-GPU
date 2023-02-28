@@ -53,7 +53,7 @@ namespace geometry{
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 28, 28};
-	__device__ constexpr short MaxHitsProj[3] = {15, 40, 40};
+	__device__ constexpr short MaxHitsProj[3] = {20, 80, 80};
 	__device__ constexpr short WCHitsBins[4][3][2][32] = {
         	{{{1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146, 151, 156}, 
 		  {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160}}, // d0x
@@ -84,7 +84,10 @@ namespace geometry{
 
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
-	__host__ __device__ constexpr int NTracksParam = 142;
+	__host__ __device__ constexpr int NTracksParam = 106;
+#ifdef FULLCODE
+	__host__ __device__ constexpr int NTracksParam = 106;
+#endif
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;
 	__host__ __device__ constexpr int NMaxHitsHodoscopes = 60;
 	__host__ __device__ constexpr int NMaxHitsPropTubes = 120;
