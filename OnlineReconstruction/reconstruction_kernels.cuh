@@ -137,7 +137,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	if(station_mult[0]>250)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[1]>200)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[2]>150)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[3]>120)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[3]>150)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[4]>250)hastoomanyhits[blockIdx.x] = true;
 
 #ifdef DEBUG
@@ -387,7 +387,16 @@ __global__ void gKernel_XZ_tracking(
 
 	__shared__ unsigned int ntkl_per_thread[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl_per_thread[k] = 0;
-		
+	__shared__ short thread_min[THREADS_PER_BLOCK];//thread with lowest number of tracks: each thread
+	__shared__ bool addtrack[THREADS_PER_BLOCK];//flag to mark threads requesting to add a new track in another thread.
+	__shared__ bool threadbusy[THREADS_PER_BLOCK];
+	unsigned int ntkl_min;
+	unsigned int array_offset;
+	unsigned int nthreads_full;
+	unsigned int nslots_available;
+	//__shared__
+	unsigned int list_of_threads[THREADS_PER_BLOCK];
+	
 	for(short i = 0; i<nbins_total; i++){
 		bin2 = i%nbins_st2;
 		bin3 = (i-bin2)/nbins_st2;
@@ -398,7 +407,10 @@ __global__ void gKernel_XZ_tracking(
 
 		nx2 = nhitpairs_x2[bin2];
 		nx3 = nhitpairs_x3[bin3];
-		
+
+		addtrack[threadIdx.x] = false;
+		threadbusy[threadIdx.x] = false;
+
 		if(nx2 == 0 || nx3==0) continue;
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef && st3==4)printf("bin %d %d, nx %d %d \n", bin2, bin3, nx2, nx3);
@@ -414,7 +426,9 @@ __global__ void gKernel_XZ_tracking(
 			i_x2 = i_x%nx2;
 			i_x3 = (i_x-i_x2)/nx2;
 			
-			//for(int k = 0; k<THREADS_PER_BLOCK; k++)ntkl[k] = 0;
+			addtrack[threadIdx.x] = false;
+			threadbusy[threadIdx.x] = false;
+			
 			nhits_x = 0;
 			
 			if(hitpairs_x2[bin2+nbins_st2*i_x2].first>=0){
@@ -529,8 +543,7 @@ __global__ void gKernel_XZ_tracking(
 				}
 			}
 			if(nprop==0)continue;
-			
-			
+						
 			if(ntkl_per_thread[threadIdx.x]<datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
 				//what if we try to fill the large arrays straight from here?...
 				tklcoll->setStationID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], binId);
@@ -566,9 +579,101 @@ __global__ void gKernel_XZ_tracking(
 				if(ntkl_per_thread[threadIdx.x]>=datasizes::TrackletSizeMax)printf("block %d thread %d bin %d ntkl_per_thread %d \n", blockIdx.x, threadIdx.x, binId, ntkl_per_thread[threadIdx.x]);
 				if(nhits_x >= datasizes::MaxHitsPerTrack)printf("block %d thread %d bin %d nhits x %d \n", blockIdx.x, threadIdx.x, binId, nhits_x);
 #endif
+				ntkl_per_thread[threadIdx.x]++;
+			}else{
+				//we can probably afford to spare time for synchronization here since XZ is extremely fast!
+				addtrack[threadIdx.x] = true;
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("thread %d wants to add a track!\n", threadIdx.x);
+#endif
+				ntkl_min = 100000;
+				thread_min[threadIdx.x] = -1;
+				nthreads_full = 0;
+				nslots_available = datasizes::TrackletSizeMax;
+				__syncthreads();
+				for(int k = 0; k<THREADS_PER_BLOCK; k++){
+					if(ntkl_min>ntkl_per_thread[k]){
+						ntkl_min = ntkl_per_thread[k];
+						thread_min[threadIdx.x] = k;
+						//threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+					}
+					nslots_available-= ntkl_per_thread[k];
+					
+					if(addtrack[k]){
+#ifdef DEBUG
+						if(blockIdx.x==debug::EvRef)printf("thread? %d\n", k);
+#endif
+						list_of_threads[nthreads_full] = k;
+						nthreads_full++;
+					}
+				}
+				if(nslots_available<nthreads_full){
+					printf("WARNING: Block %d cannot store anymore tracks! ending the event with a high multiplicity flag! \n", blockIdx.x);
+					hastoomanyhits[blockIdx.x] = true;
+					break;
+				}
+				__syncthreads();
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("number of threads requesting to add a track (thread %d): %d  \n", threadIdx.x, nthreads_full);
+#endif
+				//first, assign a unique "thread min" for each full thread so that they don't step on each other...
+				// we have the following info:
+				//   the list of threads that want to add a track in another thread,
+				//   the number of tracks in each thread
+				//   the min_thread
+				threadbusy[thread_min[list_of_threads[0]]] = true;
+				for(int l = 1; l<nthreads_full; l++){
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("(%d) %d %d %d =? %d \n", threadIdx.x, l, list_of_threads[l], thread_min[list_of_threads[l]], thread_min[list_of_threads[l-1]]);
+#endif
+					if(thread_min[list_of_threads[l]]==thread_min[list_of_threads[l-1]] ||
+						thread_min[list_of_threads[l]]==thread_min[list_of_threads[0]]){
+						threadbusy[thread_min[list_of_threads[l]]] = true;
+#ifdef DEBUG
+						if(blockIdx.x==debug::EvRef)printf("(thread %d) thread %d busy\n", threadIdx.x, thread_min[list_of_threads[l]]);
+#endif
+					}
+					
+					if(threadbusy[thread_min[threadIdx.x]]){
+						ntkl_min = 100000;
+						for(int k = 0; k<THREADS_PER_BLOCK; k++){
+							if(ntkl_min>ntkl_per_thread[k] && !threadbusy[k]){
+								ntkl_min = ntkl_per_thread[k];
+								thread_min[list_of_threads[l]] = k;
+								threadbusy[k] = true;
+							}
+						}
+					}
+					
+				}
+				__syncthreads();
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("alt thread chosen for thread %d: %d \n", threadIdx.x, thread_min[threadIdx.x]);
+#endif
+				array_offset = thread_min[threadIdx.x]*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+				
+				tklcoll->setStationID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], binId);
+				tklcoll->setThreadID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], threadIdx.x);
+				tklcoll->setnHits(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], nhits_x);
+				tklcoll->setTx(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], tx);
+				tklcoll->setX0(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], x0);
+				tklcoll->setErrTx(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], ParErr[1]);
+				tklcoll->setErrX0(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], ParErr[0]);
+				
+				for(int n = 0; n<nhits_x; n++){
+					tklcoll->setHitDetID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, detID[n]);
+					tklcoll->setHitChan(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, elID[n]);
+					tklcoll->setHitPos(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, X[n]);
+					tklcoll->setHitDrift(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, drift[n]);
+					tklcoll->setHitSign(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, 0.0);
+#ifdef FULLCODE					
+					tklcoll->setHitTDC(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, tdc[n]);
+					tklcoll->setHitResidual(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, 0.0);
+#endif
+				}
+				ntkl_per_thread[thread_min[threadIdx.x]]++;
+				__syncthreads();
 			}
-
-			ntkl_per_thread[threadIdx.x]++;
 		}// end loop on hits
 	}//end loop on bins
 	//evaluate number of tracklets
@@ -577,17 +682,25 @@ __global__ void gKernel_XZ_tracking(
 	
 	int N_tracklets = 0;
 
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
+#endif
 	//__shared__ unsigned int array_thread_offset[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++){
 		N_tracklets+= ntkl_per_thread[k];
-		//array_thread_offset[k] = k*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	}
 	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
-		//printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
+#ifdef DEBUG
+		printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
+#endif
 		hastoomanyhits[blockIdx.x] = true;
 	}
 	nTracklets[blockIdx.x] = N_tracklets;
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" Ntracklets %d \n", N_tracklets);
+#endif
 	//at the end like that it's probably fine...
+	https://seaquest-docdb.fnal.gov/cgi-bin/sso/DisplayMeeting?conferenceid=2326
 	if(N_tracklets>=datasizes::TrackletSizeMax){
 		printf("block %d thread %d tracklets total %d \n", blockIdx.x, threadIdx.x, N_tracklets);
 		hastoomanyhits[blockIdx.x] = true;
@@ -607,8 +720,18 @@ __global__ void gKernel_XZ_tracking(
 		}
 	}
 #endif
-		
+
 }
+
+
+///////////////////////////////////////////////////////
+//
+// tracklets reordering/spreading over threads:
+//
+///////////////////////////////////////////////////////
+
+
+
 
 
 ////////////////////////////////////
@@ -838,7 +961,11 @@ __global__ void gKernel_YZ_tracking(
 	bool update_track;
 	//
 	for(int i = 0; i<Ntracks; i++){
-		if(threadIdx.x!=(int)Tracks.threadID(i))continue;
+#ifdef DEBUG
+		if(threadIdx.x!=(int)Tracks.threadID(i)){
+			printf("does that actually ever happen???? ");
+		}
+#endif
 		//tkl = Tracks.getTracklet(i);
 		x0 = Tracks.x0(i);
 		tx = Tracks.tx(i);
@@ -1155,14 +1282,14 @@ __global__ void gKernel_Global_tracking(
 	
 	projid = 1;
 	detid = geometry::detsuperid[stid][projid]*2;
-	detid_list[0] = detid;
+	detid_list[2] = detid;
 	int nhits_st1u;
 	const gHits hits_st1u = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1u);
 	const float z_st1u = planes->z[detid];
 	const float res_st1u = planes->spacing[detid];
 	
 	detid-= 1;
-	detid_list[1] = detid;
+	detid_list[3] = detid;
 	int nhits_st1up;
 	const gHits hits_st1up = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1up);
 	const float z_st1up = planes->z[detid];
@@ -1170,18 +1297,24 @@ __global__ void gKernel_Global_tracking(
 	
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
-	detid_list[2] = detid;
+	detid_list[4] = detid;
 	int nhits_st1v;
 	const gHits hits_st1v = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1v);
 	const float z_st1v = planes->z[detid];
 	const float res_st1v = planes->spacing[detid];
 	
 	detid-= 1;
-	detid_list[3] = detid;
+	detid_list[5] = detid;
 	int nhits_st1vp;
 	const gHits hits_st1vp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1vp);
 	const float z_st1vp = planes->z[detid];
 	const float res_st1vp = planes->spacing[detid];
+
+	// TODO: load the hodoscope hits
+	//detid = nChamberPlanes+1;
+	//int nhits_h1x1;
+	//const gHits hits_h1x1 = hitcolls->hitshodo(blockIdx.x, detid, nhits_h1x1);
+	
 	
 	//Sagitta ratio
 	float pos_exp[3];
