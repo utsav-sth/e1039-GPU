@@ -159,8 +159,6 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 			//printf("%d %d %d %d %d %d %d %d %d %1.0f %1.4f\n", ev, offsets_hitcoll_hodo[0], 31+threadIdx.x, i, offsets_hitcoll_hodo[0]+i, offsets_hitcoll_hodo[0]+i+nhits_hodo[0], offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*2, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*3, offsets_hitcoll_hodo[0]+i+nhits_hodo[0]*4, hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i], hitcolls->HitsHodoRawData[offsets_hitcoll_hodo[0]+i+nhits_hodo[0]]);
 
 		}
-	}
-	
 		int nhits_prop_ = hitcolls->NHitsPropTubes[blockIdx.x*nPropPlanes+threadIdx.x];
 		gHits hitcoll_prop2(hitcolls->HitsPropTubesRawData, nhits_prop_, offset_hitcoll_prop);
 		printf(" det offset %d array offset %d nhits_prop(%d) = %d \n", blockIdx.x*nPropPlanes+threadIdx.x, offset_hitcoll_prop, 47+threadIdx.x, nhits_prop_);
@@ -544,7 +542,7 @@ __global__ void gKernel_XZ_tracking(
 			}
 			if(nprop==0)continue;
 
-//#ifdef TEST
+#ifdef TEST
 			if(ntkl_per_thread[threadIdx.x]<datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
 				//what if we try to fill the large arrays straight from here?...
 				tklcoll->setStationID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], binId);
@@ -582,7 +580,7 @@ __global__ void gKernel_XZ_tracking(
 #endif
 				ntkl_per_thread[threadIdx.x]++;
 			}else{
-//#endif			
+#endif			
 				//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 				addtrack[threadIdx.x] = true;
 #ifdef DEBUG
@@ -675,9 +673,9 @@ __global__ void gKernel_XZ_tracking(
 				ntkl_per_thread[thread_min[threadIdx.x]]++;
 				tklcoll->NTracks[blockIdx.x*THREADS_PER_BLOCK+thread_min[threadIdx.x]]++;
 				__syncthreads();
-//#ifdef TEST
+#ifdef TEST
 			}
-//#endif
+#endif
 		}// end loop on hits
 	}//end loop on bins
 	//evaluate number of tracklets
@@ -686,9 +684,9 @@ __global__ void gKernel_XZ_tracking(
 	
 	int N_tracklets = 0;
 
-#ifdef DEBUG
+//#ifdef DEBUG
 	if(blockIdx.x==debug::EvRef)printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
-#endif
+//#endif
 	//__shared__ unsigned int array_thread_offset[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++){
 		if(tklcoll->NTracks[tklmult_idx]!=ntkl_per_thread[threadIdx.x])printf("block %d, thread %d n tracks for thread ? %d %d \n", blockIdx.x, threadIdx.x, tklcoll->NTracks[tklmult_idx], ntkl_per_thread[threadIdx.x]);
@@ -701,9 +699,9 @@ __global__ void gKernel_XZ_tracking(
 		hastoomanyhits[blockIdx.x] = true;
 	}
 	nTracklets[blockIdx.x] = N_tracklets;
-#ifdef DEBUG
+//#ifdef DEBUG
 	if(blockIdx.x==debug::EvRef)printf(" Ntracklets %d \n", N_tracklets);
-#endif
+//#endif
 	//at the end like that it's probably fine...
 	if(N_tracklets>=datasizes::TrackletSizeMax){
 		printf("block %d thread %d tracklets total %d \n", blockIdx.x, threadIdx.x, N_tracklets);

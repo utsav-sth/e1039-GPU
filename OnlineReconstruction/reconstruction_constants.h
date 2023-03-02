@@ -1,4 +1,5 @@
 //#define E1039
+//#define DEBUG 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
@@ -110,5 +111,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 13;
+  __host__ __device__ constexpr unsigned int EvRef = 7397;
 }
