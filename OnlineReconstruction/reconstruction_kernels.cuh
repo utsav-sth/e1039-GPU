@@ -543,7 +543,8 @@ __global__ void gKernel_XZ_tracking(
 				}
 			}
 			if(nprop==0)continue;
-						
+
+//#ifdef TEST
 			if(ntkl_per_thread[threadIdx.x]<datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
 				//what if we try to fill the large arrays straight from here?...
 				tklcoll->setStationID(tkl_coll_offset+array_thread_offset, ntkl_per_thread[threadIdx.x], binId);
@@ -581,6 +582,7 @@ __global__ void gKernel_XZ_tracking(
 #endif
 				ntkl_per_thread[threadIdx.x]++;
 			}else{
+//#endif			
 				//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 				addtrack[threadIdx.x] = true;
 #ifdef DEBUG
@@ -644,7 +646,6 @@ __global__ void gKernel_XZ_tracking(
 							}
 						}
 					}
-					
 				}
 				__syncthreads();
 #ifdef DEBUG
@@ -672,8 +673,11 @@ __global__ void gKernel_XZ_tracking(
 #endif
 				}
 				ntkl_per_thread[thread_min[threadIdx.x]]++;
+				tklcoll->NTracks[blockIdx.x*THREADS_PER_BLOCK+thread_min[threadIdx.x]]++;
 				__syncthreads();
+//#ifdef TEST
 			}
+//#endif
 		}// end loop on hits
 	}//end loop on bins
 	//evaluate number of tracklets
@@ -687,6 +691,7 @@ __global__ void gKernel_XZ_tracking(
 #endif
 	//__shared__ unsigned int array_thread_offset[THREADS_PER_BLOCK];
 	for(int k = 0; k<THREADS_PER_BLOCK; k++){
+		if(tklcoll->NTracks[tklmult_idx]!=ntkl_per_thread[threadIdx.x])printf("block %d, thread %d n tracks for thread ? %d %d \n", blockIdx.x, threadIdx.x, tklcoll->NTracks[tklmult_idx], ntkl_per_thread[threadIdx.x]);
 		N_tracklets+= ntkl_per_thread[k];
 	}
 	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
@@ -700,7 +705,6 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef)printf(" Ntracklets %d \n", N_tracklets);
 #endif
 	//at the end like that it's probably fine...
-	https://seaquest-docdb.fnal.gov/cgi-bin/sso/DisplayMeeting?conferenceid=2326
 	if(N_tracklets>=datasizes::TrackletSizeMax){
 		printf("block %d thread %d tracklets total %d \n", blockIdx.x, threadIdx.x, N_tracklets);
 		hastoomanyhits[blockIdx.x] = true;
@@ -723,7 +727,7 @@ __global__ void gKernel_XZ_tracking(
 
 }
 
-
+//is it even necessary???
 ///////////////////////////////////////////////////////
 //
 // tracklets reordering/spreading over threads:
@@ -731,8 +735,23 @@ __global__ void gKernel_XZ_tracking(
 ///////////////////////////////////////////////////////
 
 
-
-
+__global__ void gKernel_SpreadTracksOverThreads(
+	gEventTrackCollection* tklcoll,
+#ifdef DEBUG
+	int* eventID,
+#endif
+	bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x]){
+#ifdef DEBUG
+		if(threadIdx.x==0)printf("Evt %d discarded, too many hits\n", eventID[blockIdx.x]);
+#endif
+		return;
+	}
+	
+	
+	
+}
 
 ////////////////////////////////////
 //
