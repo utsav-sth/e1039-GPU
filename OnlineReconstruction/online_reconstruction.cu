@@ -681,7 +681,6 @@ int main(int argn, char * argv[]) {
 	// now data is transfered in the device: kernel function for event reconstruction called;
 	// note that the function call is made requesting a number of blocks and a number of threads per block
 	// in practice we have as many threads total as number of events; 
-	//gkernel_eR<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent);
 	gkernel_eR<<<BLOCKS_NUM,8>>>(device_gHits, device_gEvent->HasTooManyHits);
 	
 	// check status of device and synchronize;
@@ -707,9 +706,9 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-//#ifdef DEBUG
+#ifdef DEBUG
 	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
-//#endif
+#endif
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -730,9 +729,9 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-//#ifdef DEBUG
+#ifdef DEBUG
 	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
-//#endif
+#endif
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -824,7 +823,9 @@ int main(int argn, char * argv[]) {
 			nTracklets+= host_output_gTracks->NTracks[tklmult_idx];
 		}
 		out<<n<<" "<< nhits_total <<" "<<nTracklets <<endl;
+#ifdef DEBUG
 		if(n==debug::EvRef)cout << n<<" "<< host_output_eR->nAH[n] <<" "<< nTracklets <<endl;
+#endif
 		tklctr+= nTracklets;
 		
 		for(int k = 1; k<=nChamberPlanes; k++ )out << host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1] << " ";

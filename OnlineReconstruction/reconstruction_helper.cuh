@@ -287,15 +287,17 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	int idx1 = -1;
 	int idx2 = -1;
 	
-	//if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
-
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
+#endif
 	for(int i = 0; i<nhits1; i++){
 		idx1++;
 		idx2 = -1;
 		for(int j = 0; j<nhits2; j++){
 			idx2++;
-			//if(blockIdx.x==debug::EvRef && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
-
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
+#endif
 			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > geometry::spacingplane[superdetid] ){
 				continue;
 			}
@@ -368,7 +370,9 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 			p1x = x_tep(detid1, hitcoll1.chan(i), planes);
 			p2x = x_bep(detid1, hitcoll1.chan(i), planes);
 		}
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf("detid %d xmin %1.6f xmax %1.6f deltapx %1.6f p1x %1.6f p2x %1.6f \n", detid1, xmin, xmax, planes->deltapx[ detid1 ], p1x, p2x);
+#endif
 		if( (p1x <= xmax) && (p2x >= xmin) ){ 
 			hitidx1[hitctr1] = i;
 			hitctr1++;
@@ -382,7 +386,9 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 			p1x = x_tep(detid2, hitcoll2.chan(i), planes);
 			p2x = x_bep(detid2, hitcoll2.chan(i), planes);
 		}
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf("detid %d xmin %1.6f xmax %1.6f deltapx %1.6f p1x %1.6f p2x %1.6f \n", detid2, xmin, xmax, planes->deltapx[ detid2 ], p1x, p2x);
+#endif
 		if( (p1x <= xmax) && (p2x >= xmin) ){ 
 			hitidx2[hitctr2] = i;
 			hitctr2++;
