@@ -958,10 +958,10 @@ __global__ void gKernel_YZ_tracking(
 	float y0, ty;
 	
 	//Arrays for other basic hit info
-	float elID[4];
-	float pos[4];
-	float drift[4];
-	float tdc[4];
+	float elID[8];
+	float pos[8];
+	float drift[8];
+	//float tdc[8];
 
 	short nhits_uv;
 	
@@ -1088,10 +1088,11 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_u3[i_u3].first;
 				Z[nhits_uv] = z_st3u;
 				elID[nhits_uv] = (short)hits_st3u.chan(i_hit);
-				tdc[nhits_uv] = hits_st3u.tdc(i_hit);
+				//tdc[nhits_uv] = hits_st3u.tdc(i_hit);
 				drift[nhits_uv] = hits_st3u.drift(i_hit);
 				pos[nhits_uv] = hits_st3u.pos(i_hit);
 				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
@@ -1102,10 +1103,11 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_u3[i_u3].second;
 				Z[nhits_uv] = z_st3up;
 				elID[nhits_uv] = (short)hits_st3up.chan(i_hit);
-				tdc[nhits_uv] = hits_st3up.tdc(i_hit);
+				//tdc[nhits_uv] = hits_st3up.tdc(i_hit);
 				drift[nhits_uv] = hits_st3up.drift(i_hit);
 				pos[nhits_uv] = hits_st3up.pos(i_hit);
 				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
@@ -1120,10 +1122,11 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_v3[i_v3].first;
 				Z[nhits_uv] = z_st3v;
 				elID[nhits_uv] = (short)hits_st3v.chan(i_hit);
-				tdc[nhits_uv] = hits_st3v.tdc(i_hit);
+				//tdc[nhits_uv] = hits_st3v.tdc(i_hit);
 				drift[nhits_uv] = hits_st3v.drift(i_hit);
 				pos[nhits_uv] = hits_st3v.pos(i_hit);
 				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
@@ -1134,10 +1137,11 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_v3[i_v3].second;
 				Z[nhits_uv] = z_st3vp;
 				elID[nhits_uv] = (short)hits_st3vp.chan(i_hit);
-				tdc[nhits_uv] = hits_st3vp.tdc(i_hit);
+				//tdc[nhits_uv] = hits_st3vp.tdc(i_hit);
 				drift[nhits_uv] = hits_st3vp.drift(i_hit);
 				pos[nhits_uv] = hits_st3vp.pos(i_hit);
 				calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 				Y[nhits_uv] = y;
 				errY[nhits_uv] = err_y;
 				nhits_uv++;
@@ -1160,10 +1164,11 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_u2[i_u2].first;
 					Z[nhits_uv] = z_st2u;
 					elID[nhits_uv] = (short)hits_st2u.chan(i_hit);
-					tdc[nhits_uv] = hits_st2u.tdc(i_hit);
+					//tdc[nhits_uv] = hits_st2u.tdc(i_hit);
 					drift[nhits_uv] = hits_st2u.drift(i_hit);
 					pos[nhits_uv] = hits_st2u.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 					//if( (y-ty*z_st2u)/err_y<3.f ){//since ty is *very* rough let's be generous...				
 						Y[nhits_uv] = y;
 						errY[nhits_uv] = err_y;
@@ -1175,10 +1180,11 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_u2[i_u2].second;
 					Z[nhits_uv] = z_st2up;
 					elID[nhits_uv] = (short)hits_st2up.chan(i_hit);
-					tdc[nhits_uv] = hits_st2up.tdc(i_hit);
+					//tdc[nhits_uv] = hits_st2up.tdc(i_hit);
 					drift[nhits_uv] = hits_st2up.drift(i_hit);
 					pos[nhits_uv] = hits_st2up.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 					//if( fabs(y-ty*z_st2up)/err_y<3.f ){//since ty is *very* rough let's be generous...				
 						Y[nhits_uv] = y;
 						errY[nhits_uv] = err_y;
@@ -1194,10 +1200,11 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_v2[i_v2].first;
 					Z[nhits_uv] = z_st2v;
 					elID[nhits_uv] = (short)hits_st2v.chan(i_hit);
-					tdc[nhits_uv] = hits_st2v.tdc(i_hit);
+					//tdc[nhits_uv] = hits_st2v.tdc(i_hit);
 					drift[nhits_uv] = hits_st2v.drift(i_hit);
 					pos[nhits_uv] = hits_st2v.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 					//if( fabs(y-ty*z_st2v)/err_y<3.f ){//since ty is *very* rough let's be generous...				
 						Y[nhits_uv] = y;
 						errY[nhits_uv] = err_y;
@@ -1209,10 +1216,11 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_v2[i_v2].second;
 					Z[nhits_uv] = z_st2vp;
 					elID[nhits_uv] = (short)hits_st2vp.chan(i_hit);
-					tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
+					//tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
 					drift[nhits_uv] = hits_st2vp.drift(i_hit);
 					pos[nhits_uv] = hits_st2vp.pos(i_hit);
 					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 					//if( fabs(y-ty*z_st2vp)/err_y<3.f ){//since ty is *very* rough let's be generous...				
 						Y[nhits_uv] = y;
 						errY[nhits_uv] = err_y;
@@ -1423,7 +1431,7 @@ __global__ void gKernel_Global_tracking(
 	float elID[6];
 	float pos[6];
 	float drift[6];
-	float tdc[6];
+	//float tdc[6];
 
 	float X[3];
 	float errX[3];
@@ -1488,22 +1496,30 @@ __global__ void gKernel_Global_tracking(
 				detID[nhits_x] = detid_list[0];
 				i_hit = hitpairs_x1[i_x].first;
 				X[nhits_x] = hits_st1x.pos(i_hit);
+				pos[nhits_x] = hits_st1x.pos(i_hit);
 				errX[nhits_x] = res_st1x;
 				Z[nhits_x] = z_st1x;
 				elID[nhits_x] = (short)hits_st1x.chan(i_hit);
-				tdc[nhits_x] = hits_st1x.tdc(i_hit);
+				//tdc[nhits_x] = hits_st1x.tdc(i_hit);
 				drift[nhits_x] = hits_st1x.drift(i_hit);
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
+#endif
 				nhits_x++;
 			}
 			if(hitpairs_x1[i_x].second>=0){
 				detID[nhits_x] = detid_list[1];
 				i_hit = hitpairs_x1[i_x].second;
 				X[nhits_x] = hits_st1xp.pos(i_hit);
+				pos[nhits_x] = hits_st1xp.pos(i_hit);
 				errX[nhits_x] = res_st1xp;
 				Z[nhits_x] = z_st1xp;
 				elID[nhits_x] = (short)hits_st1xp.chan(i_hit);
-				tdc[nhits_x] = hits_st1xp.tdc(i_hit);
+				//tdc[nhits_x] = hits_st1xp.tdc(i_hit);
 				drift[nhits_x] = hits_st1xp.drift(i_hit);
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
+#endif
 				nhits_x++;
 			}
 			
@@ -1523,11 +1539,11 @@ __global__ void gKernel_Global_tracking(
 			invP = calculate_invP_charge(tx, tx_st1, charge);
 			errinvP = calculate_invP_error(errtx, errtx_st1);
 
-//#ifdef debug
+#ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
 			}
-//#endif
+#endif
 							
 			//add the UV hits
 			for(i_uv = 0; i_uv<ncomb_uv; i_uv++){
@@ -1536,52 +1552,65 @@ __global__ void gKernel_Global_tracking(
 				
 				nhits_uv = 0;
 				if(hitpairs_u1[i_u].first>=0){
-					detID[nhits_x+nhits_uv] = detid_list[0];
+					detID[nhits_x+nhits_uv] = detid_list[2];
 					i_hit = hitpairs_u1[i_u].first;
 					elID[nhits_x+nhits_uv] = (short)hits_st1u.chan(i_hit);
-					tdc[nhits_x+nhits_uv] = hits_st1u.tdc(i_hit);
+					//tdc[nhits_x+nhits_uv] = hits_st1u.tdc(i_hit);
 					drift[nhits_x+nhits_uv] = hits_st1u.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1u.pos(i_hit);
-					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0, tx, planes, y, err_y);
 					//if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u))/(err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<2.0 )
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+#endif
 					nhits_uv++;
 				}
 				if(hitpairs_u1[i_u].second>=0){
-					detID[nhits_uv] = detid_list[1];
+					detID[nhits_x+nhits_uv] = detid_list[3];
 					i_hit = hitpairs_u1[i_u].second;
-					Z[nhits_uv] = z_st1up;
-					elID[nhits_uv] = (short)hits_st1up.chan(i_hit);
-					tdc[nhits_uv] = hits_st1up.tdc(i_hit);
-					drift[nhits_uv] = hits_st1up.drift(i_hit);
-					pos[nhits_uv] = hits_st1up.pos(i_hit);
-					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					Z[nhits_x+nhits_uv] = z_st1up;
+					elID[nhits_x+nhits_uv] = (short)hits_st1up.chan(i_hit);
+					//tdc[nhits_x+nhits_uv] = hits_st1up.tdc(i_hit);
+					drift[nhits_x+nhits_uv] = hits_st1up.drift(i_hit);
+					pos[nhits_x+nhits_uv] = hits_st1up.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0, tx, planes, y, err_y);
 					//if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<2.0 )
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+#endif
 					nhits_uv++;
 				}
 				nhits_u = nhits_uv;
 				if(nhits_u==0)continue;
 				
 				if(hitpairs_v1[i_v].first>=0){
-					detID[nhits_x+nhits_uv] = detid_list[0];
+					detID[nhits_x+nhits_uv] = detid_list[4];
 					i_hit = hitpairs_v1[i_v].first;
+					Z[nhits_x+nhits_uv] = z_st1v;
 					elID[nhits_x+nhits_uv] = (short)hits_st1v.chan(i_hit);
-					tdc[nhits_x+nhits_uv] = hits_st1v.tdc(i_hit);
+					//tdc[nhits_x+nhits_uv] = hits_st1v.tdc(i_hit);
 					drift[nhits_x+nhits_uv] = hits_st1v.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1v.pos(i_hit);
-					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0, tx, planes, y, err_y);
 					//if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<2.0 )
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+#endif
 					nhits_uv++;
 				}
 				if(hitpairs_v1[i_v].second>=0){
-					detID[nhits_uv] = detid_list[1];
+					detID[nhits_x+nhits_uv] = detid_list[5];
 					i_hit = hitpairs_v1[i_v].second;
-					Z[nhits_uv] = z_st1vp;
-					elID[nhits_uv] = (short)hits_st1vp.chan(i_hit);
-					tdc[nhits_uv] = hits_st1vp.tdc(i_hit);
-					drift[nhits_uv] = hits_st1vp.drift(i_hit);
-					pos[nhits_uv] = hits_st1vp.pos(i_hit);
-					calculate_y_uvhit(detID[nhits_uv], elID[nhits_uv], drift[nhits_uv], 0, x0, tx, planes, y, err_y);
+					Z[nhits_x+nhits_uv] = z_st1vp;
+					elID[nhits_x+nhits_uv] = (short)hits_st1vp.chan(i_hit);
+					//tdc[nhits_x+nhits_uv] = hits_st1vp.tdc(i_hit);
+					drift[nhits_x+nhits_uv] = hits_st1vp.drift(i_hit);
+					pos[nhits_x+nhits_uv] = hits_st1vp.pos(i_hit);
+					calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0, tx, planes, y, err_y);
 					//if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<2.0 )
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+#endif
 					nhits_uv++;
 				}
 				nhits_v = nhits_uv-nhits_u;
@@ -1636,15 +1665,15 @@ __global__ void gKernel_Global_tracking(
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
 				
-			for(int n = 0; n<nhits_uv; n++){
-				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][16+n]);
-				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][34+n]);
-				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][52+n]);
-				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][70+n]);
-				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][88+n]);
+			for(int n = 0; n<nhits_st1; n++){
+				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
+				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][34+n]);
+				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][52+n]);
+				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][70+n]);
+				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][88+n]);
 #ifdef FULLCODE
-				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][106+n]);
-				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackdata[threadIdx.x][124+n]);
+				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][106+n]);
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
 #endif
 			}
 		}
