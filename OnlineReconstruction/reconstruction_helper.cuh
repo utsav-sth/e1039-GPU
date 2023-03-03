@@ -361,7 +361,6 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 	float p1x, p2x;
 	int hitctr1 = 0, hitctr2 = 0;
 	for(int i = 0; i<nhits1; i++){
-		//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
 		if(planes->deltapx[ detid1 ]>0){
 			p1x = x_bep(detid1, hitcoll1.chan(i), planes);
 			p2x = x_tep(detid1, hitcoll1.chan(i), planes);
@@ -369,24 +368,21 @@ __device__ int make_hitpairs_in_station(const gHits hitcoll1, const int nhits1, 
 			p1x = x_tep(detid1, hitcoll1.chan(i), planes);
 			p2x = x_bep(detid1, hitcoll1.chan(i), planes);
 		}
-		//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
-		//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+		if(blockIdx.x==debug::EvRef)printf("detid %d xmin %1.6f xmax %1.6f deltapx %1.6f p1x %1.6f p2x %1.6f \n", detid1, xmin, xmax, planes->deltapx[ detid1 ], p1x, p2x);
 		if( (p1x <= xmax) && (p2x >= xmin) ){ 
 			hitidx1[hitctr1] = i;
 			hitctr1++;
 		}
 	}
 	for(int i = 0; i<nhits2; i++){
-		//p1x = planes[ ic->AllHits[i].detectorID ].p1x_w1 + planes[ ic->AllHits[i].detectorID ].dp1x * (ic->AllHits[i].elementID-1);
-		if(planes[ detid2 ].deltapx>0){
+		if(planes->deltapx[ detid2 ]>0){
 			p1x = x_bep(detid2, hitcoll2.chan(i), planes);
 			p2x = x_tep(detid2, hitcoll2.chan(i), planes);
 		}else{
 			p1x = x_tep(detid2, hitcoll2.chan(i), planes);
 			p2x = x_bep(detid2, hitcoll2.chan(i), planes);
 		}
-		//printf("%d %d %1.6f p1-2x %1.6f %1.6f xmin-max %1.6f %1.6f \n", ic->AllHits[i].detectorID, ic->AllHits[i].elementID, ic->AllHits[i].pos, p1x, p2x, xmin, xmax);
-		//if(xmin>-999.)printf("xmin %1.6f xmax %1.6f p1x %1.6f p2x %1.6f \n", xmin, xmax, p1x, p2x);
+		if(blockIdx.x==debug::EvRef)printf("detid %d xmin %1.6f xmax %1.6f deltapx %1.6f p1x %1.6f p2x %1.6f \n", detid2, xmin, xmax, planes->deltapx[ detid2 ], p1x, p2x);
 		if( (p1x <= xmax) && (p2x >= xmin) ){ 
 			hitidx2[hitctr2] = i;
 			hitctr2++;

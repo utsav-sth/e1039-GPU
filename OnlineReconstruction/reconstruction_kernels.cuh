@@ -838,11 +838,13 @@ __global__ void gKernel_YZ_tracking(
 	stid = 2;
 	detoff = 1;
 	short detid_list[8];
+	float det_spacing[8];
 	
 	//Get the required hit collections here!
 	
 	detid = geometry::detsuperid[stid][projid]*2;
 	detid_list[0] = detid;
+	det_spacing[0] = planes->spacing[detid];
 	int nhits_st2u;
 	const gHits hits_st2u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2u);
 	const float z_st2u = planes->z[detid];
@@ -850,6 +852,7 @@ __global__ void gKernel_YZ_tracking(
 	
 	detid-= 1;
 	detid_list[1] = detid;
+	det_spacing[1] = planes->spacing[detid];
 	int nhits_st2up;
 	const gHits hits_st2up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2up);
 	const float z_st2up = planes->z[detid];
@@ -860,6 +863,7 @@ __global__ void gKernel_YZ_tracking(
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
 	detid_list[2] = detid;
+	det_spacing[2] = planes->spacing[detid];
 	int nhits_st2v;
 	const gHits hits_st2v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2v);
 	const float z_st2v = planes->z[detid];
@@ -867,6 +871,7 @@ __global__ void gKernel_YZ_tracking(
 	
 	detid-= 1;
 	detid_list[3] = detid;
+	det_spacing[3] = planes->spacing[detid];
 	int nhits_st2vp;
 	const gHits hits_st2vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2vp);
 	const float z_st2vp = planes->z[detid];
@@ -878,6 +883,7 @@ __global__ void gKernel_YZ_tracking(
 	stid = st3;
 	detid = geometry::detsuperid[stid][projid]*2;
 	detid_list[4] = detid;
+	det_spacing[4] = planes->spacing[detid];
 	int nhits_st3u;
 	const gHits hits_st3u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3u);
 	const float z_st3u = planes->z[detid];
@@ -886,6 +892,7 @@ __global__ void gKernel_YZ_tracking(
 	detid-= 1;
 	int nhits_st3up;
 	detid_list[5] = detid;
+	det_spacing[5] = planes->spacing[detid];
 	const gHits hits_st3up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3up);
 	const float z_st3up = planes->z[detid];
 	const float res_st3up = planes->spacing[detid];
@@ -895,6 +902,7 @@ __global__ void gKernel_YZ_tracking(
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
 	detid_list[6] = detid;
+	det_spacing[6] = planes->spacing[detid];
 	int nhits_st3v;
 	const gHits hits_st3v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3v);
 	const float z_st3v = planes->z[detid];
@@ -903,6 +911,7 @@ __global__ void gKernel_YZ_tracking(
 	detid-= 1;
 	int nhits_st3vp;
 	detid_list[7] = detid;
+	det_spacing[7] = planes->spacing[detid];
 	const gHits hits_st3vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3vp);
 	const float z_st3vp = planes->z[detid];
 	const float res_st3vp = planes->spacing[detid];
@@ -1025,28 +1034,28 @@ __global__ void gKernel_YZ_tracking(
 		stid = 2;
 		projid = 1;
 		//nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
-		xmin = min(x0-err_x0+(tx-err_tx)*z_st2u, x0-err_x0+(tx-err_tx)*z_st2up);
-		xmax = max(x0+err_x0+(tx+err_tx)*z_st2u, x0+err_x0+(tx+err_tx)*z_st2up);
+		xmin = min((tx-err_tx)*z_st2u, (tx-err_tx)*z_st2up)+x0-err_x0-det_spacing[0];
+		xmax = max((tx+err_tx)*z_st2u, (tx+err_tx)*z_st2up)+x0+err_x0+det_spacing[0];
 		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f tx %1.4f, xmin %1.4f xmax %1.4f z_st2u %1.4f  z_st2up %1.4f \n", x0, tx, xmin, xmax, z_st2u, z_st2up);
 		nu2 = make_hitpairs_in_station(hits_st2u, nhits_st2u, hits_st2up, nhits_st2up, hitpairs_u2, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, xmin, xmax);
 
 		projid = 2;
-		xmin = min(x0-err_x0+(tx-err_tx)*z_st2v, x0-err_x0+(tx-err_tx)*z_st2vp);
-		xmax = max(x0+err_x0+(tx+err_tx)*z_st2v, x0+err_x0+(tx+err_tx)*z_st2vp);
+		xmin = min((tx-err_tx)*z_st2v, (tx-err_tx)*z_st2vp)+x0-err_x0-det_spacing[2];
+		xmax = max((tx+err_tx)*z_st2v, (tx+err_tx)*z_st2vp)+x0+err_x0+det_spacing[2];
 		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f tx %1.4f, xmin %1.4f xmax %1.4f z_st2v %1.4f  z_st2vp %1.4f \n", x0, tx, xmin, xmax, z_st2v, z_st2vp);
 		nv2 = make_hitpairs_in_station(hits_st2v, nhits_st2v, hits_st2vp, nhits_st2vp, hitpairs_v2, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, xmin, xmax);
 
 		stid = st3;
 		projid = 1;
-		xmin = min(x0-err_x0+(tx-err_tx)*z_st3u, x0-err_x0+(tx-err_tx)*z_st3up);
-		xmax = max(x0+err_x0+(tx+err_tx)*z_st3u, x0+err_x0+(tx+err_tx)*z_st3up);
+		xmin = min((tx-err_tx)*z_st3u, (tx-err_tx)*z_st3up)+x0-err_x0-det_spacing[4];
+		xmax = max((tx+err_tx)*z_st3u, (tx+err_tx)*z_st3up)+x0+err_x0+det_spacing[4];
 		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f tx %1.4f, xmin %1.4f xmax %1.4f z_st3u %1.4f  z_st3up %1.4f \n", x0, tx, xmin, xmax, z_st3u, z_st3up);
 		nu3 = make_hitpairs_in_station(hits_st3u, nhits_st3u, hits_st3up, nhits_st3up, hitpairs_u3, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, xmin, xmax);
 
 		projid = 2;
 		projid = 2;
-		xmin = min(x0-err_x0+(tx-err_tx)*z_st3v, x0-err_x0+(tx-err_tx)*z_st3vp);
-		xmax = max(x0+err_x0+(tx+err_tx)*z_st3v, x0+err_x0+(tx+err_tx)*z_st3vp);
+		xmin = min((tx-err_tx)*z_st3v, (tx-err_tx)*z_st3vp)+x0-err_x0-det_spacing[0];
+		xmax = max((tx+err_tx)*z_st3v, (tx+err_tx)*z_st3vp)+x0+err_x0+det_spacing[0];
 		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f tx %1.4f, xmin %1.4f xmax %1.4f z_st3v %1.4f  z_st3vp %1.4f \n", x0, tx, xmin, xmax, z_st3v, z_st3vp);
 		nv3 = make_hitpairs_in_station(hits_st3v, nhits_st3v, hits_st3vp, nhits_st3vp, hitpairs_v3, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, xmin, xmax);
 		
@@ -1177,7 +1186,7 @@ __global__ void gKernel_YZ_tracking(
 					//}
 				}
 				
-				nhits_u2 = nhits_uv;
+				nhits_u2 = nhits_uv-nhits_u3-nhits_v3;
 				if(nhits_u2==0) continue;
 				
 				if(hitpairs_v2[i_v2].first>=0){
@@ -1211,7 +1220,7 @@ __global__ void gKernel_YZ_tracking(
 					//}
 				}
 				
-				nhits_v2 = nhits_uv-nhits_u2;
+				nhits_v2 = nhits_uv-nhits_u3-nhits_v3-nhits_u2;
 				if(nhits_v2==0) continue;
 				
 				fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
@@ -1225,11 +1234,11 @@ __global__ void gKernel_YZ_tracking(
 				
 				//TODO: LR ambiguity resolution
 				
-#ifdef DEBUG
+//#ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
-					printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d \n", threadIdx.x, localbin, y0, ty, nhits_x);
+					printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d, u3 %d, v3 %d, u2 %d, v2 %d\n", threadIdx.x, localbin, y0, ty, nhits_x, nhits_u3, nhits_v3, nhits_u2, nhits_v2);
 				}
-#endif
+//#endif
 				//if(chi2>chi2min && ){
 				//chi2min = chi2
 				update_track = true;
@@ -1454,7 +1463,7 @@ __global__ void gKernel_Global_tracking(
 		ty = Tracks.ty(i);
 		erry0 = Tracks.err_y0(i);
 		errty = Tracks.err_ty(i);
-
+		
 		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.hits_detid(i, Tracks.nHits(i)-1), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
 		
 		projid = 0;
@@ -1466,7 +1475,7 @@ __global__ void gKernel_Global_tracking(
 		projid = 2;
 		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
 
-		if(blockIdx.x==debug::EvRef)printf("nx1 %d nu1 %d nv1 %d \n", nx1, nu1, nv1);
+		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %1.0f, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.hits_detid(i, Tracks.nHits(i)-1), nx1, nu1, nv1);
 		
 		if(nx1==0 || nu1==0 || nv1==0)continue;
 		
