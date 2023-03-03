@@ -299,7 +299,18 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+124 + ihit ];
 		}
 #endif
-	
+	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			const int nhits = (int)nHits(index);
+			int detid;
+			int detid_max = -1;
+			for(int i = 0; i<nhits; i++){
+				detid = (int)hits_detid(index, i);
+				if(detid>detid_max)detid_max = detid;
+			}
+			return detid_max;		 
+		}	
 };
 
 struct gEventTrackCollection{

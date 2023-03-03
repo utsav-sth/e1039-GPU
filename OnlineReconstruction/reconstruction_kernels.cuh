@@ -1054,8 +1054,8 @@ __global__ void gKernel_YZ_tracking(
 
 		projid = 2;
 		projid = 2;
-		xmin = min((tx-err_tx)*z_st3v, (tx-err_tx)*z_st3vp)+x0-err_x0-det_spacing[0];
-		xmax = max((tx+err_tx)*z_st3v, (tx+err_tx)*z_st3vp)+x0+err_x0+det_spacing[0];
+		xmin = min((tx-err_tx)*z_st3v, (tx-err_tx)*z_st3vp)+x0-err_x0-det_spacing[6];
+		xmax = max((tx+err_tx)*z_st3v, (tx+err_tx)*z_st3vp)+x0+err_x0+det_spacing[6];
 		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f tx %1.4f, xmin %1.4f xmax %1.4f z_st3v %1.4f  z_st3vp %1.4f \n", x0, tx, xmin, xmax, z_st3v, z_st3vp);
 		nv3 = make_hitpairs_in_station(hits_st3v, nhits_st3v, hits_st3vp, nhits_st3vp, hitpairs_v3, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, xmin, xmax);
 		
@@ -1464,7 +1464,7 @@ __global__ void gKernel_Global_tracking(
 		erry0 = Tracks.err_y0(i);
 		errty = Tracks.err_ty(i);
 		
-		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.hits_detid(i, Tracks.nHits(i)-1), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
+		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.get_lasthitdetid(i), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
 		
 		projid = 0;
 		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
@@ -1475,7 +1475,7 @@ __global__ void gKernel_Global_tracking(
 		projid = 2;
 		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
 
-		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %1.0f, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.hits_detid(i, Tracks.nHits(i)-1), nx1, nu1, nv1);
+		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
 		
 		if(nx1==0 || nu1==0 || nv1==0)continue;
 		
