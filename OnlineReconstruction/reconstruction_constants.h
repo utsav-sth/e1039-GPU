@@ -18,8 +18,8 @@ const int THREADS_PER_BLOCK = 32;//16;//8;
 int BLOCKS_NUM = EstnEvtMax;///THREADS_PER_BLOCK;
 const int EstnAHMax = 4096;
 const int EstnTHMax = 256;
-const int ClusterSizeMax = 150;
-const int Track2DSizeMax = 256;
+const int ClusterSizeMax = 192;
+//const int Track2DSizeMax = 256;
 //const int TrackletSizeMax = 256;
 //const int MaxHitsPerTrack = 18;
 

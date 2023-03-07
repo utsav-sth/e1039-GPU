@@ -1018,8 +1018,9 @@ __global__ void gKernel_YZ_tracking(
 		}
 #endif
 		trackthread = (int)Tracks.threadID(i);
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
-		//tkl = Tracks.getTracklet(i);
+#endif
 		x0 = Tracks.x0(i);
 		tx = Tracks.tx(i);
 		err_x0 = Tracks.err_x0(i);
