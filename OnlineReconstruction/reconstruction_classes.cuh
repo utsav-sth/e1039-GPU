@@ -109,7 +109,7 @@ struct gTracklet {
 	float* m_trackletdata;
 	
 	__host__ __device__ gTracklet(float* basedata, const unsigned offset = 0) :
-		m_trackdata(reinterpret_cast<float*>(basedata) + offset)
+		m_trackletdata(reinterpret_cast<float*>(basedata) + offset)
 		{
 			static_assert(sizeof(float) == sizeof(unsigned));
 			assert((((size_t) basedata) & sizeof(float)) == 0);
@@ -232,11 +232,11 @@ struct gTracklet {
 #endif
 	__host__ __device__ inline unsigned int get_lasthitdetid() const
 		{
-			const int nhits = (int)nHits(index);
+			const int nhits = (int)nHits();
 			int detid;
 			int detid_max = -1;
 			for(int i = 0; i<nhits; i++){
-				detid = (int)hits_detid(index, i);
+				detid = (int)hits_detid(i);
 				if(detid>detid_max)detid_max = detid;
 			}
 			return detid_max;		 
