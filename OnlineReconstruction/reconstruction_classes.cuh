@@ -1,18 +1,5 @@
 #include "reconstruction_constants.h"
 
-//clone of LoadEvent::Hit:
-struct gHit {
-	public:
-	//int index; // global hit index in the hit array
-	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
-	short elementID; // ID of the element in the detector: wire/slat/tube number
-	float tdcTime; // raw TDC time from the DAQ 
-	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
-	//short sign_mc;//temp
-	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
-	//short flag; // 1: in time; 2: hodo mask; 3: trigger mask
-};
-
 //it may be beneficial to have several classes of hits...
 struct gHits {
 	public:
@@ -60,38 +47,6 @@ struct gHits {
 };
 
 
-struct gTracklet {
-      public:
-      __device__ gTracklet(){
-	nHits = 0;
-      }
-	            
-      short stationID;//0
-      short threadID;//1
-      short nHits;//2
-      float chisq;//3
-      float chisq_vtx;//4
-
-      
-      float tx;//5
-      float ty;//6
-      float x0;//7
-      float y0;//8
-      float invP;//9
-      
-      float err_tx;//10
-      float err_ty;//11
-      float err_x0;//12
-      float err_y0;//13
-      float err_invP;//14
-      
-      short charge;//15
-
-      //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits:16-105
-      short hitsign[datasizes::MaxHitsPerTrack];//106-123
-      float residual[datasizes::MaxHitsPerTrack];//124-141
-};
 
 struct gEvent {
 	public:
@@ -147,6 +102,147 @@ struct gEventHitCollections {
 	}
 
 };
+
+
+struct gTracklet {
+	public:
+	float* m_trackletdata;
+	
+	__host__ __device__ gTracklet(float* basedata, const unsigned offset = 0) :
+		m_trackdata(reinterpret_cast<float*>(basedata) + offset)
+		{
+			static_assert(sizeof(float) == sizeof(unsigned));
+			assert((((size_t) basedata) & sizeof(float)) == 0);
+		}
+	
+	__host__ __device__ inline float stationID() const
+		{
+			return m_trackletdata[0];
+		}
+
+	__host__ __device__ inline float threadID() const
+		{
+			return m_trackletdata[1];
+		}
+
+	__host__ __device__ inline float nHits() const
+		{
+			return m_trackletdata[2];
+		}
+	
+	__host__ __device__ inline float chisq() const
+		{
+			return m_trackletdata[3];
+		}
+	
+	__host__ __device__ inline float chisq_vtx() const
+		{
+			return m_trackletdata[4];
+		}
+
+	//track parameters
+	__host__ __device__ inline float tx() const
+		{
+			return m_trackletdata[5];
+		}
+
+	__host__ __device__ inline float ty() const
+		{
+			return m_trackletdata[6];
+		}
+
+	__host__ __device__ inline float x0() const
+		{
+			return m_trackletdata[7];
+		}
+
+	__host__ __device__ inline float y0() const
+		{
+			return m_trackletdata[8];
+		}
+
+	__host__ __device__ inline float invP() const
+		{
+			return m_trackletdata[9];
+		}
+
+	__host__ __device__ inline float err_tx() const
+		{
+			return m_trackletdata[10];
+		}
+
+	__host__ __device__ inline float err_ty() const
+		{
+			return m_trackletdata[11];
+		}
+
+	__host__ __device__ inline float err_x0() const
+		{
+			return m_trackletdata[12];
+		}
+
+	__host__ __device__ inline float err_y0() const
+		{
+			return m_trackletdata[13];
+		}
+
+	__host__ __device__ inline float err_invP() const
+		{
+			return m_trackletdata[14];
+		}
+
+	__host__ __device__ inline float charge() const
+		{
+			return m_trackletdata[15];
+		}
+
+	__host__ __device__ inline float hits_detid(const unsigned ihit) const
+		{
+			return m_trackletdata[16 + ihit ];
+		}
+
+	__host__ __device__ inline float hits_chan(const unsigned ihit) const
+		{
+			return m_trackletdata[34 + ihit ];
+		}
+
+	__host__ __device__ inline float hits_pos(const unsigned ihit) const
+		{
+			return m_trackletdata[52 + ihit ];
+		}
+
+	__host__ __device__ inline float hits_drift(const unsigned ihit) const
+		{
+			return m_trackletdata[70 + ihit ];
+		}
+	
+	__host__ __device__ inline float hits_sign(const unsigned ihit) const
+		{
+			return m_trackletdata[88 + ihit ];
+		}
+#ifdef FULLCODE	
+	__host__ __device__ inline float hits_tdc(const unsigned ihit) const
+		{
+			return m_trackletdata[124 + ihit ];
+		}
+	__host__ __device__ inline float hits_residual(const unsigned ihit) const
+		{
+			return m_trackletdata[124 + ihit ];
+		}
+#endif
+	__host__ __device__ inline unsigned int get_lasthitdetid() const
+		{
+			const int nhits = (int)nHits(index);
+			int detid;
+			int detid_max = -1;
+			for(int i = 0; i<nhits; i++){
+				detid = (int)hits_detid(index, i);
+				if(detid>detid_max)detid_max = detid;
+			}
+			return detid_max;		 
+		}	
+};
+
 
 struct gTracks {
 	public:
@@ -310,8 +406,15 @@ struct gTracks {
 				if(detid>detid_max)detid_max = detid;
 			}
 			return detid_max;		 
-		}	
+		}
+	
+	__host__ __device__ inline gTracklet Track(const unsigned index)
+		{
+			assert(index < NTracksTotal);
+			return gTracklet(m_trackdata, TrackSize*index);
+		}
 };
+
 
 struct gEventTrackCollection{
 	unsigned short NTracks[EstnEvtMax*THREADS_PER_BLOCK];
@@ -442,6 +545,53 @@ struct gPlane {
 };
 
 #ifdef OLDCODE
+
+
+//clone of LoadEvent::Hit:
+struct gHit {
+	public:
+	//int index; // global hit index in the hit array
+	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
+	short elementID; // ID of the element in the detector: wire/slat/tube number
+	float tdcTime; // raw TDC time from the DAQ 
+	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
+	//short sign_mc;//temp
+	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
+	//short flag; // 1: in time; 2: hodo mask; 3: trigger mask
+};
+
+struct gTracklet {
+      public:
+      __device__ gTracklet(){
+	nHits = 0;
+      }
+	            
+      short stationID;//0
+      short threadID;//1
+      short nHits;//2
+      float chisq;//3
+      float chisq_vtx;//4
+
+      
+      float tx;//5
+      float ty;//6
+      float x0;//7
+      float y0;//8
+      float invP;//9
+      
+      float err_tx;//10
+      float err_ty;//11
+      float err_x0;//12
+      float err_y0;//13
+      float err_invP;//14
+      
+      short charge;//15
+
+      //maybe we can be a bit more sober in memory, and just require hit "event" index?
+      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits:16-105
+      short hitsign[datasizes::MaxHitsPerTrack];//106-123
+      float residual[datasizes::MaxHitsPerTrack];//124-141
+};
 
 #endif
 

@@ -82,6 +82,7 @@ void printDeviceStatus() {
 	}
 }
 
+#ifdef OLDCODE
 
 // Hit comparison
 struct lessthan {
@@ -118,7 +119,7 @@ struct lessthan {
 	}
 };
 
-
+#endif
 
 
 int main(int argn, char * argv[]) {
