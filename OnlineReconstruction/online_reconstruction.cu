@@ -1,5 +1,3 @@
-#include "gpufit.h"
-#include "interface.h"
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -58,6 +56,12 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+#define CUDA_CHECK_STATUS( cuda_function_call ) \
+        if (cudaError_t const status = cuda_function_call) \
+        { \
+            throw std::runtime_error( cudaGetErrorString( status ) ) ; \
+        }
+        
 // looping on all GPUs to check their status
 void printDeviceStatus() {
 	int nDevices;
