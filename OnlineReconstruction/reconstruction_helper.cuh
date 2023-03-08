@@ -714,6 +714,22 @@ __device__ void resolve_single_leftright_newhits(const float x0, const float tx,
 	
 }
 
+__device__ void resolve_single_leftright_xhits(const float x0, const float tx, const short nhits, const short* hits_detid, const float* hits_pos, short* hits_sign, const float* z_array)
+{
+	float pos_exp;
+	short detID;
+	
+	for(short n = 0; n<nhits; n++){
+		// don't do anything for hits whichs already have a sign...
+		if(hits_sign[n])continue;
+		detID = hits_detid[n];
+		
+		pos_exp = z_array[detID]*tx+x0;
+		hits_sign[n] = pos_exp>hits_pos[n]? +1 : -1;
+	}
+	
+}
+
 
 __device__ void resolve_leftright(const gTracklet tkl, float* hitsign, const gPlane* planes, const float thr)
 {
