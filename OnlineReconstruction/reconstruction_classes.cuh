@@ -408,7 +408,7 @@ struct gTracks {
 			return detid_max;		 
 		}
 	
-	__host__ __device__ inline gTracklet Track(const unsigned index)
+	__host__ __device__ inline gTracklet Track(const unsigned index) const
 		{
 			assert(index < NTracksTotal);
 			return gTracklet(m_trackdata, TrackSize*index);

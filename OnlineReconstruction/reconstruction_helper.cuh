@@ -35,8 +35,15 @@ __device__ float z_tep(const int detid, const int elid, const gPlane* plane)
 	return z_bep(detid, elid, plane)+plane->deltapz[detid];
 }
 
+
+
+__device__ float position(const float pos, const float drift, const short sign)
+{
+	return (pos+sign*drift);
+}
+
 // ---------------------------------------------------------------- //
-//
+// functions to return track state at a certain z
 // ---------------------------------------------------------------- //
 
 __device__ float x_trk(const float x0, const float tx, const float z)
@@ -501,24 +508,35 @@ __device__ void SagittaRatioInStation1(const float x0, const float tx, const flo
 // and function to calculate inverse momentum    //
 // --------------------------------------------- //
 
-#ifdef OLDCODE
+__device__ void calculate_x0_tx_st1(const float x0, const float tx, const float invP, const short charge, float &x0_st1, float &tx_st1)
+{	
+	tx_st1 = tx + geometry::PT_KICK_KMAG * invP * charge;
+	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx * geometry::Z_KMAG_BEND;
+}
+
+__device__ void calculate_x0_tx_st1_with_errors(const float x0, const float tx, const float invP, const short charge, const float err_x0, const float err_tx, const float err_invP, float &x0_st1, float &tx_st1, float &err_x0_st1, float &err_tx_st1)
+{	
+	tx_st1 = tx + geometry::PT_KICK_KMAG * invP * charge;
+	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx * geometry::Z_KMAG_BEND;
+	
+	err_tx_st1 = err_tx + fabs(err_invP*geometry::PT_KICK_KMAG);
+	err_x0_st1 = err_x0 + fabs(err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
+}
 
 __device__ void calculate_x0_tx_st1(const gTracklet tkl, float &x0, float &tx)
 {	
-	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
-	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
+	tx = tkl.tx() + geometry::PT_KICK_KMAG * tkl.invP() * tkl.charge();
+	x0 = tkl.tx()*geometry::Z_KMAG_BEND + tkl.x0() - tx * geometry::Z_KMAG_BEND;
 }
 
 __device__ void calculate_x0_tx_st1_with_errors(const gTracklet tkl, float &x0, float &tx, float &err_x0, float &err_tx)
 {	
-	tx = tkl.tx + geometry::PT_KICK_KMAG * tkl.invP * tkl.charge;
-	x0 = tkl.tx*geometry::Z_KMAG_BEND + tkl.x0 - tx * geometry::Z_KMAG_BEND;
+	tx = tkl.tx() + geometry::PT_KICK_KMAG * tkl.invP() * tkl.charge();
+	x0 = tkl.tx()*geometry::Z_KMAG_BEND + tkl.x0() - tx * geometry::Z_KMAG_BEND;
 	
-	err_tx = tkl.err_tx + fabs(tkl.err_invP*geometry::PT_KICK_KMAG);
-        err_x0 = tkl.err_x0 + fabs(tkl.err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
+	err_tx = tkl.err_tx() + fabs(tkl.err_invP()*geometry::PT_KICK_KMAG);
+	err_x0 = tkl.err_x0() + fabs(tkl.err_invP()*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;
 }
-
-#endif
 
 __device__ float calculate_invP(float tx, float tx_st1, const short charge)
 {
@@ -605,17 +623,15 @@ __device__ float refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitA
 	return chi2;
 }
 
+#endif
 
 
 // ----------------------------------------------------------- //
 // function to resolve the left right ambiguities in the track //
 // ----------------------------------------------------------- //
 
-__device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const float thr)
+__device__ void resolve_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const float err_x0, const float err_tx, const float err_y0, const float err_ty, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const gPlane* planes, const float thr)
 {
-	//bool isUpdated = false;
-	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
-	//short nresolved = 0;
 	short i, j;
 	int indexmin = -1;
 	float pull_min = 1.e6;
@@ -623,46 +639,39 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 	float slope_local, inter_local;
 	float slope_exp, inter_exp;
 	float err_slope, err_inter;
-	float x0, tx;// x0 and tx are different for global track station 1 hits 
-	float err_x0, err_tx;// x0 and tx are different for global track station 1 hits 
+	short detID_i, detID_j;
+
 	for(short n = 0; n<nhits; n+=2){
 		i = n;
 		j = i+1;
-		if( abs(tkl.hits[i].detectorID-tkl.hits[j].detectorID)!=1 ){
+		detID_i = hits_detid[i];
+		detID_j = hits_detid[j];
+		if( abs(detID_i-detID_j)!=1 ){
 		    n--;//step back by 1 to move by 1 hit instead of 2
 		    continue;		    
 		}
+				
+		slope_exp = planes->costheta[detID_i]*tx + planes->sintheta[detID_i]*ty;
+		err_slope = fabs(planes->costheta[detID_i]*err_tx) + fabs(planes->sintheta[detID_i]*err_ty);
 		
-		if(tkl.stationID>=6 && tkl.hits[i].detectorID<=6){
-			calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
-		}else{
-			tx = tkl.tx;
-			x0 = tkl.x0;
-			err_x0 = tkl.err_x0;
-			err_tx = tkl.err_tx;
-		}
-		
-		slope_exp = planes->costheta[tkl.hits[i].detectorID]*tx + planes->sintheta[tkl.hits[i].detectorID]*tkl.ty;
-		err_slope = fabs(planes->costheta[tkl.hits[i].detectorID]*err_tx) + fabs(planes->sintheta[tkl.hits[i].detectorID]*tkl.err_ty);
-		
-		inter_exp = planes->costheta[tkl.hits[i].detectorID]*x0 + planes->sintheta[tkl.hits[i].detectorID]*tkl.y0;
-		err_inter = fabs(planes->costheta[tkl.hits[i].detectorID]*err_x0) + fabs(planes->sintheta[tkl.hits[i].detectorID]*tkl.err_y0);
-		
+		inter_exp = planes->costheta[detID_i]*x0 + planes->sintheta[detID_i]*y0;
+		err_inter = fabs(planes->costheta[detID_i]*err_x0) + fabs(planes->sintheta[detID_i]*err_y0);
+		//position(const float pos, const float drift, const short sign)
 #ifdef DEBUG
-		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", tkl.hits[i].detectorID, tkl.hits[j].detectorID, slope_exp, err_slope, inter_exp, err_inter);
+		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
 		printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
-			position(tkl.hits[i], +1), position(tkl.hits[i], -1), 
-			position(tkl.hits[j], +1), position(tkl.hits[j], -1));
+			position(hits_pos[i], hits_drift[i], +1), position(hits_pos[i], hits_drift[i], -1), 
+			position(hits_pos[j], hits_drift[j], +1), position(hits_pos[i], hits_drift[j], -1));
 #endif
-
-		if(tkl.hitsign[i]*tkl.hitsign[j]==0){
+		
+		if(hits_sign[i]*hits_sign[j]==0){
 			indexmin = -1;
 			pull_min = 1.e6;
 			for(int k = 0; k<4; k++){
-				slope_local = ( position(tkl.hits[i], geometry::lrpossibility[k][0]) - position(tkl.hits[j], geometry::lrpossibility[k][1]) )/(planes->z[tkl.hits[i].detectorID]-planes->z[tkl.hits[j].detectorID]);
-				inter_local = position(tkl.hits[i], geometry::lrpossibility[k][0]) - slope_local*planes->z[tkl.hits[i].detectorID];
+				slope_local = ( position( hits_pos[i], hits_drift[i],  geometry::lrpossibility[k][0]) - position(hits_pos[j], hits_drift[j],  geometry::lrpossibility[k][1]) ) / ( planes->z[detID_i]-planes->z[detID_j] );
+				inter_local = position(hits_pos[i], hits_drift[i], geometry::lrpossibility[k][0]) - slope_local*planes->z[detID_i];
 				
-				if(fabs(slope_local) > planes->slope_max[tkl.hits[i].detectorID] || fabs(inter_local) > planes->inter_max[tkl.hits[i].detectorID])continue;
+				if(fabs(slope_local) > planes->slope_max[detID_i] || fabs(inter_local) > planes->inter_max[detID_i])continue;
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
@@ -677,8 +686,8 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 			}
 			
 			if(indexmin>0 && pull_min<thr){
-				tkl.hitsign[i] = geometry::lrpossibility[indexmin][0];
-				tkl.hitsign[j] = geometry::lrpossibility[indexmin][1];
+				hits_sign[i] = geometry::lrpossibility[indexmin][0];
+				hits_sign[j] = geometry::lrpossibility[indexmin][1];
 				//isUpdated = true;
 			}
 		}
@@ -686,33 +695,130 @@ __device__ void resolve_leftright(gTracklet &tkl, const gPlane* planes, const fl
 	}
 }
 
-__device__ void resolve_single_leftright(gTracklet &tkl, const gPlane* planes)
+
+
+//This function just does the left right resolution for the newest hits (as a way to naturally handle st2-3 and st1 segments)
+__device__ void resolve_single_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const short nhits, const short* hits_detid, const float* hits_pos, short* hits_sign, const gPlane* planes)
 {
-	short nhits = tkl.nXHits+tkl.nUHits+tkl.nVHits;
+	float pos_exp;
+	short detID;
+	
+	for(short n = 0; n<nhits; n++){
+		// don't do anything for hits whichs already have a sign...
+		if(hits_sign[n])continue;
+		detID = hits_detid[n];
+		
+		pos_exp = (planes->z[detID]*tx+x0)*planes->costheta[detID]+(planes->z[detID]*ty+y0)*planes->sintheta[detID];
+		hits_sign[n] = pos_exp>hits_pos[n]? +1 : -1;
+	}
+	
+}
+
+
+__device__ void resolve_leftright(const gTracklet tkl, float* hitsign, const gPlane* planes, const float thr)
+{
+	//bool isUpdated = false;
+	short nhits = tkl.nHits();
+	//short nresolved = 0;
+	short i, j;
+	int indexmin = -1;
+	float pull_min = 1.e6;
+	float pull;
+	float slope_local, inter_local;
+	float slope_exp, inter_exp;
+	float err_slope, err_inter;
+	float x0, tx;// x0 and tx are different for global track station 1 hits 
+	float err_x0, err_tx;// x0 and tx are different for global track station 1 hits 
+	short detID_i, detID_j;
+
+	for(short n = 0; n<nhits; n+=2){
+		i = n;
+		j = i+1;
+		detID_i = (short)tkl.hits_detid(i);
+		detID_j = (short)tkl.hits_detid(j);
+		if( abs(detID_i-detID_j)!=1 ){
+		    n--;//step back by 1 to move by 1 hit instead of 2
+		    continue;		    
+		}
+		
+		if(tkl.stationID()>=6 && detID_i<=12){
+			calculate_x0_tx_st1_with_errors(tkl, x0, tx, err_x0, err_tx);
+		}else{
+			tx = tkl.tx();
+			x0 = tkl.x0();
+			err_x0 = tkl.err_x0();
+			err_tx = tkl.err_tx();
+		}
+		
+		slope_exp = planes->costheta[detID_i]*tx + planes->sintheta[detID_i]*tkl.ty();
+		err_slope = fabs(planes->costheta[detID_i]*err_tx) + fabs(planes->sintheta[detID_i]*tkl.err_ty());
+		
+		inter_exp = planes->costheta[detID_i]*x0 + planes->sintheta[detID_i]*tkl.y0();
+		err_inter = fabs(planes->costheta[detID_i]*err_x0) + fabs(planes->sintheta[detID_i]*tkl.err_y0());
+		//position(const float pos, const float drift, const short sign)
+#ifdef DEBUG
+		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, tkl.hits_detid(j), slope_exp, err_slope, inter_exp, err_inter);
+		printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
+			position(tkl.hits_pos(i), tkl.hits_drift(i), +1), position(tkl.hits_pos(i), tkl.hits_drift(i), -1), 
+			position(tkl.hits_pos(j), tkl.hits_drift(j), +1), position(tkl.hits_pos(i), tkl.hits_drift(j), -1));
+#endif
+
+		if(tkl.hits_sign(i)*tkl.hits_sign(j)==0){
+			indexmin = -1;
+			pull_min = 1.e6;
+			for(int k = 0; k<4; k++){
+				slope_local = ( position( tkl.hits_pos(i), tkl.hits_drift(i),  geometry::lrpossibility[k][0]) - position(tkl.hits_pos(j), tkl.hits_drift(j),  geometry::lrpossibility[k][1]) ) / ( planes->z[detID_i]-planes->z[detID_j] );
+				inter_local = position(tkl.hits_pos(i), tkl.hits_drift(i), geometry::lrpossibility[k][0]) - slope_local*planes->z[detID_i];
+				
+				if(fabs(slope_local) > planes->slope_max[detID_i] || fabs(inter_local) > planes->inter_max[detID_i])continue;
+				
+				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
+				
+#ifdef DEBUG
+				printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
+				printf("pull %1.4f\n", pull);
+#endif		
+				if(pull<pull_min){
+					indexmin = k;
+					pull_min = pull;
+				}
+			}
+			
+			if(indexmin>0 && pull_min<thr){
+				hitsign[i] = geometry::lrpossibility[indexmin][0];
+				hitsign[j] = geometry::lrpossibility[indexmin][1];
+				//isUpdated = true;
+			}
+		}
+	//	++nresolved;
+	}
+}
+
+
+__device__ void resolve_single_leftright(const gTracklet tkl, float* hitsign, const gPlane* planes)
+{
+	short nhits = tkl.nHits();
 	float pos_exp;
 	short detID;
 	float x0, tx;// x0 and tx are different for global track station 1 hits 
 	
 	for(short n = 0; n<nhits; n++){
-
-		if(tkl.stationID>=6 && tkl.hits[n].detectorID<=6){
+		// don't do anything for hits whichs already have a sign...
+		if(tkl.hits_sign(n)!=0 || hitsign[n])continue;
+		detID = tkl.hits_detid(n);
+				
+		if(tkl.stationID()>=6 && detID<=12){
 			calculate_x0_tx_st1(tkl, x0, tx);
 		}else{
-			tx = tkl.tx;
-			x0 = tkl.x0;
+			tx = tkl.tx();
+			x0 = tkl.x0();
 		}
 		
-		// don't do anything for hits whichs already have a sign...
-		if(tkl.hitsign[n]!=0)continue;
-		
-		detID = tkl.hits[n].detectorID;
-		pos_exp = (planes->z[detID]*tx+x0)*planes->costheta[detID]+(planes->z[detID]*tkl.ty+tkl.y0)*planes->sintheta[detID];
-		tkl.hitsign[n] = pos_exp>tkl.hits[n].pos? +1 : -1;
+		pos_exp = (planes->z[detID]*tx+x0)*planes->costheta[detID]+(planes->z[detID]*tkl.ty()+tkl.y0())*planes->sintheta[detID];
+		hitsign[n] = pos_exp>tkl.hits_pos(n)? +1 : -1;
 	}
 	
 }
-
-#endif
 
 
 #ifdef OLDCODE
