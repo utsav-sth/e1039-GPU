@@ -747,6 +747,27 @@ int main(int argn, char * argv[]) {
 	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
+	gKernel_Vertexing<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+		device_gTracks,
+		device_gPlane->z,
+#ifdef DEBUG
+		device_gEvent->EventID,
+#endif
+		device_gEvent->HasTooManyHits);
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+#ifdef DEBUG
+	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
+#endif
+
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	auto cp8 = std::chrono::system_clock::now();
+	auto gpu_vtx = cp8-cp7;
+	cout<<"GPU: Vertexing: "<<gpu_vtx.count()/1000000000.<<endl;
 
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
@@ -769,9 +790,9 @@ int main(int argn, char * argv[]) {
 	
 	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
 	//cudaFree(device_output_TKL);
-
-	auto cp8 = std::chrono::system_clock::now();
-	auto cp_to_cpu = cp8-cp7;
+	
+	auto cp9 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp9-cp8;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 	
 	int nGood = EstnEvtMax;
@@ -877,8 +898,8 @@ int main(int argn, char * argv[]) {
 	//}
 	//output->Write();
 
-	auto cp9 = std::chrono::system_clock::now();
-	auto write_output = cp9-cp8;
+	auto cp10 = std::chrono::system_clock::now();
+	auto write_output = cp10-cp9;
 	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
 
 	// printing the time required for all operations

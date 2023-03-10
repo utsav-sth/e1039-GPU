@@ -407,6 +407,19 @@ struct gTracks {
 			}
 			return detid_max;		 
 		}
+
+	__host__ __device__ inline unsigned int get_firsthitdetid(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			const int nhits = (int)nHits(index);
+			int detid;
+			int detid_min = -1;
+			for(int i = 0; i<nhits; i++){
+				detid = (int)hits_detid(index, i);
+				if(detid<detid_min)detid_min = detid;
+			}
+			return detid_min;
+		}
 	
 	__host__ __device__ inline gTracklet Track(const unsigned index) const
 		{

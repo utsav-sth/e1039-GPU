@@ -1395,14 +1395,14 @@ __global__ void gKernel_Global_tracking(
 	//Get the required hit collections here!
 	projid = 0;
 	detid = geometry::detsuperid[stid][projid]*2;
-	detid_list[0] = detid;
+	detid_list[0] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1x;
 	const gHits hits_st1x = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1x);
 	const float z_st1x = planes->z[detid];
 	const float res_st1x = planes->spacing[detid];
 	
 	detid-= 1;
-	detid_list[1] = detid;
+	detid_list[1] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1xp;
 	const gHits hits_st1xp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1xp);
 	const float z_st1xp = planes->z[detid];
@@ -1410,14 +1410,14 @@ __global__ void gKernel_Global_tracking(
 	
 	projid = 1;
 	detid = geometry::detsuperid[stid][projid]*2;
-	detid_list[2] = detid;
+	detid_list[2] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1u;
 	const gHits hits_st1u = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1u);
 	const float z_st1u = planes->z[detid];
 	const float res_st1u = planes->spacing[detid];
 	
 	detid-= 1;
-	detid_list[3] = detid;
+	detid_list[3] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1up;
 	const gHits hits_st1up = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1up);
 	const float z_st1up = planes->z[detid];
@@ -1425,14 +1425,14 @@ __global__ void gKernel_Global_tracking(
 	
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
-	detid_list[4] = detid;
+	detid_list[4] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1v;
 	const gHits hits_st1v = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1v);
 	const float z_st1v = planes->z[detid];
 	const float res_st1v = planes->spacing[detid];
 	
 	detid-= 1;
-	detid_list[5] = detid;
+	detid_list[5] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1vp;
 	const gHits hits_st1vp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1vp);
 	const float z_st1vp = planes->z[detid];
@@ -1811,10 +1811,192 @@ __global__ void gKernel_Global_tracking(
 	}//end tracklets loop
 }
 
+// --------------- //
+//
+// Track vertexing 
+//
+// --------------- //
 
+__global__ void gKernel_Vertexing(
+	gEventTrackCollection* tklcoll,
+	const float* z_array,
+#ifdef DEBUG
+	int* eventID,
+#endif
+	bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x]){
+#ifdef DEBUG
+		if(threadIdx.x==0)printf("Evt %d discarded, too many hits\n", eventID[blockIdx.x]);
+#endif
+		return;
+	}
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	unsigned int Ntracks;
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	short detid_first;
+	
+	float z_0;
+	float state_0[5];
+	//float cov_mat_0[25];
+	
+	float tx_i, tx_f;
+	float ptot_i, ptot_b, ptot_f;
+	float pz_0, pz_f;
+	float traj1[3];
+	float traj2[3];
+	float pos_b[3];
+	
+	float x0, tx, x0_st1, tx_st1, y0, ty, invP, charge;
+	
+	int ix, iy, iz;
+	int ix_m1, iy_m1, iz_m1;
 
+	float pos_array[3*(geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET)];
+	float mom_array[3*(geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET)];
+	
+	float dump_pos[3];
+	float dump_mom[3];
+	
+	float dz;
+	int step;
+	
+	for(int i = 0; i<Ntracks; i++){
+		if(Tracks.stationID(i)<6)continue;
+		
+		x0 = Tracks.x0(i);
+		y0 = Tracks.y0(i);
+		tx = Tracks.tx(i);
+		ty = Tracks.ty(i);
+		invP = Tracks.invP(i); 
+		charge = Tracks.charge(i); 
+		detid_first = Tracks.get_firsthitdetid(i);
+		
+		calculate_x0_tx_st1(x0, tx, invP, charge, x0_st1, tx_st1);
+		
+		z_0 = z_array[detid_first];
+		
+		state_0[0] = charge*invP*sqrtf(1.f+tx_st1*tx_st1+ty*ty);
+		state_0[1] = tx_st1;
+		state_0[2] = ty;
+		state_0[3] = x_trk(x0_st1, tx_st1, z_0);
+		state_0[4] = y_trk(y0, ty, z_0);
+		
+		pos_array[0] = x0_st1+tx_st1*(geometry::FMAG_LENGTH-z_0);
+		pos_array[1] = y0+ty*(geometry::FMAG_LENGTH-z_0);
+		pos_array[2] = geometry::FMAG_LENGTH;
+		
+		pz_0 = 1.f/(state_0[0]*sqrtf(1.f+state_0[1]*state_0[1]+state_0[2]*state_0[2]));
+		
+		mom_array[0] = pz_0*state_0[1];
+		mom_array[1] = pz_0*state_0[2];
+		mom_array[2] = pz_0;
+		
+		for(step = 1; step <= geometry::NSTEPS_FMAG; step++){
+			ix = step*3;
+			iy = step*3+1;
+			iz = step*3+2;
+			ix_m1 = (step-1)*3;
+			iy_m1 = (step-1)*3+1;
+			iz_m1 = (step-1)*3+2;
+			
+			tx_i = mom_array[ix_m1]/mom_array[iz_m1];
+			tx_f = tx_i + 2.f*charge*geometry::PTKICK_UNIT*geometry::STEP_FMAG/sqrt(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iz_m1]*mom_array[iz_m1]);
+			
+			traj1[0] = tx_i*geometry::STEP_FMAG;
+			traj1[1] = ty*geometry::STEP_FMAG;
+			traj1[2] = geometry::STEP_FMAG;
+			
+			pos_b[0] = pos_array[ix_m1]-traj1[0];
+			pos_b[1] = pos_array[iz_m1]-traj1[1];
+			pos_b[2] = pos_array[iz_m1]-traj1[2];
+			
+			ptot_i = sqrtf(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iy_m1]*mom_array[iy_m1]+mom_array[iz_m1]*mom_array[iz_m1]);
+			ptot_b = ptot_i;
+			if(pos_b[2] > geometry::FMAG_HOLE_LENGTH || pos_b[0]*pos_b[0]+pos_b[1]*pos_b[1]>geometry::FMAG_HOLE_RADIUS){
+				ptot_b+= (geometry::DEDX_UNIT_0 + geometry::DEDX_UNIT_1*ptot_i + geometry::DEDX_UNIT_2*ptot_i*ptot_i + geometry::DEDX_UNIT_3*ptot_i*ptot_i*ptot_i + geometry::DEDX_UNIT_4*ptot_i*ptot_i*ptot_i*ptot_i)*sqrtf( traj1[0]*traj1[0] + traj1[1]*traj1[1] + traj1[2]*traj1[2]);
+			}
+			
+			traj2[0] = tx_f*geometry::STEP_FMAG;
+			traj2[1] = ty*geometry::STEP_FMAG;
+			traj2[2] = geometry::STEP_FMAG;
+			
+			pos_array[ix] = pos_b[0]-traj2[0];
+			pos_array[iy] = pos_b[1]-traj2[1];
+			pos_array[iz] = pos_b[2]-traj2[2];
+			
+			ptot_f = ptot_b;
+			if(pos_array[iz] > geometry::FMAG_HOLE_LENGTH || pos_b[ix]*pos_b[ix]+pos_b[iy]*pos_b[iy]>geometry::FMAG_HOLE_RADIUS){
+				ptot_f+= (geometry::DEDX_UNIT_0 + geometry::DEDX_UNIT_1*ptot_b + geometry::DEDX_UNIT_2*ptot_b*ptot_b + geometry::DEDX_UNIT_3*ptot_b*ptot_b*ptot_b + geometry::DEDX_UNIT_4*ptot_b*ptot_b*ptot_b*ptot_b)*sqrtf( traj2[0]*traj2[0] + traj2[1]*traj2[1] + traj2[2]*traj2[2]);
+			}
+			
+			pz_f = ptot_f/sqrtf(1.f+tx_f*tx_f+ty*ty);
+
+			mom_array[ix] = pz_f*tx_f;
+			mom_array[iy] = pz_f*ty;
+			mom_array[iz] = pz_f;
+			
+			dz = pos_b[2] - geometry::Z_DUMP;
+			if(fabs(dz)<geometry::STEP_FMAG){
+				if(dz<0){
+					dump_pos[0] = pos_b[0]+dz*tx_f;
+					dump_pos[1] = pos_b[1]+dz*ty;
+					dump_pos[2] = pos_b[2]+dz;
+
+					dump_mom[0] = mom_array[ix];
+					dump_mom[1] = mom_array[iy];
+					dump_mom[2] = mom_array[iz];
+				}else{
+					dump_pos[0] = pos_b[0]+dz*tx_i;
+					dump_pos[1] = pos_b[1]+dz*ty;
+					dump_pos[2] = pos_b[2]+dz;
+					
+					dump_mom[0] = mom_array[ix_m1];
+					dump_mom[1] = mom_array[iy_m1];
+					dump_mom[2] = mom_array[iz_m1];
+				}
+			}
+		}//end loop on FMAG steps
+		
+		for(step = geometry::NSTEPS_FMAG; step<=geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET; step++){
+			ix = step*3;
+			iy = step*3+1;
+			iz = step*3+2;
+			ix_m1 = (step-1)*3;
+			iy_m1 = (step-1)*3+1;
+			iz_m1 = (step-1)*3+2;
+
+			tx_i = mom_array[ix_m1]/mom_array[iz_m1];
+
+			traj1[0] = tx_i*geometry::STEP_TARGET;
+			traj1[1] = ty*geometry::STEP_TARGET;
+			traj1[2] = geometry::STEP_TARGET;
+
+			mom_array[ix] = mom_array[ix_m1];
+			mom_array[iy] = mom_array[iy_m1];
+			mom_array[iz] = mom_array[iz_m1];
+			
+			pos_array[ix] = pos_array[ix_m1]-traj1[0];
+			pos_array[iy] = pos_array[iy_m1]-traj1[1];
+			pos_array[iz] = pos_array[iz_m1]-traj1[2];
+		}//end loop on TARGET steps
+		
+		//now?
+		
+	}//end loop on tracks
+	
+	
+}
+
+// --------------------------------------------- //
+//
 // simple track printing function for debugging. 
-
+// 
+// --------------------------------------------- //
 __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool* hastoomanyhits, const int blockID)
 {
 	if(hastoomanyhits[blockIdx.x])return;
@@ -1830,6 +2012,7 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 	}
 	
 }
+
 
 
 #ifdef OLDCODE
