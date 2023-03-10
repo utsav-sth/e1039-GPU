@@ -23,13 +23,13 @@ const int ClusterSizeMax = 192;
 //const int TrackletSizeMax = 256;
 //const int MaxHitsPerTrack = 18;
 
-const double TX_MAX = 0.15;
-const double TY_MAX = 0.1;
-const double X0_MAX = 150;
-const double Y0_MAX = 50;
-const double INVP_MAX = 0.2;
-const double INVP_MIN = 0.01;
-
+const float TX_MAX = 0.15;
+const float TY_MAX = 0.1;
+const float X0_MAX = 150;
+const float Y0_MAX = 50;
+const float INVP_MAX = 0.2;
+const float INVP_MIN = 0.01;
+const float InvSqrt12 = 0.288675135;
 
 namespace geometry{
 #ifdef E1039

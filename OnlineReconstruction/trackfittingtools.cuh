@@ -348,6 +348,28 @@ __device__ void matinv_4x4_matrix_per_thread (const float *A, float *Ainv)
     //}
 }
 
+
+__device__ float chi2_track(size_t const n_points, 
+			float* const driftdist, float* const resolutions,
+			float* const p1x, float* const p1y, float* const p1z,
+			float* const deltapx, float* const deltapy, float* const deltapz,
+			const float x0, const float y0, const float tx, const float ty)
+{
+	float dca;
+	float chi2 = 0;
+	for( size_t i=0; i<n_points; i++ ){
+		dca = ( -deltapy[i]*(p1x[i]-x0) + deltapx[i]*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*tx*ty*deltapy[i]*deltapx[i] );
+		chi2+= ( driftdist[i] - dca ) * ( driftdist[i] - dca ) / resolutions[i] / resolutions[i];
+	}
+	return chi2;
+}
+
+
+
+
+
+#ifdef OLDCODE
+
 __device__ void chi2_straight(size_t const n_points, 
                               float* const driftdist, float* const resolutions,
                               float* const p1x, float* const p1y, float* const p1z,
@@ -519,4 +541,6 @@ __device__ void calc_corr_derivatives_num(size_t const n_points,
 		output_parameters[i+2]-=output_parameters_steps[i+2];
 	}
 }
+
+#endif
 

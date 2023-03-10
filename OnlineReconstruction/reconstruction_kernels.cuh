@@ -754,7 +754,7 @@ __global__ void gKernel_YZ_tracking(
 	
 	unsigned int offset_hitcoll;
 	
-	short stid, projid, detid, detoff;
+	short stid, projid, detid, detoff, chan;
 	
 	projid = 1;
 	stid = 2;
@@ -850,7 +850,7 @@ __global__ void gKernel_YZ_tracking(
 	
 	//Arrays for other basic hit info
 	float elID[8];
-	float pos[8];//NON//this is needed for the list calculation 
+	float pos[8];
 	float drift[8];
 #ifdef FULLCODE
 	float tdc[8];
@@ -862,8 +862,6 @@ __global__ void gKernel_YZ_tracking(
 	short nhits_u2, nhits_u3;
 	short nhits_v2, nhits_v3;
 	
-	// if parallel:
-	// const short nbins_st3 = geometry::N_WCHitsBins[2];
 	const short nbins_total = nbins_st2*nbins_st3;
 	short bin2, bin3;
 	
@@ -880,6 +878,16 @@ __global__ void gKernel_YZ_tracking(
 	float chi2min = 10000.1f;
 
 	int localbin;
+
+	//arrays for chi2
+	float dd[12];
+	float res[12];
+	float p1x[12];
+	float p1y[12];
+	float p1z[12];
+	float dpx[12];
+	float dpy[12];
+	float dpz[12];
 	
 	//TODO get Hodo hits stations 2, 3, 4...
 	
@@ -915,6 +923,7 @@ __global__ void gKernel_YZ_tracking(
 		err_tx = Tracks.err_tx(i);
 		nhits_x =  Tracks.nHits(i);
 		update_track = false;
+		chi2min = 10000.1f;
 		
 		//get the corresponding local bin!
 		//binId = threadIdx.x+THREADS_PER_BLOCK*localbin;
@@ -976,6 +985,19 @@ __global__ void gKernel_YZ_tracking(
 		ncomb_uv3 = nu3*nv3;
 		ncomb_uv2 = nu2*nv2;
 		
+		for(int m = 0; m<nhits_x; m++){
+			detid = (Tracks.hits_detid(i, m));
+			chan = (Tracks.hits_chan(i, m));
+			dd[m] = (Tracks.hits_drift(i, m));
+			res[m] = planes->resolution[detid];
+			p1x[m] = x_bep(detid, chan, planes);
+			p1y[m] = y_bep(detid, chan, planes);
+			p1z[m] = z_bep(detid, chan, planes);
+			dpx[m] = planes->deltapx[detid];
+			dpy[m] = planes->deltapy[detid];
+			dpz[m] = planes->deltapz[detid];
+		}
+		
 		ty = 0;
 		
 		for(i_uv3 = 0; i_uv3<ncomb_uv3; i_uv3++){
@@ -998,10 +1020,20 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
+					res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+					dd[nhits_x+nhits_uv] = drift[nhits_uv];
+					p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+					dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+					dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 					Y[nhits_uv] = y;
 					errY[nhits_uv] = err_y;
 					nhits_uv++;
 					ty+= y/z_st3u;
+					
 				}
 			}
 			if(hitpairs_u3[i_u3].second>=0){
@@ -1018,6 +1050,15 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
+					res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+					dd[nhits_x+nhits_uv] = drift[nhits_uv];
+					p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+					dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+					dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 					Y[nhits_uv] = y;
 					errY[nhits_uv] = err_y;
 					nhits_uv++;
@@ -1042,6 +1083,15 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
+					res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+					dd[nhits_x+nhits_uv] = drift[nhits_uv];
+					p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+					dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+					dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 					Y[nhits_uv] = y;
 					errY[nhits_uv] = err_y;
 					nhits_uv++;
@@ -1062,6 +1112,15 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
+					res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+					dd[nhits_x+nhits_uv] = drift[nhits_uv];
+					p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+					dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+					dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+					dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 					Y[nhits_uv] = y;
 					errY[nhits_uv] = err_y;
 					nhits_uv++;
@@ -1095,6 +1154,15 @@ __global__ void gKernel_YZ_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
 						if( fabs(y-ty*z_st2u)/err_y<3.0f ){//since ty is *very* rough let's be generous...				
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							dd[nhits_x+nhits_uv] = drift[nhits_uv];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
@@ -1116,6 +1184,15 @@ __global__ void gKernel_YZ_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
 						if( fabs(y-ty*z_st2up)/err_y<3.0f ){//since ty is *very* rough let's be generous...				
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							dd[nhits_x+nhits_uv] = drift[nhits_uv];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
@@ -1141,6 +1218,15 @@ __global__ void gKernel_YZ_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
 						if( fabs(y-ty*z_st2v)/err_y<3.0f ){//since ty is *very* rough let's be generous...				
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							dd[nhits_x+nhits_uv] = drift[nhits_uv];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+							
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
@@ -1162,6 +1248,15 @@ __global__ void gKernel_YZ_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
 						if( fabs(y-ty*z_st2vp)/err_y<3.0f ){//since ty is *very* rough let's be generous...				
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							dd[nhits_x+nhits_uv] = drift[nhits_uv];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+							
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
@@ -1188,34 +1283,35 @@ __global__ void gKernel_YZ_tracking(
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign, planes);
 
 				//TODO: chi2 evaluation of track candidate
-					
+				chi2 = chi2_track(nhits_x+nhits_uv, dd, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
+				
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
 					printf("thread %d bin %d y0 %1.4f ty %1.4f, nhits %d, u3 %d, v3 %d, u2 %d, v2 %d\n", threadIdx.x, localbin, y0, ty, nhits_x, nhits_u3, nhits_v3, nhits_u2, nhits_v2);
 				}
 #endif
-				//if(chi2>chi2min && ){
-				//chi2min = chi2
-				update_track = true;
-				besttrackYZdata[threadIdx.x][2] = nhits_uv;
-				besttrackYZdata[threadIdx.x][3] = chi2;
-				besttrackYZdata[threadIdx.x][6] = ty;
-				besttrackYZdata[threadIdx.x][8] = y0;
-				besttrackYZdata[threadIdx.x][11] = err_ty;
-				besttrackYZdata[threadIdx.x][13] = err_y0;
+				if(chi2>chi2min){//establish a criterion to keep trakcs with the highest number of hitss
+					chi2min = chi2;
+					update_track = true;
+					besttrackYZdata[threadIdx.x][2] = nhits_uv;
+					besttrackYZdata[threadIdx.x][3] = chi2;
+					besttrackYZdata[threadIdx.x][6] = ty;
+					besttrackYZdata[threadIdx.x][8] = y0;
+					besttrackYZdata[threadIdx.x][11] = err_ty;
+					besttrackYZdata[threadIdx.x][13] = err_y0;
 				
-				for(int n = 0; n<nhits_uv;n++){
-				besttrackYZdata[threadIdx.x][16+n] = detID[n];
-				besttrackYZdata[threadIdx.x][34+n] = elID[n];
-				besttrackYZdata[threadIdx.x][52+n] = pos[n];
-				besttrackYZdata[threadIdx.x][70+n] = drift[n];
-				besttrackYZdata[threadIdx.x][88+n] = 0;
+					for(int n = 0; n<nhits_uv;n++){
+					besttrackYZdata[threadIdx.x][16+n] = detID[n];
+					besttrackYZdata[threadIdx.x][34+n] = elID[n];
+					besttrackYZdata[threadIdx.x][52+n] = pos[n];
+					besttrackYZdata[threadIdx.x][70+n] = drift[n];
+					besttrackYZdata[threadIdx.x][88+n] = 0;
 #ifdef FULLCODE
-				besttrackYZdata[threadIdx.x][106+n] = tdc[n];
-				besttrackYZdata[threadIdx.x][124+n] = 0;
+					besttrackYZdata[threadIdx.x][106+n] = tdc[n];
+					besttrackYZdata[threadIdx.x][124+n] = 0;
 #endif
+					}
 				}
-				//}
 				
 			}
 		}
@@ -1396,6 +1492,16 @@ __global__ void gKernel_Global_tracking(
 	float ParErr[2];
 	float chi2;	
 	
+	float res[6];
+	float p1x[6];
+	float p1y[6];
+	float p1z[6];
+	float dpx[6];
+	float dpy[6];
+	float dpz[6];
+
+	float chi2min = 10000.1f;
+
 	//get the tracks...
 	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
 	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
@@ -1411,6 +1517,7 @@ __global__ void gKernel_Global_tracking(
 		nhits_st23 = Tracks.nHits(i);
 		
 		if(Tracks.stationID(i)<5)continue;
+		chi2min = 10000.1f;
 		
 		x0 = Tracks.x0(i);
 		tx = Tracks.tx(i);
@@ -1459,6 +1566,14 @@ __global__ void gKernel_Global_tracking(
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
 #endif
+				res[nhits_x] = planes->resolution[detID[nhits_x]];
+				p1x[nhits_x] = x_bep(detID[nhits_x], elID[nhits_x], planes);
+				p1y[nhits_x] = y_bep(detID[nhits_x], elID[nhits_x], planes);
+				p1z[nhits_x] = z_bep(detID[nhits_x], elID[nhits_x], planes);
+				dpx[nhits_x] = planes->deltapx[detid];
+				dpy[nhits_x] = planes->deltapy[detid];
+				dpz[nhits_x] = planes->deltapz[detid];
+
 				nhits_x++;
 			}
 			if(hitpairs_x1[i_x].second>=0){
@@ -1476,6 +1591,14 @@ __global__ void gKernel_Global_tracking(
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
 #endif
+				res[nhits_x] = planes->resolution[detID[nhits_x]];
+				p1x[nhits_x] = x_bep(detID[nhits_x], elID[nhits_x], planes);
+				p1y[nhits_x] = y_bep(detID[nhits_x], elID[nhits_x], planes);
+				p1z[nhits_x] = z_bep(detID[nhits_x], elID[nhits_x], planes);
+				dpx[nhits_x] = planes->deltapx[detid];
+				dpy[nhits_x] = planes->deltapy[detid];
+				dpz[nhits_x] = planes->deltapz[detid];
+				
 				nhits_x++;
 			}
 			
@@ -1524,6 +1647,14 @@ __global__ void gKernel_Global_tracking(
 						}
 #endif
 						if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u)) / (err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<3.0f ){
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							nhits_uv++;
 						}
 					}
@@ -1543,6 +1674,14 @@ __global__ void gKernel_Global_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
 #endif
 						if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<3.0f ){
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							nhits_uv++;
 						}
 					}
@@ -1565,6 +1704,14 @@ __global__ void gKernel_Global_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
 #endif
 						if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<3.0f ){
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							nhits_uv++;
 						}
 					}
@@ -1574,7 +1721,9 @@ __global__ void gKernel_Global_tracking(
 					i_hit = hitpairs_v1[i_v].second;
 					Z[nhits_x+nhits_uv] = z_st1vp;
 					elID[nhits_x+nhits_uv] = (short)hits_st1vp.chan(i_hit);
-					//tdc[nhits_x+nhits_uv] = hits_st1vp.tdc(i_hit);
+#ifdef FULLCODE
+					tdc[nhits_x+nhits_uv] = hits_st1vp.tdc(i_hit);
+#endif
 					drift[nhits_x+nhits_uv] = hits_st1vp.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1vp.pos(i_hit);
 					if(calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0_st1, tx_st1, planes, y, err_y)){
@@ -1582,6 +1731,14 @@ __global__ void gKernel_Global_tracking(
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
 #endif
 						if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<3.0f ){
+							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
+							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1y[nhits_x+nhits_uv] = y_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							p1z[nhits_x+nhits_uv] = z_bep(detID[nhits_uv], elID[nhits_uv], planes);
+							dpx[nhits_x+nhits_uv] = planes->deltapx[detid];
+							dpy[nhits_x+nhits_uv] = planes->deltapy[detid];
+							dpz[nhits_x+nhits_uv] = planes->deltapz[detid];
+
 							nhits_uv++;
 						}
 					}
@@ -1597,33 +1754,33 @@ __global__ void gKernel_Global_tracking(
 				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
 				//TODO: chi2 fit...
-
+				chi2 = chi2_track(nhits_x+nhits_uv, drift, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
 					printf("thread %d invP %1.4f charge %d nhits %d \n", threadIdx.x, invP, charge, nhits_st23);
 				}
 #endif				
-				//if(chi2>chi2min){
-				//chi2min = chi2
-				update_track = true;
-				besttrackdata[threadIdx.x][2] = nhits_x+nhits_uv;
-				besttrackdata[threadIdx.x][3] = chi2;
-				besttrackdata[threadIdx.x][9] = invP;
-				besttrackdata[threadIdx.x][14] = errinvP;
-				besttrackdata[threadIdx.x][15] = charge;
-				
-				for(int m = 0; m<nhits_x+nhits_uv;m++){
-				besttrackdata[threadIdx.x][16+m] = detID[m];
-				besttrackdata[threadIdx.x][34+m] = elID[m];
-				besttrackdata[threadIdx.x][52+m] = pos[m];
-				besttrackdata[threadIdx.x][70+m] = drift[m];
-				besttrackdata[threadIdx.x][88+m] = sign[m];
+				if(chi2>chi2min){
+					chi2min = chi2;
+					update_track = true;
+					besttrackdata[threadIdx.x][2] = nhits_x+nhits_uv;
+					besttrackdata[threadIdx.x][3] = chi2;
+					besttrackdata[threadIdx.x][9] = invP;
+					besttrackdata[threadIdx.x][14] = errinvP;
+					besttrackdata[threadIdx.x][15] = charge;
+					
+					for(int m = 0; m<nhits_x+nhits_uv;m++){
+						besttrackdata[threadIdx.x][16+m] = detID[m];
+						besttrackdata[threadIdx.x][34+m] = elID[m];
+						besttrackdata[threadIdx.x][52+m] = pos[m];
+						besttrackdata[threadIdx.x][70+m] = drift[m];
+						besttrackdata[threadIdx.x][88+m] = sign[m];
 #ifdef FULLCODE
-				besttrackdata[threadIdx.x][105+m] = tdc[m];
-				besttrackdata[threadIdx.x][124+m] = 0;
+						besttrackdata[threadIdx.x][105+m] = tdc[m];
+						besttrackdata[threadIdx.x][124+m] = 0;
 #endif
+					}
 				}
-				//}
 
 				
 			}
