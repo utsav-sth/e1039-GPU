@@ -207,27 +207,6 @@ int main(int argn, char * argv[]) {
 	      }
 	      ipl++;
 	}
-	
-	for(int i = 0; i<5; i++){
-		int u_idx = i*6+5;
-		if(i==0)u_idx = i*6+1;
-		int x_idx = i*6+3;
-		for(int j = 0; j<6; j++){
-			int idx = i*6+j+1;
-			plane.z_mean[idx] = j%2==0 ? 0.5*(plane.z[idx]+plane.z[idx+1]):0.5*(plane.z[idx]+plane.z[idx-1]);
-			
-			plane.v_win_fac1[idx] = plane.spacing[idx]*2*plane.costheta[u_idx];
-			plane.v_win_fac2[idx] = plane.costheta[u_idx]*TX_MAX;
-			plane.v_win_fac3[idx] = plane.sintheta[u_idx]*TY_MAX;
-		}
-		
-		for(int j = 0; j<6; j++){
-			int idx = i*6+j+1;
-			plane.u_win[idx] = fabs(0.5*plane.scaley[u_idx]*plane.sintheta[u_idx]) + TX_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.costheta[u_idx]) + TY_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.sintheta[u_idx]) + 2.*plane.spacing[u_idx] + u_factor[i];
-		}
-		cout << u_idx << " " << plane.u_win[u_idx] << " = " << fabs(0.5*plane.scaley[u_idx]*plane.sintheta[u_idx]) << " + " << TX_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.costheta[u_idx]) << " + " << TY_MAX*fabs((plane.z_mean[u_idx] - plane.z_mean[x_idx])*plane.sintheta[u_idx]) << " + " << 2.*plane.spacing[u_idx] + u_factor[i] << endl;
-		cout << " u costheta " << plane.costheta[u_idx] << " u sintheta " << plane.sintheta[u_idx] << " x_span " << plane.scaley[u_idx] << " spacing " << plane.spacing[u_idx] << " z plane_u " << plane.z_mean[u_idx] << " z plane_x " << plane.z_mean[x_idx] << endl;  
-	}
 	cout << "Geometry file read out" << endl;
 	
 	double wire_position[55][400];//Let's keep this: simpler, more robust

@@ -526,11 +526,6 @@ struct gPlane {
       float sintheta[nDetectors];
       float resolution[nDetectors];
       float deltaW_[nDetectors*9];
-      float z_mean[nDetectors];
-      float u_win[nDetectors];
-      float v_win_fac1[nDetectors];
-      float v_win_fac2[nDetectors];
-      float v_win_fac3[nDetectors];
       float p1x_w1[nDetectors];
       float p1y_w1[nDetectors];
       float p1z_w1[nDetectors];
@@ -544,54 +539,4 @@ struct gPlane {
       float inter_max[nDetectors];
 };
 
-#ifdef OLDCODE
-
-
-//clone of LoadEvent::Hit:
-struct gHit {
-	public:
-	//int index; // global hit index in the hit array
-	short detectorID; // ID of the detector: one ID for each DC wire plane (30 total), hodoscope plane (16 total), proportional tube plane (8 total).
-	short elementID; // ID of the element in the detector: wire/slat/tube number
-	float tdcTime; // raw TDC time from the DAQ 
-	float driftDistance; // calculated drift distance from RT profile (supplied in database) IF tdcTime between tmin and tmax defined for detector; 
-	//short sign_mc;//temp
-	float pos; // position in the projection of the detector (e.g. X in a X plane, etc)
-	//short flag; // 1: in time; 2: hodo mask; 3: trigger mask
-};
-
-struct gTracklet {
-      public:
-      __device__ gTracklet(){
-	nHits = 0;
-      }
-	            
-      short stationID;//0
-      short threadID;//1
-      short nHits;//2
-      float chisq;//3
-      float chisq_vtx;//4
-
-      
-      float tx;//5
-      float ty;//6
-      float x0;//7
-      float y0;//8
-      float invP;//9
-      
-      float err_tx;//10
-      float err_ty;//11
-      float err_x0;//12
-      float err_y0;//13
-      float err_invP;//14
-      
-      short charge;//15
-
-      //maybe we can be a bit more sober in memory, and just require hit "event" index?
-      gHit hits[datasizes::MaxHitsPerTrack];// array of all hits:16-105
-      short hitsign[datasizes::MaxHitsPerTrack];//106-123
-      float residual[datasizes::MaxHitsPerTrack];//124-141
-};
-
-#endif
 
