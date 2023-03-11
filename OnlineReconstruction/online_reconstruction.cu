@@ -821,7 +821,7 @@ int main(int argn, char * argv[]) {
 		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
 		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
 
-		tkl_coll_offset = n*datasizes::TrackletSizeMax*datasizes::NTracksParam;
+		tkl_coll_offset = n*datasizes::TrackSizeMax*datasizes::NTracksParam;
 		nTracklets = 0;
 		for(int m = 0; m<THREADS_PER_BLOCK; m++){
 			tklmult_idx = n*THREADS_PER_BLOCK+m;
@@ -861,7 +861,7 @@ int main(int argn, char * argv[]) {
 		
 		for(int m = 0; m<THREADS_PER_BLOCK; m++){
 			tklmult_idx = n*THREADS_PER_BLOCK+m;
-			array_thread_offset = m*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 			nTracklets = host_output_gTracks->NTracks[tklmult_idx];
 			for(int k = 0; k<nTracklets; k++ ){
 				out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam] << " " //stid

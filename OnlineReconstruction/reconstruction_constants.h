@@ -19,9 +19,6 @@ int BLOCKS_NUM = EstnEvtMax;///THREADS_PER_BLOCK;
 const int EstnAHMax = 4096;
 const int EstnTHMax = 256;
 const int ClusterSizeMax = 192;
-//const int Track2DSizeMax = 256;
-//const int TrackletSizeMax = 256;
-//const int MaxHitsPerTrack = 18;
 
 const float TX_MAX = 0.15;
 const float TY_MAX = 0.1;
@@ -101,10 +98,11 @@ namespace geometry{
 
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
-	__host__ __device__ constexpr int NTracksParam = 106;
+	__host__ __device__ constexpr int NTracksParam = 112;
 #ifdef FULLCODE
-	__host__ __device__ constexpr int NTracksParam = 106;
+	__host__ __device__ constexpr int NTracksParam = 142;
 #endif
+  //__host__ __device__ constexpr int NRecTracksParam = 6;
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;
 	__host__ __device__ constexpr int NMaxHitsHodoscopes = 60;
 	__host__ __device__ constexpr int NMaxHitsPropTubes = 120;
@@ -113,7 +111,7 @@ namespace datasizes{
 		nHodoPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes, 
 		nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes
 	};
-	__host__ __device__ constexpr int TrackletSizeMax = 1600;
+	__host__ __device__ constexpr int TrackSizeMax = 1600;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 
 }

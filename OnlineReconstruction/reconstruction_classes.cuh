@@ -431,16 +431,18 @@ struct gTracks {
 
 struct gEventTrackCollection{
 	unsigned short NTracks[EstnEvtMax*THREADS_PER_BLOCK];
-	float TracksRawData[EstnEvtMax*datasizes::TrackletSizeMax*datasizes::NTracksParam];
-	//gTracklet Tracklets[EstnEvtMax*datasizes::TrackletSizeMax];
+	float TracksRawData[EstnEvtMax*datasizes::TrackSizeMax*datasizes::NTracksParam];
+	//unsigned short NRecTracks[EstnEvtMax*THREADS_PER_BLOCK];
+	//float RecTracksRawData[EstnEvtMax*datasizes::TrackSizeMax*datasizes::NRecTracksParam];
+	//gTracklet Tracklets[EstnEvtMax*datasizes::TrackSizeMax];
 	//__device__ const gTracklets tracks(const unsigned int event, int& ntracks) {
 	//	ntracks = NTracks[event];
-	//	return gTracklets(Tracklets, ntracks, event*datasizes::TrackletSizeMax);
+	//	return gTracklets(Tracklets, ntracks, event*datasizes::TrackSizeMax);
 	//}
 
 	__device__ const gTracks tracks(const unsigned int event, const unsigned threadID, unsigned int& ntracks) {
 		ntracks = NTracks[event*THREADS_PER_BLOCK+threadID];
-		return gTracks(TracksRawData, ntracks, event*datasizes::TrackletSizeMax*datasizes::NTracksParam+threadID*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK);
+		return gTracks(TracksRawData, ntracks, event*datasizes::TrackSizeMax*datasizes::NTracksParam+threadID*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK);
 	}
 	
 	__device__ void setStationID(const unsigned int evt_offset, const unsigned int itrack, const float stid) {
@@ -509,11 +511,39 @@ struct gEventTrackCollection{
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = sign;
 	}
 #ifdef FULLCODE
-	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+ihit] = resid;
+	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float tdc) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+ihit] = tdc;
 	}
 	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+124+ihit] = resid;
+	}
+	__device__ void setVtxPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+142+i] = pos[i];
+	}
+	__device__ void setVtxMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+145+i] = mom[i];
+	}
+	__device__ void setDumpPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+148+i] = pos[i];
+	}
+	__device__ void setDumpMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+151+i] = mom[i];
+	}
+#endif
+	__device__ void setVtxPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+i] = pos[i];
+	}
+	__device__ void setVtxMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+109+i] = mom[i];
+	}
+#ifdef FULLCODE
+	__device__ void setDumpPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+		assert(sizeof(pos)>=sizeof(float)*3);
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+112+i] = pos[i];
+	}
+	__device__ void setDumpMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+		assert(sizeof(mom)>=sizeof(float)*3);
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+115+i] = mom[i];
 	}
 #endif
 };

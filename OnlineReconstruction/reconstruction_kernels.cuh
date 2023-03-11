@@ -381,8 +381,8 @@ __global__ void gKernel_XZ_tracking(
 	int n_goodxz;
 
 	//tracklet container://limit the access to the large tracklet arrays.
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
-	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	const unsigned int tklmult_idx = blockIdx.x*THREADS_PER_BLOCK+threadIdx.x;
 
 	tklcoll->NTracks[tklmult_idx] = 0;
@@ -565,13 +565,13 @@ __global__ void gKernel_XZ_tracking(
 			ntkl_min = 100000;
 			thread_min[threadIdx.x] = -1;
 			nthreads_full = 0;
-			nslots_available = datasizes::TrackletSizeMax;
+			nslots_available = datasizes::TrackSizeMax;
 			__syncthreads();
 			for(int k = 0; k<THREADS_PER_BLOCK; k++){
 				if(ntkl_min>ntkl_per_thread[k] && st3==3+k%2){
 					ntkl_min = ntkl_per_thread[k];
 					thread_min[threadIdx.x] = k;
-					//threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+					//threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 				}
 				nslots_available-= ntkl_per_thread[k];
 				
@@ -626,7 +626,7 @@ __global__ void gKernel_XZ_tracking(
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("alt thread chosen for thread %d: %d \n", threadIdx.x, thread_min[threadIdx.x]);
 #endif
-			array_offset = thread_min[threadIdx.x]*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+			array_offset = thread_min[threadIdx.x]*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("actual thread %d store thread %d offset %d stid %d local bin %d, bin0 st2 %d, bin0 st3 %d, st3 %d \n", threadIdx.x, thread_min[threadIdx.x], tkl_coll_offset+array_offset, binId, i, bin0_st2, bin0_st3, st3);
@@ -669,7 +669,7 @@ __global__ void gKernel_XZ_tracking(
 		if(tklcoll->NTracks[tklmult_idx]!=ntkl_per_thread[threadIdx.x])printf("block %d, thread %d n tracks for thread ? %d %d \n", blockIdx.x, threadIdx.x, tklcoll->NTracks[tklmult_idx], ntkl_per_thread[threadIdx.x]);
 		N_tracklets+= ntkl_per_thread[k];
 	}
-	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackletSizeMax/THREADS_PER_BLOCK){
+	if(ntkl_per_thread[threadIdx.x]>datasizes::TrackSizeMax/THREADS_PER_BLOCK){
 #ifdef DEBUG
 		printf("block %d thread %d tracklets per thread: %d \n", blockIdx.x, threadIdx.x, ntkl_per_thread[threadIdx.x]);
 #endif
@@ -680,7 +680,7 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef)printf(" Ntracklets %d \n", N_tracklets);
 #endif
 	//at the end like that it's probably fine...
-	if(N_tracklets>=datasizes::TrackletSizeMax){
+	if(N_tracklets>=datasizes::TrackSizeMax){
 		printf("block %d thread %d tracklets total %d \n", blockIdx.x, threadIdx.x, N_tracklets);
 		hastoomanyhits[blockIdx.x] = true;
 		tklcoll->NTracks[blockIdx.x] = blockIdx.x*THREADS_PER_BLOCK+threadIdx.x;
@@ -892,8 +892,8 @@ __global__ void gKernel_YZ_tracking(
 	//TODO get Hodo hits stations 2, 3, 4...
 	
 	//get the tracks...
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
-	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	
 	__shared__ float besttrackYZdata[THREADS_PER_BLOCK][datasizes::NTracksParam];
 	
@@ -1503,8 +1503,8 @@ __global__ void gKernel_Global_tracking(
 	float chi2min = 10000.1f;
 
 	//get the tracks...
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
-	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	
 	__shared__ float besttrackdata[THREADS_PER_BLOCK][datasizes::NTracksParam];
 	
@@ -1832,8 +1832,8 @@ __global__ void gKernel_Vertexing(
 		return;
 	}
 	
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam;
-	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackletSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 	
 	unsigned int Ntracks;
 	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
@@ -1871,7 +1871,6 @@ __global__ void gKernel_Vertexing(
 	
 	float vertex_pos[3];
 	float vertex_mom[3];
-	
 	
 	for(int i = 0; i<Ntracks; i++){
 		if(Tracks.stationID(i)<6)continue;
@@ -2039,6 +2038,12 @@ __global__ void gKernel_Vertexing(
 		vertex_mom[0] = mom_array[ix];
 		vertex_mom[1] = mom_array[iy];
 		vertex_mom[2] = mom_array[iz];
+
+		tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 7);//vertexing has been done...
+
+		tklcoll->setVtxPos(tkl_coll_offset+array_thread_offset, i, vertex_pos);
+		tklcoll->setVtxMom(tkl_coll_offset+array_thread_offset, i, vertex_mom);
+		
 		
 	}//end loop on tracks
 	
