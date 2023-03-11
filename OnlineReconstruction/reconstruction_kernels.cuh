@@ -1859,11 +1859,19 @@ __global__ void gKernel_Vertexing(
 	float pos_array[3*(geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET)];
 	float mom_array[3*(geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET)];
 	
+	float dz;
+	int step, step_x, step_y;
+	
+	float dca2_min, dca_xmin, dca_ymin;
+	float dca2, dca_x, dca_y;
+
+	//"output" observables	
 	float dump_pos[3];
 	float dump_mom[3];
 	
-	float dz;
-	int step;
+	float vertex_pos[3];
+	float vertex_mom[3];
+	
 	
 	for(int i = 0; i<Ntracks; i++){
 		if(Tracks.stationID(i)<6)continue;
@@ -1986,6 +1994,51 @@ __global__ void gKernel_Vertexing(
 		}//end loop on TARGET steps
 		
 		//now?
+		dca2_min = 1.e18;
+		dca_xmin = 1.e9;
+		dca_ymin = 1.e9;
+		
+		step = geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET;
+		step_x = step;
+		step_y = step;
+		
+		for(int j = 0; j<=geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET; j++){
+			ix = j*3;
+			iy = j*3+1;
+			iz = j*3+2;
+			if(geometry::FMAGSTR*charge*mom_array[ix] < 0.) continue;
+			
+			dca2 = (pos_array[ix]-geometry::X_BEAM)*(pos_array[ix]-geometry::X_BEAM) + (pos_array[iy]-geometry::Y_BEAM)*(pos_array[iy]-geometry::Y_BEAM);
+			
+			if(dca2<dca2_min){
+				dca2_min  =  dca2;
+				step = j;
+			}
+			
+			dca_x = fabs(pos_array[ix]-geometry::X_BEAM);
+			if(dca_xmin>dca_x){
+				dca_xmin  =  dca_x;
+				step_x = j;
+			}
+			
+			dca_y = fabs(pos_array[iy]-geometry::Y_BEAM);
+			if(dca_ymin>dca_y){
+				dca_ymin  =  dca_y;
+				step_y = j;
+			}
+		}
+		
+		ix = step*3;
+		iy = step*3+1;
+		iz = step*3+2;
+		
+		vertex_pos[0] = pos_array[ix];
+		vertex_pos[1] = pos_array[iy];
+		vertex_pos[2] = pos_array[iz];
+		
+		vertex_mom[0] = mom_array[ix];
+		vertex_mom[1] = mom_array[iy];
+		vertex_mom[2] = mom_array[iz];
 		
 	}//end loop on tracks
 	

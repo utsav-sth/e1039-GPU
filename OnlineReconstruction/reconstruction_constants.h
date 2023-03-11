@@ -44,6 +44,8 @@ namespace geometry{
 	__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
 	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
 	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.0};
+	__device__ constexpr float X_BEAM = 0;
+	__device__ constexpr float Y_BEAM = 0;
 	__device__ constexpr float Z_TARGET = -300;
 	__device__ constexpr float Z_DUMP = 42;
 	__device__ constexpr float SAGITTA_TARGET_CENTER = 1.85;
@@ -52,19 +54,20 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
 	__device__ constexpr float PT_KICK_KMAG = 0.4016;
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
-	__device__ constexpr float FMAG_LENGTH = 0.;
-	__device__ constexpr float FMAG_HOLE_LENGTH = 0.;
-	__device__ constexpr float FMAG_HOLE_RADIUS = 0.;
-	__device__ constexpr int NSTEPS_FMAG = 1;
-	__device__ constexpr float STEP_FMAG = 0.;
-	__device__ constexpr float PTKICK_UNIT = 0.;
-	__device__ constexpr float DEDX_UNIT_0 = 0.;
-	__device__ constexpr float DEDX_UNIT_1 = 0.;
-	__device__ constexpr float DEDX_UNIT_2 = 0.;
-	__device__ constexpr float DEDX_UNIT_3 = 0.;
-	__device__ constexpr float DEDX_UNIT_4 = 0.;
-	__device__ constexpr int NSTEPS_TARGET = 1;
-	__device__ constexpr float STEP_TARGET = 0.;
+	__device__ constexpr float FMAG_LENGTH = 502.92;
+	__device__ constexpr float FMAG_HOLE_LENGTH = 27.94;
+	__device__ constexpr float FMAG_HOLE_RADIUS = 1.27;
+	__device__ constexpr float FMAGSTR = -1.054;
+	__device__ constexpr int NSTEPS_FMAG = 100;
+	__device__ constexpr float STEP_FMAG = 2.5146;// FMAG_LENGTH/NSTEPS_FMAG/2 = 502.92/100/2 = 2.5146 
+	__device__ constexpr float PTKICK_UNIT = 0.00578422;// PT_KICK_FMAG/FMAG_LENGTH = 2.909/502.92 = 0.00578422
+	__device__ constexpr float DEDX_UNIT_0 = 7.18274;
+	__device__ constexpr float DEDX_UNIT_1 = 0.0361447;
+	__device__ constexpr float DEDX_UNIT_2 =-0.000718127;
+	__device__ constexpr float DEDX_UNIT_3 = 7.97312e-06;
+	__device__ constexpr float DEDX_UNIT_4 =-3.05481e-08;
+	__device__ constexpr int NSTEPS_TARGET = 100;
+	__device__ constexpr float STEP_TARGET = 5.;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 28, 28};
 	__device__ constexpr short MaxHitsProj[3] = {20, 80, 80};
