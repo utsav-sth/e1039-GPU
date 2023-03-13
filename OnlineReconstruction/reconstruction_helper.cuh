@@ -511,13 +511,13 @@ __device__ void SagittaRatioInStation1(const float x0, const float tx, const flo
 __device__ void calculate_x0_tx_st1(const float x0, const float tx, const float invP, const short charge, float &x0_st1, float &tx_st1)
 {	
 	tx_st1 = tx + geometry::PT_KICK_KMAG * invP * charge;
-	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx * geometry::Z_KMAG_BEND;
+	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx_st1 * geometry::Z_KMAG_BEND;
 }
 
 __device__ void calculate_x0_tx_st1_with_errors(const float x0, const float tx, const float invP, const short charge, const float err_x0, const float err_tx, const float err_invP, float &x0_st1, float &tx_st1, float &err_x0_st1, float &err_tx_st1)
 {	
 	tx_st1 = tx + geometry::PT_KICK_KMAG * invP * charge;
-	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx * geometry::Z_KMAG_BEND;
+	x0_st1 = tx*geometry::Z_KMAG_BEND + x0 - tx_st1 * geometry::Z_KMAG_BEND;
 	
 	err_tx_st1 = err_tx + fabs(err_invP*geometry::PT_KICK_KMAG);
 	err_x0_st1 = err_x0 + fabs(err_invP*geometry::PT_KICK_KMAG)*geometry::Z_KMAG_BEND;

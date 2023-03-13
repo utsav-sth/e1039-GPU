@@ -413,10 +413,10 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			const int nhits = (int)nHits(index);
 			int detid;
-			int detid_min = -1;
+			int detid_min = 100;
 			for(int i = 0; i<nhits; i++){
 				detid = (int)hits_detid(index, i);
-				if(detid<detid_min)detid_min = detid;
+				if(detid>0 && detid<detid_min)detid_min = detid;
 			}
 			return detid_min;
 		}

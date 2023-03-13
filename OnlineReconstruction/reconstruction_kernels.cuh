@@ -1892,9 +1892,13 @@ __global__ void gKernel_Vertexing(
 		state_0[2] = ty;
 		state_0[3] = x_trk(x0_st1, tx_st1, z_0);
 		state_0[4] = y_trk(y0, ty, z_0);
+
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("front state %1.4f %1.4f %1.4f %1.4f %1.4f, %d z_0 =  %1.4f \n", state_0[0], state_0[1], state_0[2], state_0[3], state_0[4], detid_first, z_0);
+#endif
 		
-		pos_array[0] = x0_st1+tx_st1*(geometry::FMAG_LENGTH-z_0);
-		pos_array[1] = y0+ty*(geometry::FMAG_LENGTH-z_0);
+		pos_array[0] = state_0[3]+state_0[1]*(geometry::FMAG_LENGTH-z_0);
+		pos_array[1] = state_0[4]+state_0[2]*(geometry::FMAG_LENGTH-z_0);
 		pos_array[2] = geometry::FMAG_LENGTH;
 		
 		pz_0 = 1.f/(state_0[0]*sqrtf(1.f+state_0[1]*state_0[1]+state_0[2]*state_0[2]));
@@ -1903,7 +1907,13 @@ __global__ void gKernel_Vertexing(
 		mom_array[1] = pz_0*state_0[2];
 		mom_array[2] = pz_0;
 		
-		for(step = 1; step <= geometry::NSTEPS_FMAG; step++){
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" FMAG_LENGTH-z_0 %1.4f pos(0) %1.4f %1.4f %1.4f  mom(0) %1.4f %1.4f %1.4f \n", geometry::FMAG_LENGTH-z_0, pos_array[0], pos_array[1], pos_array[2], mom_array[0], mom_array[1], mom_array[2] );
+		if(blockIdx.x==debug::EvRef)printf("charge %1.0f\n", charge);
+#endif
+
+		step = 1;
+		for(; step <= geometry::NSTEPS_FMAG; ++step){
 			ix = step*3;
 			iy = step*3+1;
 			iz = step*3+2;
@@ -1914,12 +1924,16 @@ __global__ void gKernel_Vertexing(
 			tx_i = mom_array[ix_m1]/mom_array[iz_m1];
 			tx_f = tx_i + 2.f*charge*geometry::PTKICK_UNIT*geometry::STEP_FMAG/sqrt(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iz_m1]*mom_array[iz_m1]);
 			
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("tx_i = %1.4f, tx_f = %1.4f, PTKICK_UNIT %1.4f, charge %1.0f, sqrt %1.4f \n", tx_i, tx_f, geometry::PTKICK_UNIT, charge, sqrt(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iz_m1]*mom_array[iz_m1]));
+#endif
+			
 			traj1[0] = tx_i*geometry::STEP_FMAG;
 			traj1[1] = ty*geometry::STEP_FMAG;
 			traj1[2] = geometry::STEP_FMAG;
 			
 			pos_b[0] = pos_array[ix_m1]-traj1[0];
-			pos_b[1] = pos_array[iz_m1]-traj1[1];
+			pos_b[1] = pos_array[iy_m1]-traj1[1];
 			pos_b[2] = pos_array[iz_m1]-traj1[2];
 			
 			ptot_i = sqrtf(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iy_m1]*mom_array[iy_m1]+mom_array[iz_m1]*mom_array[iz_m1]);
@@ -1947,6 +1961,10 @@ __global__ void gKernel_Vertexing(
 			mom_array[iy] = pz_f*ty;
 			mom_array[iz] = pz_f;
 			
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
+#endif
+
 			dz = pos_b[2] - geometry::Z_DUMP;
 			if(fabs(dz)<geometry::STEP_FMAG){
 				if(dz<0){
@@ -1969,7 +1987,7 @@ __global__ void gKernel_Vertexing(
 			}
 		}//end loop on FMAG steps
 		
-		for(step = geometry::NSTEPS_FMAG; step<=geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET; step++){
+		for(; step<=geometry::NSTEPS_FMAG+geometry::NSTEPS_TARGET; ++step){
 			ix = step*3;
 			iy = step*3+1;
 			iz = step*3+2;
@@ -1990,6 +2008,9 @@ __global__ void gKernel_Vertexing(
 			pos_array[ix] = pos_array[ix_m1]-traj1[0];
 			pos_array[iy] = pos_array[iy_m1]-traj1[1];
 			pos_array[iz] = pos_array[iz_m1]-traj1[2];
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
+#endif
 		}//end loop on TARGET steps
 		
 		//now?
@@ -2008,7 +2029,7 @@ __global__ void gKernel_Vertexing(
 			if(geometry::FMAGSTR*charge*mom_array[ix] < 0.) continue;
 			
 			dca2 = (pos_array[ix]-geometry::X_BEAM)*(pos_array[ix]-geometry::X_BEAM) + (pos_array[iy]-geometry::Y_BEAM)*(pos_array[iy]-geometry::Y_BEAM);
-			
+
 			if(dca2<dca2_min){
 				dca2_min  =  dca2;
 				step = j;
@@ -2025,6 +2046,9 @@ __global__ void gKernel_Vertexing(
 				dca_ymin  =  dca_y;
 				step_y = j;
 			}
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz], dca2, dca_x, dca_y );
+#endif
 		}
 		
 		ix = step*3;
