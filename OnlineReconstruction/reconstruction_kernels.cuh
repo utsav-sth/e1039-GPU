@@ -258,10 +258,6 @@ __global__ void gKernel_XZ_tracking(
 	
 	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
 
-	// hodoscope X hits
-	// const gHits hits_h2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
-	// detid = geometry::hodoplanerange
-
 	stid = st3;
 	detid = geometry::detsuperid[stid][projid]*2;
 	detid_list[2] = detid;
@@ -320,6 +316,42 @@ __global__ void gKernel_XZ_tracking(
 	int nhits_p2x2;
 	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
 	const float z_p2x2 = z_array[detid];
+
+	/*
+	// hodoscope X hits
+	stid = 2-1;
+	detid = hodoplanesx[stid][0];
+	int nhits_h2x1;
+	const gHits hits_h2x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x1);
+	const float z_h2x1 = z_array[detid];
+
+	detid = hodoplanesx[stid][0];
+	int nhits_h2x2;
+	const gHits hits_h2x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x2);
+	const float z_h2x2 = z_array[detid];
+
+	stid = 3-1;
+	detid = hodoplanesx[stid][0];
+	int nhits_h3x1;
+	const gHits hits_h3x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x1);
+	const float z_h3x1 = z_array[detid];
+
+	detid = hodoplanesx[stid][0];
+	int nhits_h3x2;
+	const gHits hits_h3x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x2);
+	const float z_h3x2 = z_array[detid];
+	
+	stid = 4-1;
+	detid = hodoplanesx[stid][0];
+	int nhits_h4x1;
+	const gHits hits_h4x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x1);
+	const float z_h4x1 = z_array[detid];
+
+	detid = hodoplanesx[stid][0];
+	int nhits_h4x2;
+	const gHits hits_h4x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x2);
+	const float z_h4x2 = z_array[detid];
+	*/
 	
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
@@ -835,7 +867,61 @@ __global__ void gKernel_YZ_tracking(
 	const gHits hits_st3vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3vp);
 	const float z_st3vp = planes->z[detid];
 	const float res_st3vp = planes->spacing[detid];
-		
+	
+	// hodoscope hits
+	stid = 1;//2-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h2x1;
+	const gHits hits_h2x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x1);
+
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h2x2;
+	const gHits hits_h2x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x2);
+	
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h2y1;
+	const gHits hits_h2y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2y1);
+
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h2y2;
+	const gHits hits_h2y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2y2);
+	
+	stid = 2;//3-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h3x1;
+	const gHits hits_h3x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x1);
+
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h3x2;
+	const gHits hits_h3x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x2);
+
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h3y1;
+	const gHits hits_h3y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3y1);
+
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h3y2;
+	const gHits hits_h3y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3y2);
+	
+	stid = 3;//4-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h4x1;
+	const gHits hits_h4x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x1);
+
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h4x2;
+	const gHits hits_h4x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x2);
+	
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h4y1;
+	const gHits hits_h4y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4y1);
+
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h4y2;
+	const gHits hits_h4y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4y2);
+	
+	bool maskhodo[4];
+	
 	//variables for 2D track fit
 	short detID[8];
 	float Y[8];
@@ -984,8 +1070,6 @@ __global__ void gKernel_YZ_tracking(
 		if(nu2 == 0 || nu3==0) continue;
 		if(nv2 == 0 || nv3==0) continue;
 		
-		//x0 = tkl.x0;
-		//tx = tkl.tx;
 		ncomb_uv3 = nu3*nv3;
 		ncomb_uv2 = nu2*nv2;
 		
@@ -1000,6 +1084,33 @@ __global__ void gKernel_YZ_tracking(
 			dpx[m] = planes->deltapx[detid];
 			dpy[m] = planes->deltapy[detid];
 			dpz[m] = planes->deltapz[detid];
+		}
+		
+		stid = 1;//2-1
+		maskhodo[stid] = 0;
+		detid = geometry::hodoplanesx[stid][0];
+		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x1, hits_h2x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+		if(!maskhodo[stid]){
+			detid = geometry::hodoplanesx[stid][1];
+			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x2, hits_h2x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+		}
+		
+		stid = 2;//3-1
+		maskhodo[stid] = 0;
+		detid = geometry::hodoplanesx[stid][0];
+		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x1, hits_h3x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+		if(!maskhodo[stid]){
+			detid = geometry::hodoplanesx[stid][1];
+			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x2, hits_h3x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+		}
+		
+		stid = 3;//4-1
+		maskhodo[stid] = 0;
+		detid = geometry::hodoplanesx[stid][0];
+		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x1, hits_h4x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+		if(!maskhodo[stid]){
+			detid = geometry::hodoplanesx[stid][1];
+			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x2, hits_h4x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
 		}
 		
 		ty = 0;
@@ -1279,10 +1390,41 @@ __global__ void gKernel_YZ_tracking(
 				err_y0 = ParErr[0];
 				err_ty = ParErr[1];
 				
-				//TODO: hodoscope matching
+				//hodoscope matching
+				stid = 1;//2-1
+				if(!maskhodo[stid]){
+					detid = geometry::hodoplanesy[stid][0];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y1, hits_h2y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					if(!maskhodo[stid]){
+						detid = geometry::hodoplanesy[stid][1];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y2, hits_h2y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					}
+				}
+				if(!maskhodo[stid])continue;
 				
-				//TODO: LR ambiguity resolution
-								
+				stid = 2;//3-1
+				if(!maskhodo[stid]){
+					detid = geometry::hodoplanesy[stid][0];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y1, hits_h3y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					if(!maskhodo[stid]){
+						detid = geometry::hodoplanesy[stid][1];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y2, hits_h3y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					}
+				}
+				if(!maskhodo[stid])continue;
+				
+				stid = 3;//4-1
+				if(!maskhodo[stid]){
+					detid = geometry::hodoplanesy[stid][0];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y1, hits_h4y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					if(!maskhodo[stid]){
+						detid = geometry::hodoplanesy[stid][1];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y2, hits_h4y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					}
+				}
+				if(!maskhodo[stid])continue;
+				
+				//LR ambiguity resolution
 				//resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign, planes, 150.);
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign, planes);
 
@@ -1443,10 +1585,24 @@ __global__ void gKernel_Global_tracking(
 	const float res_st1vp = planes->spacing[detid];
 
 	// TODO: load the hodoscope hits
-	//detid = nChamberPlanes+1;
-	//int nhits_h1x1;
-	//const gHits hits_h1x1 = hitcolls->hitshodo(blockIdx.x, detid, nhits_h1x1);
+	stid = 0;//1-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h1x1;
+	const gHits hits_h1x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1x1);
+
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h1x2;
+	const gHits hits_h1x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1x2);
 	
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h1y1;
+	const gHits hits_h1y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1y1);
+
+	detid = geometry::hodoplanesy[stid][0];
+	int nhits_h1y2;
+	const gHits hits_h1y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1y2);
+	
+	bool maskhodo;
 	
 	//Sagitta ratio
 	float pos_exp[3];
@@ -1621,7 +1777,16 @@ __global__ void gKernel_Global_tracking(
 			
 			invP = calculate_invP_charge(tx, tx_st1, charge);
 			errinvP = calculate_invP_error(errtx, errtx_st1);
-
+			
+			stid = 0;//1-1
+			maskhodo = 0;
+			detid = geometry::hodoplanesx[stid][0];
+			maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x1, hits_h1x1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+			if(!maskhodo){
+				detid = geometry::hodoplanesx[stid][1];
+				maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x2, hits_h1x2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+			}
+			
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
@@ -1751,7 +1916,16 @@ __global__ void gKernel_Global_tracking(
 				if(nhits_v==0)continue;
 				
 				//TODO: matching hodoscope, 
-				
+				stid = 0;//1-1
+				if(!maskhodo){
+					detid = geometry::hodoplanesy[stid][0];
+					maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1y1, hits_h1y1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+					if(!maskhodo){
+						detid = geometry::hodoplanesy[stid][1];
+						maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1y2, hits_h1y2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+					}
+				}
+				if(!maskhodo)continue;
 				
 				//TODO: resolve left right...
 				//resolve_leftright_newhits(x0_st1, tx_st1, y0, ty, errx0_st1, errtx_st1, erry0, errty, nhits_x+nhits_uv, detID, pos, drift, sign, planes, 150.);
