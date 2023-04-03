@@ -1,4 +1,4 @@
-#define E1039
+//#define E1039
 //#define DEBUG 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
@@ -38,8 +38,10 @@ namespace geometry{
 	__device__ constexpr short detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 24, -1}, {26, 27, -1}}; 
 	__device__ constexpr short planetype[15] = {1, 0, 2, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1};
 	//__device__ constexpr short detmap_zincr[31] = {-1,  0,  1,  3,  2,  4,  5,  0,  1,  3,  2,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 12, 13, 14, 15, 16, 17};
-	__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
-	__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
+	//__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
+	//__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
+	__device__ constexpr short hodoplanesx[5][2] = {{31, 32}, {31, 32}, {37, 38}, {39, 40}, {45, 46}};// range of planes to look for hits
+	__device__ constexpr short hodoplanesy[5][2] = {{33, 34}, {33, 34}, {35, 36}, {41, 42}, {43, 44}};// range of planes to look for hits
 	__device__ constexpr float hodofudgefac[5] = {0.25, 0.25, 0.2, 0.15, 0.0};
 	__device__ constexpr float X_BEAM = 0;
 	__device__ constexpr float Y_BEAM = 0;
@@ -114,6 +116,11 @@ namespace datasizes{
 	__host__ __device__ constexpr int TrackSizeMax = 1600;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 
+	__host__ __device__ constexpr int MaxD0Multiplicity = 250;
+	__host__ __device__ constexpr int MaxD2Multiplicity = 200;
+	__host__ __device__ constexpr int MaxD3Multiplicity = 150;
+	__host__ __device__ constexpr int MaxPropMultiplicity = 250;
+
 }
 
 namespace extrapolation_tools{
@@ -125,5 +132,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 13;
+  __host__ __device__ constexpr unsigned int EvRef = 345;
 }

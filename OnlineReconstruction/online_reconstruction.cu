@@ -351,11 +351,15 @@ int main(int argn, char * argv[]) {
 				}
 				if(31 <= l && l <= 46){
 					host_gEventHits.NHitsHodo[(rawEvent->fEventID-firstevent)*nHodoPlanes+l-31] = rawEvent->fNHits[l];
+#ifdef DEBUG
+					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << l << " " << rawEvent->fNHits[l] << " " << (rawEvent->fEventID-firstevent)*nHodoPlanes+l-31 << " " 
+						<< host_gEventHits.NHitsHodo[(rawEvent->fEventID-firstevent)*nHodoPlanes+l-31] << endl;
+#endif
 				}
 				if(47 <= l && l <= 54){
 					host_gEventHits.NHitsPropTubes[(rawEvent->fEventID-firstevent)*nPropPlanes+l-47] = rawEvent->fNHits[l];
 #ifdef DEBUG
-					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << l << " " << rawEvent->fNHits[l] << " " << rawEvent->fEventID*nPropPlanes+l-47 << " " 
+					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << l << " " << rawEvent->fNHits[l] << " " << (rawEvent->fEventID-firstevent)*nPropPlanes+l-47 << " " 
 						<< host_gEventHits.NHitsPropTubes[rawEvent->fEventID*nPropPlanes+l-47] << endl;
 #endif
 				}
@@ -392,7 +396,10 @@ int main(int argn, char * argv[]) {
 				if(31 <= detid && detid <= 46){
 					if((rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
 					cout << rawEvent->fEventID << " " << detid <<  " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << hit_ctr[detid] << endl;
-
+					
+#ifdef DEBUG
+					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << hit_ctr[detid] << " " << detid << " " << (rawEvent->fAllHits[m]).elementID << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << " " << (rawEvent->fAllHits[m]).tdcTime << " " << (rawEvent->fAllHits[m]).flag << " " << (rawEvent->fAllHits[m]).driftDistance << endl;
+#endif					
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])] = (float)(rawEvent->fAllHits[m]).elementID;
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
