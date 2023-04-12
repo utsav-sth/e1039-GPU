@@ -6,9 +6,10 @@
 
 ClassImp(ORoutput_tree)
 
-ORoutput_tree::ORoutput_tree()
+ORoutput_tree::ORoutput_tree(const char* filename)
 {
-  fChain =  new TChain("ORoutput", "ORout");
+  fFile = new TFile(filename, "RECREATE");
+  fTree =  new TTree("tree", "Online reconstruction output");
   Init();
 }
 
@@ -20,41 +21,38 @@ ORoutput_tree::~ORoutput_tree()
 void ORoutput_tree::Init()
 {
   Clear();
-  //fHitsReduced.clear();
+  fTree->Branch("nhits", &(fNHits));
+  fTree->Branch("hit.detid", &(fHitDetID));
+  fTree->Branch("hit.chan", &(fHitChan));
+  fTree->Branch("hit.pos", &(fHitPos));
+  fTree->Branch("hit.tdc", &(fHitTDC));
+  fTree->Branch("hit.drift", &(fHitDrift));
   
-  fChain->SetBranchAddress("nhits", &fNHits);
-  fChain->SetBranchAddress("hit.detid", &fHitDetID);
-  fChain->SetBranchAddress("hit.chan", &fHitChan);
-  fChain->SetBranchAddress("hit.pos", &fHitPos);
-  fChain->SetBranchAddress("hit.tdc", &fHitTDC);
-  fChain->SetBranchAddress("hit.drift", &fHitDrift);
-  
-  fChain->SetBranchAddress("ntracks", &fNTracks);
-  fChain->SetBranchAddress("track.stid", &fTrackStID);
-  fChain->SetBranchAddress("track.nhits", &fTrackNHits);
-  fChain->SetBranchAddress("track.chi2", &fTrackChi2);
-  fChain->SetBranchAddress("track.x0", &fTrackX0);
-  fChain->SetBranchAddress("track.y0", &fTrackY0);
-  fChain->SetBranchAddress("track.tx", &fTrackTX);
-  fChain->SetBranchAddress("track.ty", &fTrackTY);
-  fChain->SetBranchAddress("track.invp", &fTrackInvP);
-  fChain->SetBranchAddress("track.err_x0", &fTrackErrX0);
-  fChain->SetBranchAddress("track.err_y0", &fTrackErrY0);
-  fChain->SetBranchAddress("track.err_tx", &fTrackErrTX);
-  fChain->SetBranchAddress("track.err_ty", &fTrackErrTY);
-  fChain->SetBranchAddress("track.err_invp", &fTrackErrInvP);
-  fChain->SetBranchAddress("track.charge", &fTrackCharge);
-  fChain->SetBranchAddress("track.hitdetid", &fTrackHitsDetID);
-  fChain->SetBranchAddress("track.hitchan", &fTrackHitsChan);
-  fChain->SetBranchAddress("track.hitpos", &fTrackHitsPos);
-  fChain->SetBranchAddress("track.hittdc", &fTrackHitsTDC);
-  fChain->SetBranchAddress("track.hitdrift", &fTrackHitsDrift);
-  fChain->SetBranchAddress("track.vx", &fTrackVx);
-  fChain->SetBranchAddress("track.vy", &fTrackVy);
-  fChain->SetBranchAddress("track.vz", &fTrackVz);
-  fChain->SetBranchAddress("track.px", &fTrackPx);
-  fChain->SetBranchAddress("track.py", &fTrackPy);
-  fChain->SetBranchAddress("track.pz", &fTrackPz);
+  fTree->Branch("ntracks", &(fNTracks));
+  fTree->Branch("track.stid", &(fTrackStID));
+  fTree->Branch("track.nhits", &(fTrackNHits));
+  fTree->Branch("track.chi2", &(fTrackChi2));
+  fTree->Branch("track.x0", &(fTrackX0));
+  fTree->Branch("track.y0", &(fTrackY0));
+  fTree->Branch("track.tx", &(fTrackTX));
+  fTree->Branch("track.ty", &(fTrackTY));
+  fTree->Branch("track.invp", &(fTrackInvP));
+  fTree->Branch("track.err_x0", &(fTrackErrX0));
+  fTree->Branch("track.err_y0", &(fTrackErrY0));
+  fTree->Branch("track.err_tx", &(fTrackErrTX));
+  fTree->Branch("track.err_ty", &(fTrackErrTY));
+  fTree->Branch("track.err_invp", &(fTrackErrInvP));
+  fTree->Branch("track.charge", &(fTrackCharge));
+  fTree->Branch("track.hitdetid", &(fTrackHitsDetID));
+  fTree->Branch("track.hitchan", &(fTrackHitsChan));
+  fTree->Branch("track.hitpos", &(fTrackHitsPos));
+  fTree->Branch("track.hitdrift", &(fTrackHitsDrift));
+  fTree->Branch("track.vx", &(fTrackVx));
+  fTree->Branch("track.vy", &(fTrackVy));
+  fTree->Branch("track.vz", &(fTrackVz));
+  fTree->Branch("track.px", &(fTrackPx));
+  fTree->Branch("track.py", &(fTrackPy));
+  fTree->Branch("track.pz", &(fTrackPz));
 }
 
 void ORoutput_tree::Clear()
@@ -83,11 +81,23 @@ void ORoutput_tree::Clear()
   fTrackHitsDetID.clear();
   fTrackHitsChan.clear();
   fTrackHitsPos.clear();
-  fTrackHitsTDC.clear();
   fTrackHitsDrift.clear();
+  fTrackVx.clear();
+  fTrackVy.clear();
+  fTrackVz.clear();
+  fTrackPx.clear();
+  fTrackPy.clear();
+  fTrackPz.clear();
 }
 
-void ORoutput_tree::Write()
+void ORoutput_tree::FillTree()
 {
-  fChain->Write("");
+  fTree->Fill();
 }
+
+void ORoutput_tree::Close()
+{
+  fTree->Write();
+  fFile->Close();
+}
+
