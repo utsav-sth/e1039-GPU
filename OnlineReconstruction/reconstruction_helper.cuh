@@ -844,12 +844,10 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
 	// define the region in which we are supposed to have hits:
 
-	//printf(" stID %d hodo plane[0] %d [1] %d \n", stID, geometry::hodoplanerange[stID][0], geometry::hodoplanerange[stID][1]);
-	//printf(" x0 %1.4f +- %1.4f, y0 %1.4f +- %1.4f, tx %1.4f +- %1.4f, ty %1.4f +- %1.4f \n", tkl.x0, tkl.err_x0, tkl.y0, tkl.err_y0, tkl.tx, tkl.err_tx, tkl.ty, tkl.err_ty);		
-	
 	float xhodo, yhodo, err_x, err_y, xmin, xmax, ymin, ymax;
 	
-		
+	if(blockIdx.x==debug::EvRef)printf(" stID %d detid %d \n", stID, detid );
+	
 	// loop on the hits and select hodoscope hits corresponding to the station
 	for(int i = 0; i<nhits; i++){
 		//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
@@ -859,8 +857,6 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 		
 		err_x = 3.f*(fabs(planes->z[detid]*err_tx)+err_x0);
 		err_y = 3.f*(fabs(planes->z[detid]*err_ty)+err_y0);
-
-		//printf(" det %d elem %d z_hodo %1.4f x_hodo %1.4f y_hodo %1.4f err x %1.4f err y %1.4f \n", ic->AllHits[idxoff_global+i].detectorID, ic->AllHits[idxoff_global+i].elementID, planes[ic->AllHits[idxoff_global+i].detectorID].z, xhodo, yhodo, err_x, err_y);
 
 		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
 		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
@@ -893,7 +889,7 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 			ymax+=(ymax-ymin)*geometry::hodofudgefac[stID];
 		}
 
-		//printf(" xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f xfudge %1.4f\n", xmin, xmax, ymin, ymax, (xmax-xmin)*0.15 );
+		if(blockIdx.x==debug::EvRef)printf(" xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", xmin, xmax, ymin, ymax );
 		err_x+= (xmax-xmin)*0.15;
 
 		xmin-= err_x;
