@@ -138,7 +138,7 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	if(station_mult[1]>datasizes::MaxD2Multiplicity)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[2]>datasizes::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[3]>datasizes::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[4]>datasizes::MaxPropMultiplicity)hastoomanyhits[blockIdx.x] = true;
+	//if(station_mult[4]>datasizes::MaxPropMultiplicity)hastoomanyhits[blockIdx.x] = true;
 
 	if(blockIdx.x==debug::EvRef){
 #ifdef DEBUG

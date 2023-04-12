@@ -116,10 +116,10 @@ namespace datasizes{
 	__host__ __device__ constexpr int TrackSizeMax = 1280;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 
-	__host__ __device__ constexpr int MaxD0Multiplicity = 250;
-	__host__ __device__ constexpr int MaxD2Multiplicity = 200;
-	__host__ __device__ constexpr int MaxD3Multiplicity = 150;
-	__host__ __device__ constexpr int MaxPropMultiplicity = 250;
+	__host__ __device__ constexpr int MaxD0Multiplicity = 350;
+	__host__ __device__ constexpr int MaxD2Multiplicity = 170;
+	__host__ __device__ constexpr int MaxD3Multiplicity = 140;
+	__host__ __device__ constexpr int MaxPropMultiplicity = 1250;
 
 }
 

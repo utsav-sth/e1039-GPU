@@ -810,13 +810,15 @@ int main(int argn, char * argv[]) {
 	unsigned int tkl_coll_offset;
 	unsigned int array_thread_offset;
 	unsigned int tklmult_idx;
+	int ntkl;
 	int nTracklets;
 	int nhits_tkl;
-	ofstream out("OutputFile.txt");
+	//ofstream out("OutputFile.txt");
 	//Write in a file, 
 	long tklctr = 0;
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
+	/*
 	for(int n = 0; n<nEvtMax; n++){
 		if(host_output_eR->nAH[n]==0)continue;
 		nEvtsTotal++;
@@ -894,22 +896,114 @@ int main(int argn, char * argv[]) {
 			}
 		}
 	}
-	
+	*/
+	//TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
+	ORoutput_tree* output = new ORoutput_tree(outputFile.Data());
+	for(int n = 0; n < nEvtMax; ++n) {
+		output->Clear();
+		nEvtsTotal++;
+		if(host_output_eR->nAH[n]==0)continue;
+		if(host_output_eR->HasTooManyHits[n])continue;
+		nEvtsPass++;
+
+		nhits_total = 0;
+		//for(int k = 1; k<=nChamberPlanes; k++ )nhits_total+= host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
+		//for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
+		//for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
+		
+		for(int k = 1; k<=nChamberPlanes; k++ ){
+			nhits = host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
+			nhits_total+= nhits;
+			for(int l = 0; l<nhits; l++){
+				output->fHitDetID.push_back(k);
+				output->fHitChan.push_back(host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l]);
+				output->fHitPos.push_back(host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l+1*nhits]);
+				output->fHitTDC.push_back(host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l+2*nhits]);
+				output->fHitDrift.push_back(host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l+4*nhits]);
+			}
+		}
+		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ ){
+			nhits = host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
+			nhits_total+= nhits;
+			for(int l = 0; l<nhits; l++){
+				output->fHitDetID.push_back(k);
+				output->fHitChan.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l]);
+				output->fHitPos.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+1*nhits]);
+				output->fHitTDC.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+2*nhits]);
+				output->fHitDrift.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+4*nhits]);
+			}
+		}
+		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ ){
+			nhits = host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
+			nhits_total+= nhits;
+			for(int l = 0; l<nhits; l++){
+				output->fHitDetID.push_back(k);
+				output->fHitChan.push_back((int)host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l]);
+				output->fHitPos.push_back(host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+1*nhits]);
+				output->fHitTDC.push_back(host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+2*nhits]);
+				output->fHitDrift.push_back(host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+4*nhits]);
+			}
+		}
+		output->fNHits = nhits_total;
+		
+		tkl_coll_offset = n*datasizes::TrackSizeMax*datasizes::NTracksParam;
+		//nTracklets = 0;
+		//for(int m = 0; m<THREADS_PER_BLOCK; m++){
+		//	tklmult_idx = n*THREADS_PER_BLOCK+m;
+		//	nTracklets+= host_output_gTracks->NTracks[tklmult_idx];
+		//}
+		
+		nTracklets = 0;
+		for(int m = 0; m<THREADS_PER_BLOCK; m++){
+			tklmult_idx = n*THREADS_PER_BLOCK+m;
+			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+			
+			ntkl = host_output_gTracks->NTracks[tklmult_idx];
+			nTracklets+= ntkl;
+			for(int k = 0; k<ntkl; k++ ){
+				nhits_tkl = (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
+				
+				output->fTrackStID.push_back((int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]);
+				output->fTrackNHits.push_back(nhits_tkl);
+				output->fTrackChi2.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+3]);
+				output->fTrackX0.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+7]);
+				output->fTrackY0.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+8]);
+				output->fTrackTX.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+5]);
+				output->fTrackTY.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+6]);
+				output->fTrackInvP.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+9]);
+				output->fTrackErrX0.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+12]);
+				output->fTrackErrY0.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+13]);
+				output->fTrackErrTX.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+10]);
+				output->fTrackErrTY.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+11]);
+				output->fTrackErrInvP.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+14]);
+				output->fTrackCharge.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+15]);
+				for(int l = 0; l<nhits_tkl; l++){
+					output->fTrackHitsDetID.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l]);
+					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l]);
+					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l]);
+					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+70+l]);
+				}
+				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+106]);
+				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+107]);
+				output->fTrackVz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+108]);
+				output->fTrackPx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+109]);
+				output->fTrackPy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+110]);
+				output->fTrackPz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+110]);
+			}
+		}
+		output->fNTracks = nTracklets;
+		tklctr+= nTracklets;
+		output->FillTree();
+	}
+	//output->Write();
+	output->Close();
+
 	cout << tklctr << " total tracks reconstructed" << endl;
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
 	//auto end_kernel = std::chrono::system_clock::now();
 
 
 	delete rawEvent;
-
-	//TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
-	//ORoutput_tree* output = new ORoutput_tree();
-	//for(int i = 0; i < nEvtMax; ++i) {
-	//	output->Clear();
-	//	for(int k = 1; k<=nDetectors; k++ )output->fNhitsReduced[k] = host_output_eR[i].NHits[k];
-	//	//output->Write();
-	//}
-	//output->Write();
 
 	auto cp10 = std::chrono::system_clock::now();
 	auto write_output = cp10-cp9;

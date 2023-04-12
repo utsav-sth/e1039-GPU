@@ -6,9 +6,10 @@
 
 ClassImp(ORoutput_tree)
 
-ORoutput_tree::ORoutput_tree()
+ORoutput_tree::ORoutput_tree(const char* filename)
 {
-  fChain =  new TChain("ORoutput", "ORout");
+  fFile = new TFile(filename, "RECREATE");
+  fTree =  new TTree("tree", "Online reconstruction output");
   Init();
 }
 
@@ -20,24 +21,83 @@ ORoutput_tree::~ORoutput_tree()
 void ORoutput_tree::Init()
 {
   Clear();
-  //fHitsReduced.clear();
+  fTree->Branch("nhits", &(fNHits));
+  fTree->Branch("hit.detid", &(fHitDetID));
+  fTree->Branch("hit.chan", &(fHitChan));
+  fTree->Branch("hit.pos", &(fHitPos));
+  fTree->Branch("hit.tdc", &(fHitTDC));
+  fTree->Branch("hit.drift", &(fHitDrift));
   
-  fChain->SetBranchAddress("Nreducedhits[55]", fNhitsReduced);
-  //fChain->SetBranchAddress("reducedhits.", fHitsReduced.);
-			   
+  fTree->Branch("ntracks", &(fNTracks));
+  fTree->Branch("track.stid", &(fTrackStID));
+  fTree->Branch("track.nhits", &(fTrackNHits));
+  fTree->Branch("track.chi2", &(fTrackChi2));
+  fTree->Branch("track.x0", &(fTrackX0));
+  fTree->Branch("track.y0", &(fTrackY0));
+  fTree->Branch("track.tx", &(fTrackTX));
+  fTree->Branch("track.ty", &(fTrackTY));
+  fTree->Branch("track.invp", &(fTrackInvP));
+  fTree->Branch("track.err_x0", &(fTrackErrX0));
+  fTree->Branch("track.err_y0", &(fTrackErrY0));
+  fTree->Branch("track.err_tx", &(fTrackErrTX));
+  fTree->Branch("track.err_ty", &(fTrackErrTY));
+  fTree->Branch("track.err_invp", &(fTrackErrInvP));
+  fTree->Branch("track.charge", &(fTrackCharge));
+  fTree->Branch("track.hitdetid", &(fTrackHitsDetID));
+  fTree->Branch("track.hitchan", &(fTrackHitsChan));
+  fTree->Branch("track.hitpos", &(fTrackHitsPos));
+  fTree->Branch("track.hitdrift", &(fTrackHitsDrift));
+  fTree->Branch("track.vx", &(fTrackVx));
+  fTree->Branch("track.vy", &(fTrackVy));
+  fTree->Branch("track.vz", &(fTrackVz));
+  fTree->Branch("track.px", &(fTrackPx));
+  fTree->Branch("track.py", &(fTrackPy));
+  fTree->Branch("track.pz", &(fTrackPz));
 }
 
 void ORoutput_tree::Clear()
 {
-  for(Int_t i = 0; i < nChamberPlanes+nHodoPlanes+nPropPlanes+1; i++)
-    {
-      fNhitsReduced[i] = 0;
-    }
+  fNHits = 0;
+  fHitDetID.clear();
+  fHitChan.clear();
+  fHitPos.clear();
+  fHitTDC.clear();
+  fHitDrift.clear();
+  fNTracks = 0;
+  fTrackStID.clear();
+  fTrackNHits.clear();
+  fTrackChi2.clear();
+  fTrackX0.clear();
+  fTrackY0.clear();
+  fTrackTX.clear();
+  fTrackTY.clear();
+  fTrackInvP.clear();
+  fTrackErrX0.clear();
+  fTrackErrY0.clear();
+  fTrackErrTX.clear();
+  fTrackErrTY.clear();
+  fTrackErrInvP.clear();
+  fTrackCharge.clear();
+  fTrackHitsDetID.clear();
+  fTrackHitsChan.clear();
+  fTrackHitsPos.clear();
+  fTrackHitsDrift.clear();
+  fTrackVx.clear();
+  fTrackVy.clear();
+  fTrackVz.clear();
+  fTrackPx.clear();
+  fTrackPy.clear();
+  fTrackPz.clear();
 }
 
-void ORoutput_tree::Write()
+void ORoutput_tree::FillTree()
 {
-  fChain->Write("");
-  //fChain->SetBranchAddress("reducedhits.", fHitsReduced.);
-			   
+  fTree->Fill();
 }
+
+void ORoutput_tree::Close()
+{
+  fTree->Write();
+  fFile->Close();
+}
+
