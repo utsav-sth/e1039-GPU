@@ -547,7 +547,7 @@ __global__ void gKernel_XZ_tracking(
 			checknext = true;
 
 			for(int n = 0; n<nhits_p1x1; n++){
-				//ipos = hits_p1x1.pos(n);
+				ipos = hits_p1x1.pos(n);
 				xExp = tx*z_p1x1+x0;
 				if(fabs(ipos-xExp)<5.08f){
 					nprop++;
@@ -567,9 +567,9 @@ __global__ void gKernel_XZ_tracking(
 				}
 			}
 			if(checknext){
-				for(int n = 0; n<nhits_p1x2; n++){
-					ipos = hits_p1x2.pos(n);
-					xExp = tx*z_p1x2+x0;
+				for(int n = 0; n<nhits_p2x1; n++){
+					ipos = hits_p2x1.pos(n);
+					xExp = tx*z_p2x1+x0;
 					if(fabs(ipos-xExp)<5.08f){
 						nprop++;
 						checknext = false;
