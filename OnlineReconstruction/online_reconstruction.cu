@@ -150,6 +150,7 @@ int main(int argn, char * argv[]) {
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane;
+	//gHodoMask hodomask;
 	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
@@ -220,6 +221,7 @@ int main(int argn, char * argv[]) {
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
+			//hodomask[]
           		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
@@ -308,11 +310,11 @@ int main(int argn, char * argv[]) {
 	for(short k = nChamberPlanes+nHodoPlanes+1; k<=nDetectors; k++){
 		evhitarrayoffset[k] = datasizes::NHitsParam*datasizes::NMaxHitsPropTubes*(k-47);
 	}
-#ifdef DEBUG
+//#ifdef DEBUG
 	for(short k = 1; k<=nDetectors; k++){
 		cout << k << " " << evhitarrayoffset[k] << endl;
 	}
-#endif
+//#endif
 	
 	short detid;
 	int nhits;
@@ -561,15 +563,22 @@ int main(int argn, char * argv[]) {
 					if((_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
 					cout << _event_id << " " << detid <<  " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << hit_ctr[detid] << endl;
 
-#ifdef DEBUG
+//#ifdef DEBUG
 					if(_event_id==debug::EvRef+firstevent)cout << "hit offsets " << detid << " " << (_event_id-firstevent)*datasizes::eventhitsize[1] << " " << evhitarrayoffset[detid] << " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid] << ": " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid] << " " << hit_vec[m]->get_element_id() << " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+nhits << " el " << hit_vec[m]->get_element_id() << " " << wire_position[detid][hit_vec[m]->get_element_id()] << endl;
-#endif
+//#endif
 					
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] = (float)hit_vec[m]->get_element_id();
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << endl;
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+nhits] = (float) wire_position[detid][hit_vec[m]->get_element_id()];
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << endl;
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+2*nhits] = (float)hit_vec[m]->get_tdc_time();
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << endl;
 					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+3*nhits] = (float)(1<<hit_vec[m]->is_in_time());
-					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]*4*nhits] = (float)fabs(hit_vec[m]->get_drift_distance());
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << endl;
+if(_event_id==debug::EvRef+firstevent)cout << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+4*nhits << " " << (_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid] << endl;
+					host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+4*nhits] = (float)fabs(hit_vec[m]->get_drift_distance());
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << endl;
+					if(_event_id==debug::EvRef+firstevent)cout << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]] << " " << host_gEventHits.HitsHodoRawData[(_event_id-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+hit_ctr[detid]+nhits] << endl;
 					hit_ctr[detid]++;
 				}
 
@@ -925,7 +934,9 @@ int main(int argn, char * argv[]) {
 		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ ){
 			nhits = host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
 			nhits_total+= nhits;
+
 			for(int l = 0; l<nhits; l++){
+			if(n==debug::EvRef+firstevent)cout << host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l] << " " << host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+1*nhits] << endl;
 				output->fHitDetID.push_back(k);
 				output->fHitChan.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l]);
 				output->fHitPos.push_back(host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+1*nhits]);

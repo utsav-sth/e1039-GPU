@@ -582,4 +582,12 @@ struct gPlane {
       float inter_max[nDetectors];
 };
 
-
+/*
+struct gHodoMask{
+       public:
+       int x_mask_min[nHodoPlanes*24];
+       int x_mask_max[nHodoPlanes*24];
+       int y_mask_min[nHodoPlanes*24];
+       int y_mask_max[nHodoPlanes*24];
+}
+*/
