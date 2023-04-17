@@ -317,42 +317,6 @@ __global__ void gKernel_XZ_tracking(
 	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
 	const float z_p2x2 = z_array[detid];
 
-	/*
-	// hodoscope X hits
-	stid = 2-1;
-	detid = hodoplanesx[stid][0];
-	int nhits_h2x1;
-	const gHits hits_h2x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x1);
-	const float z_h2x1 = z_array[detid];
-
-	detid = hodoplanesx[stid][0];
-	int nhits_h2x2;
-	const gHits hits_h2x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x2);
-	const float z_h2x2 = z_array[detid];
-
-	stid = 3-1;
-	detid = hodoplanesx[stid][0];
-	int nhits_h3x1;
-	const gHits hits_h3x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x1);
-	const float z_h3x1 = z_array[detid];
-
-	detid = hodoplanesx[stid][0];
-	int nhits_h3x2;
-	const gHits hits_h3x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x2);
-	const float z_h3x2 = z_array[detid];
-	
-	stid = 4-1;
-	detid = hodoplanesx[stid][0];
-	int nhits_h4x1;
-	const gHits hits_h4x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x1);
-	const float z_h4x1 = z_array[detid];
-
-	detid = hodoplanesx[stid][0];
-	int nhits_h4x2;
-	const gHits hits_h4x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x2);
-	const float z_h4x2 = z_array[detid];
-	*/
-	
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
 		if(nhitpairs_x2[bin]>geometry::MaxHitsProj[0])bin_overflows = true;
@@ -887,53 +851,113 @@ __global__ void gKernel_YZ_tracking(
 	stid = 1;//2-1
 	detid = geometry::hodoplanesx[stid][0];
 	int nhits_h2x1;
-	const gHits hits_h2x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x1);
+	const gHits hits_h2x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2x1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h2x1 %d \n", nhits_h2x1);
+	for(int l = 0; l<nhits_h2x1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h2x1.chan(l), hits_h2x1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesx[stid][0];
+	detid = geometry::hodoplanesx[stid][1];
 	int nhits_h2x2;
-	const gHits hits_h2x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2x2);
-	
+	const gHits hits_h2x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2x2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h2x2 %d \n", nhits_h2x2);
+	for(int l = 0; l<nhits_h2x2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h2x2.chan(l), hits_h2x2.pos(l));
+	}
+#endif
+
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h2y1;
-	const gHits hits_h2y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2y1);
+	const gHits hits_h2y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2y1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h2y1 %d \n", nhits_h2y1);
+	for(int l = 0; l<nhits_h2y1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h2y1.chan(l), hits_h2y1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesy[stid][0];
+	detid = geometry::hodoplanesy[stid][1];
 	int nhits_h2y2;
-	const gHits hits_h2y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h2y2);
+	const gHits hits_h2y2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2y2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h2y2 %d \n", nhits_h2y2);
+	for(int l = 0; l<nhits_h2y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h2y2.chan(l), hits_h2y2.pos(l));
+	}
+#endif
 	
 	stid = 2;//3-1
 	detid = geometry::hodoplanesx[stid][0];
 	int nhits_h3x1;
-	const gHits hits_h3x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x1);
+	const gHits hits_h3x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3x1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h3x1 %d \n", nhits_h3x1);
+	for(int l = 0; l<nhits_h3x1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h3x1.chan(l), hits_h3x1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesx[stid][0];
+	detid = geometry::hodoplanesx[stid][1];
 	int nhits_h3x2;
-	const gHits hits_h3x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3x2);
+	const gHits hits_h3x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3x2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h3x2 %d \n", nhits_h3x2);
+	for(int l = 0; l<nhits_h3x2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h3x2.chan(l), hits_h3x2.pos(l));
+	}
+#endif
 
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h3y1;
-	const gHits hits_h3y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3y1);
+	const gHits hits_h3y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3y1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h3y1 %d \n", nhits_h3y1);
+	for(int l = 0; l<nhits_h3y1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h3y1.chan(l), hits_h3y1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesy[stid][0];
+	detid = geometry::hodoplanesy[stid][1];
 	int nhits_h3y2;
-	const gHits hits_h3y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h3y2);
-	
+	const gHits hits_h3y2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3y2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h3y2 %d \n", nhits_h3y2);
+	for(int l = 0; l<nhits_h3y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h3y2.chan(l), hits_h3y2.pos(l));
+	}
+#endif
+
 	stid = 3;//4-1
 	detid = geometry::hodoplanesx[stid][0];
 	int nhits_h4x1;
-	const gHits hits_h4x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x1);
+	const gHits hits_h4x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4x1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h4x1 %d \n", nhits_h4x1);
+	for(int l = 0; l<nhits_h4x1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h4x1.chan(l), hits_h4x1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesx[stid][0];
+	detid = geometry::hodoplanesx[stid][1];
 	int nhits_h4x2;
-	const gHits hits_h4x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4x2);
+	const gHits hits_h4x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4x2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h4x2 %d \n", nhits_h4x2);
+	for(int l = 0; l<nhits_h4x2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h4x2.chan(l), hits_h4x2.pos(l));
+	}
+#endif
 	
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h4y1;
-	const gHits hits_h4y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4y1);
+	const gHits hits_h4y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4y1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h4y1 %d \n", nhits_h4y1);
+	for(int l = 0; l<nhits_h4y1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h4y1.chan(l), hits_h4y1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesy[stid][0];
+	detid = geometry::hodoplanesy[stid][1];
 	int nhits_h4y2;
-	const gHits hits_h4y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h4y2);
+	const gHits hits_h4y2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4y2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h4y2 %d \n", nhits_h4y2);
+	for(int l = 0; l<nhits_h4y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h4y2.chan(l), hits_h4y2.pos(l));
+	}
+#endif
 	
 	bool maskhodo[4];
 	
@@ -1609,19 +1633,38 @@ __global__ void gKernel_Global_tracking(
 	stid = 0;//1-1
 	detid = geometry::hodoplanesx[stid][0];
 	int nhits_h1x1;
-	const gHits hits_h1x1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1x1);
-
-	detid = geometry::hodoplanesx[stid][0];
+	const gHits hits_h1x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h1x1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h1x1 %d \n", nhits_h1x1);
+	for(int l = 0; l<nhits_h1x1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h1x1.chan(l), hits_h1x1.pos(l));
+	}
+#endif
+	detid = geometry::hodoplanesx[stid][1];
 	int nhits_h1x2;
-	const gHits hits_h1x2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1x2);
+	const gHits hits_h1x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h1x2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h1x2 %d \n", nhits_h1x2);
+	for(int l = 0; l<nhits_h1x2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h1x2.chan(l), hits_h1x2.pos(l));
+	}
+#endif
 	
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h1y1;
-	const gHits hits_h1y1 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1y1);
+	const gHits hits_h1y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h1y1);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h1y1 %d \n", nhits_h1y1);
+	for(int l = 0; l<nhits_h1y1; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h1y1.chan(l), hits_h1y1.pos(l));
+	}
+#endif
 
-	detid = geometry::hodoplanesy[stid][0];
+	detid = geometry::hodoplanesy[stid][1];
 	int nhits_h1y2;
-	const gHits hits_h1y2 = hitcolls->hitschambers(blockIdx.x, detid, nhits_h1y2);
+	const gHits hits_h1y2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h1y2);
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h1y2 %d \n", nhits_h1y2);
+	for(int l = 0; l<nhits_h1y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h1y2.chan(l), hits_h1y2.pos(l));
+	}
+#endif
 	
 	bool maskhodo;
 	

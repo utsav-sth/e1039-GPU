@@ -42,7 +42,7 @@ namespace geometry{
 	//__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
 	__device__ constexpr short hodoplanesx[4][2] = {{31, 32}, {37, 38}, {39, 40}, {45, 46}};// range of planes to look for hits
 	__device__ constexpr short hodoplanesy[4][2] = {{33, 34}, {35, 36}, {41, 42}, {43, 44}};// range of planes to look for hits
-	__device__ constexpr float hodofudgefac[4] = {0.25, 0.2, 0.15, 0.0};
+	__device__ constexpr float hodofudgefac[5] = {0.25, 0.2, 0.15, 0.0, 0.15};
 	__device__ constexpr float X_BEAM = 0;
 	__device__ constexpr float Y_BEAM = 0;
 	__device__ constexpr float Z_TARGET = -300;
