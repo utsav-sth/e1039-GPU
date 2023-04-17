@@ -1,7 +1,7 @@
 #include "trackfittingtools.cuh"
 
 
-__device__ void chi2_simplefit(size_t const n_points, REAL* const x_array, REAL* const y_array, REAL& a, REAL& b, REAL sum, REAL det, REAL sx, REAL sy, REAL sxx, REAL syy, REAL sxy)
+__device__ void chi2_simplefit(size_t const n_points, float* const x_array, float* const y_array, float& a, float& b, float sum, float det, float sx, float sy, float sxx, float syy, float sxy)
 {
 	sx = 0;
 	sy = 0;
@@ -29,7 +29,7 @@ __device__ void chi2_simplefit(size_t const n_points, REAL* const x_array, REAL*
 }
 
 
-__device__ void fit_2D_track(size_t const n_points, REAL *x_points, REAL *z_points, REAL *x_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL& chi2){
+__device__ void fit_2D_track(size_t const n_points, float *x_points, float *z_points, float *x_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2){
 	//For a 2D fit to a straight-line:
 	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2
 	// dchi^2/dX = -2 * (xi - (X+Xp*zi))* wxi = 0
@@ -73,7 +73,7 @@ __device__ void fit_2D_track(size_t const n_points, REAL *x_points, REAL *z_poin
 }
 
 
-__device__ void fit_3D_track(size_t const n_points, REAL *x_points, REAL *y_points, REAL *z_points, REAL *x_weights, REAL *y_weights, REAL *A, REAL* Ainv, REAL* B, REAL* output_parameters, REAL* output_parameters_errors, REAL& chi2)
+__device__ void fit_3D_track(size_t const n_points, float *x_points, float *y_points, float *z_points, float *x_weights, float *y_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2)
 {
 	//For a 3D fit to a straight-line:
 	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2 + wyi*(y - (Y+Yp*zi))^2
