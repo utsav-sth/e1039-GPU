@@ -584,12 +584,12 @@ __global__ void gKernel_XZ_tracking(
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
 			
-			for(short l = 0; l<nhits_x; l++){
-				X[l]+= sign[l]*drift[l];
-			}
-			fit_2D_track(nhits_x, X, Z, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
-			x0 = Par[0];
-			tx = Par[1];
+			//for(short l = 0; l<nhits_x; l++){
+			//	X[l]+= sign[l]*drift[l];
+			//}
+			//fit_2D_track(nhits_x, X, Z, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
+			//x0 = Par[0];
+			//tx = Par[1];
 					
 			//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 			addtrack[threadIdx.x] = true;

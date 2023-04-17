@@ -21,6 +21,8 @@ ORoutput_tree::~ORoutput_tree()
 void ORoutput_tree::Init()
 {
   Clear();
+  fTree->Branch("evtid", &(fEventID));
+  
   fTree->Branch("nhits", &(fNHits));
   fTree->Branch("hit.detid", &(fHitDetID));
   fTree->Branch("hit.chan", &(fHitChan));

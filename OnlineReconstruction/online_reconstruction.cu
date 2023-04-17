@@ -912,6 +912,8 @@ int main(int argn, char * argv[]) {
 		//for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
 		//for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
 		
+		output->fEventID = n;
+				
 		for(int k = 1; k<=nChamberPlanes; k++ ){
 			nhits = host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
 			nhits_total+= nhits;
@@ -964,7 +966,6 @@ int main(int argn, char * argv[]) {
 			nTracklets+= ntkl;
 			for(int k = 0; k<ntkl; k++ ){
 				nhits_tkl = (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
-				
 				output->fTrackStID.push_back((int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]);
 				output->fTrackNHits.push_back(nhits_tkl);
 				output->fTrackChi2.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+3]);

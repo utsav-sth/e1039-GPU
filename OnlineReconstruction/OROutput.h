@@ -21,6 +21,8 @@ public:
   
   TFile* fFile;
   TTree* fTree;
+
+  Int_t fEventID;
   Int_t fNHits;
   std::vector<int> fHitDetID;
   std::vector<int> fHitChan;
