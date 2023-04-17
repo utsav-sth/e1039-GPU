@@ -172,6 +172,8 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	}
 }
 
+
+
 ////////////////////////////////////
 //
 //          XZ TRACKING
@@ -182,6 +184,7 @@ __global__ void gKernel_XZ_tracking(
 	gEventHitCollections* hitcolls,
 	gEventTrackCollection* tklcoll,
 	const float* z_array,
+	const float* spacing_array,
 	const float* res_array,
 	int* nTracklets,
 #ifdef DEBUG
@@ -247,14 +250,16 @@ __global__ void gKernel_XZ_tracking(
 	int nhits_st2x;
 	const gHits hits_st2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
 	const float z_st2x = z_array[detid];
-	const float res_st2x = res_array[detid];
+	const float res_st2x = spacing_array[detid];
+	const float res_st2x_ = res_array[detid];
 	
 	detid-= 1;
 	detid_list[1] = detid;
 	int nhits_st2xp;
 	const gHits hits_st2xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2xp);
 	const float z_st2xp = z_array[detid];
-	const float res_st2xp = res_array[detid];
+	const float res_st2xp = spacing_array[detid];
+	const float res_st2xp_ = res_array[detid];
 	
 	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
 
@@ -267,7 +272,8 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3x, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3x = z_array[detid];
-	const float res_st3x = res_array[detid];
+	const float res_st3x = spacing_array[detid];
+	const float res_st3x_ = res_array[detid];
 
 	detid-= 1;
 	int nhits_st3xp;
@@ -277,7 +283,8 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3xp = z_array[detid];
-	const float res_st3xp = res_array[detid];
+	const float res_st3xp = spacing_array[detid];
+	const float res_st3xp_ = res_array[detid];
 
 	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
 
@@ -340,6 +347,7 @@ __global__ void gKernel_XZ_tracking(
 	float X[4];
 	float errX[4];
 	float Z[4];
+	float errX_[4];
 	
 	float A_[4];
 	float Ainv_[4];
@@ -438,6 +446,7 @@ __global__ void gKernel_XZ_tracking(
 				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].first;
 				X[nhits_x] = hits_st2x.pos(i_hit);
 				errX[nhits_x] = res_st2x;
+				errX_[nhits_x] = res_st2x_;
 				Z[nhits_x] = z_st2x;
 				elID[nhits_x] = (short)hits_st2x.chan(i_hit);
 #ifdef FULLCODE
@@ -451,6 +460,7 @@ __global__ void gKernel_XZ_tracking(
 				i_hit = hitpairs_x2[bin2+nbins_st2*i_x2].second;
 				X[nhits_x] = hits_st2xp.pos(i_hit);
 				errX[nhits_x] = res_st2xp;
+				errX_[nhits_x] = res_st2xp_;
 				Z[nhits_x] = z_st2xp;
 				elID[nhits_x] = (short)hits_st2xp.chan(i_hit);
 #ifdef FULLCODE
@@ -472,6 +482,7 @@ __global__ void gKernel_XZ_tracking(
 				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].first;
 				X[nhits_x] = hits_st3x.pos(i_hit);
 				errX[nhits_x] = res_st3x;
+				errX_[nhits_x] = res_st3x_;
 				Z[nhits_x] = z_st3x;
 				elID[nhits_x] = (short)hits_st3x.chan(i_hit);
 #ifdef FULLCODE
@@ -485,6 +496,7 @@ __global__ void gKernel_XZ_tracking(
 				i_hit = hitpairs_x3[bin3+nbins_st3*i_x3].second;
 				X[nhits_x] = hits_st3xp.pos(i_hit);
 				errX[nhits_x] = res_st3xp;
+				errX_[nhits_x] = res_st3xp_;
 				Z[nhits_x] = z_st3xp;
 				elID[nhits_x] = (short)hits_st3xp.chan(i_hit);
 #ifdef FULLCODE
@@ -571,7 +583,14 @@ __global__ void gKernel_XZ_tracking(
 
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
-
+			
+			for(short l = 0; l<nhits_x; l++){
+				X[l]+= sign[l]*drift[l];
+			}
+			fit_2D_track(nhits_x, X, Z, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
+			x0 = Par[0];
+			tx = Par[1];
+					
 			//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 			addtrack[threadIdx.x] = true;
 #ifdef DEBUG
@@ -1473,9 +1492,7 @@ __global__ void gKernel_YZ_tracking(
 				//LR ambiguity resolution
 				//resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign, planes, 150.);
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign, planes);
-
 				
-
 				//TODO: chi2 evaluation of track candidate
 				chi2 = chi2_track(nhits_x+nhits_uv, dd, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
 				
@@ -2351,88 +2368,6 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 
 #ifdef OLDCODE
 
-// function to match a tracklet to a hodoscope hit
-__device__ int match_tracklet_to_hodo(const gTracklet tkl, const int stID, gEvent* ic, const gPlane* planes)
-{
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int idxoff_global = index*EstnAHMax;
-	int masked = 0;//false
-	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
-	// define the region in which we are supposed to have hits:
-
-	//printf(" stID %d hodo plane[0] %d [1] %d \n", stID, geometry::hodoplanerange[stID][0], geometry::hodoplanerange[stID][1]);
-	//printf(" x0 %1.4f +- %1.4f, y0 %1.4f +- %1.4f, tx %1.4f +- %1.4f, ty %1.4f +- %1.4f \n", tkl.x0, tkl.err_x0, tkl.y0, tkl.err_y0, tkl.tx, tkl.err_tx, tkl.ty, tkl.err_ty);		
-	
-	float xhodo, yhodo, err_x, err_y, xmin, xmax, ymin, ymax;
-		
-	// loop on the hits and select hodoscope hits corresponding to the station
-	for(int i = 0; i<ic->nAH[index]; i++){
-		//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
-		if(geometry::hodoplanerange[stID][0]>ic->AllHits[idxoff_global+i].detectorID || geometry::hodoplanerange[stID][1]<ic->AllHits[idxoff_global+i].detectorID)continue;
-		
-		//calculate the track position at the hodoscope plane z
-		xhodo = planes->z[ic->AllHits[idxoff_global+i].detectorID]*tkl.tx+tkl.x0;
-		yhodo = planes->z[ic->AllHits[idxoff_global+i].detectorID]*tkl.ty+tkl.y0;
-		
-		err_x = 3.f*(fabs(planes->z[ic->AllHits[idxoff_global+i].detectorID]*tkl.err_tx)+tkl.err_x0);
-		err_y = 3.f*(fabs(planes->z[ic->AllHits[idxoff_global+i].detectorID]*tkl.err_ty)+tkl.err_y0);
-
-		//printf(" det %d elem %d z_hodo %1.4f x_hodo %1.4f y_hodo %1.4f err x %1.4f err y %1.4f \n", ic->AllHits[idxoff_global+i].detectorID, ic->AllHits[idxoff_global+i].elementID, planes[ic->AllHits[idxoff_global+i].detectorID].z, xhodo, yhodo, err_x, err_y);
-
-		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
-		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
-		if(planes->costheta[ic->AllHits[idxoff_global+i].detectorID]>0.99){
-			xmin = ic->AllHits[idxoff_global+i].pos-planes->cellwidth[ic->AllHits[idxoff_global+i].detectorID]*0.5f;
-			xmax = ic->AllHits[idxoff_global+i].pos+planes->cellwidth[ic->AllHits[idxoff_global+i].detectorID]*0.5f;
-			
-			ymin = planes->y1[ic->AllHits[idxoff_global+i].detectorID];
-			ymax = planes->y2[ic->AllHits[idxoff_global+i].detectorID];
-			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stID];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stID];
-			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stID];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stID];
-			
-			ymin+=planes->y0[ic->AllHits[idxoff_global+i].detectorID];
-			ymax+=planes->y0[ic->AllHits[idxoff_global+i].detectorID];
-		}else{
-			xmin = planes->x1[ic->AllHits[idxoff_global+i].detectorID];
-			xmax = planes->x2[ic->AllHits[idxoff_global+i].detectorID];
-			
-			ymin = ic->AllHits[idxoff_global+i].pos-planes->cellwidth[ic->AllHits[idxoff_global+i].detectorID]*0.5f;
-			ymax = ic->AllHits[idxoff_global+i].pos+planes->cellwidth[ic->AllHits[idxoff_global+i].detectorID]*0.5f;
-			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stID];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stID];
-			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stID];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stID];
-		}
-
-		//printf(" xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f xfudge %1.4f\n", xmin, xmax, ymin, ymax, (xmax-xmin)*0.15 );
-		err_x+= (xmax-xmin)*0.15;
-
-		xmin-= err_x;
-		xmax+= err_x;
-		ymin-= err_y;
-		ymax+= err_y;
-		
-		//printf(" xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f \n", xmin, xmax, ymin, ymax);
-		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
-			masked++;
-			break;
-		}
-		
-	}
-	// 
-	return masked>0;
-}
-
-
-
-
-
 
 // ------------------------------
 // Track Kalman fitting 
@@ -2469,3 +2404,7 @@ printf("hit %d, z = %1.3f \n", i, planes[oc[index].AllTracklets[k].hits[i].detec
 
 
 #endif
+
+
+
+

@@ -561,6 +561,7 @@ __device__ float calculate_invP_error(float err_tx, float err_tx_st1)
 	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
 } 
 
+
 #ifdef OLDCODE
 
 // ------------------------------------ //
@@ -713,6 +714,74 @@ __device__ void resolve_single_leftright_newhits(const float x0, const float tx,
 	}
 	
 }
+
+
+
+__device__ void resolve_leftright_xhits(const float x0, const float tx, const float err_x0, const float err_tx, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const float* zarray, const float* slope_max, const float* inter_max, const float thr)
+{
+	short i, j;
+	int indexmin = -1;
+	float pull_min = 1.e6;
+	float pull;
+	float slope_local, inter_local;
+	float slope_exp, inter_exp;
+	float err_slope, err_inter;
+	short detID_i, detID_j;
+
+	for(short n = 0; n<nhits; n+=2){
+		i = n;
+		j = i+1;
+		detID_i = hits_detid[i];
+		detID_j = hits_detid[j];
+		if( abs(detID_i-detID_j)!=1 ){
+		    n--;//step back by 1 to move by 1 hit instead of 2
+		    continue;		    
+		}
+				
+		slope_exp = tx;
+		err_slope = err_tx;
+		
+		inter_exp = x0;
+		err_inter = err_x0;
+		//position(const float pos, const float drift, const short sign)
+#ifdef DEBUG
+		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
+		printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
+			position(hits_pos[i], hits_drift[i], +1), position(hits_pos[i], hits_drift[i], -1), 
+			position(hits_pos[j], hits_drift[j], +1), position(hits_pos[i], hits_drift[j], -1));
+#endif
+		
+		if(hits_sign[i]*hits_sign[j]==0){
+			indexmin = -1;
+			pull_min = 1.e6;
+			for(int k = 0; k<4; k++){
+				slope_local = ( position( hits_pos[i], hits_drift[i],  geometry::lrpossibility[k][0]) - position(hits_pos[j], hits_drift[j],  geometry::lrpossibility[k][1]) ) / ( zarray[detID_i]-zarray[detID_j] );
+				inter_local = position(hits_pos[i], hits_drift[i], geometry::lrpossibility[k][0]) - slope_local*zarray[detID_i];
+				
+				if(fabs(slope_local) > slope_max[detID_i] || fabs(inter_local) > inter_max[detID_i])continue;
+				
+				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
+				
+#ifdef DEBUG
+				printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
+				printf("pull %1.4f\n", pull);
+#endif		
+				if(pull<pull_min){
+					indexmin = k;
+					pull_min = pull;
+				}
+			}
+			
+			if(indexmin>0 && pull_min<thr){
+				hits_sign[i] = geometry::lrpossibility[indexmin][0];
+				hits_sign[j] = geometry::lrpossibility[indexmin][1];
+				//isUpdated = true;
+			}
+		}
+	//	++nresolved;
+	}
+}
+
 
 __device__ void resolve_single_leftright_xhits(const float x0, const float tx, const short nhits, const short* hits_detid, const float* hits_pos, short* hits_sign, const float* z_array)
 {

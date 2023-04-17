@@ -688,6 +688,7 @@ int main(int argn, char * argv[]) {
 		device_gTracks,
 		device_gPlane->z,
 		device_gPlane->spacing,
+		device_gPlane->resolution,
 #ifdef DEBUG
 		device_gEvent->EventID,
 #endif
