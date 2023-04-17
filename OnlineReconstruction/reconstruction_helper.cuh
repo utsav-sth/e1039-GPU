@@ -838,10 +838,12 @@ __device__ void resolve_single_leftright(const gTracklet tkl, float* hitsign, co
 
 
 // function to match a tracklet to a hodoscope hit
-__device__ bool match_tracklet_to_hodo(const int stID, const int detid, const int nhits, const gHits hits, const float x0, const float y0, const float tx, const float ty, const float err_x0, const float err_y0, const float err_tx, const float err_ty, const gPlane* planes)
+__device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhits, const gHits hits, const float x0, const float y0, const float tx, const float ty, const float err_x0, const float err_y0, const float err_tx, const float err_ty, const gPlane* planes)
 {
 	int masked = 0;//false
 	if(nhits==0)return masked;
+	
+	if(detid>40)stid = 3;
 	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
 	// define the region in which we are supposed to have hits:
 	
@@ -854,9 +856,9 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 	float xmin, xmax, ymin, ymax;
 	//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
 	//calculate the track position at the hodoscope plane z
-//#ifdef DEBUG
-	if(blockIdx.x<=debug::EvRef)printf(" evt %d stID %d detid %d, xhodo %1.4f yhodo %1.4f zhodo %1.4f errx %1.4f erry %1.4f fudge factor %1.2f \n", blockIdx.x, stID, detid, xhodo, yhodo, planes->z[detid], err_x, err_y, geometry::hodofudgefac[stID] );
-//#endif
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" evt %d stid %d detid %d, xhodo %1.4f yhodo %1.4f zhodo %1.4f errx %1.4f erry %1.4f fudge factor %1.2f \n", blockIdx.x, stid, detid, xhodo, yhodo, planes->z[detid], err_x, err_y, geometry::hodofudgefac[stid] );
+#endif
 		
 	// loop on the hits and select hodoscope hits corresponding to the station
 	for(int i = 0; i<nhits; i++){
@@ -869,15 +871,11 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 			ymin = planes->y1[detid];
 			ymax = planes->y2[detid];
 			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stID];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stID];
+			xmin-=(xmax-xmin)*geometry::hodofudgefac[stid];
+			xmax+=(xmax-xmin)*geometry::hodofudgefac[stid];
 			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stID];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stID];
-
-			ymin+=planes->y0[detid];
-			ymax+=planes->y0[detid];
-			
+			ymin-=(ymax-ymin)*geometry::hodofudgefac[stid];
+			ymax+=(ymax-ymin)*geometry::hodofudgefac[stid];
 		}else{
 			xmin = planes->x1[detid];
 			xmax = planes->x2[detid];
@@ -885,17 +883,16 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 			ymin = hits.pos(i)-planes->cellwidth[detid]*0.5f;
 			ymax = hits.pos(i)+planes->cellwidth[detid]*0.5f;
 			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stID];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stID];
+			xmin-=(xmax-xmin)*geometry::hodofudgefac[stid];
+			xmax+=(xmax-xmin)*geometry::hodofudgefac[stid];
 			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stID];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stID];
+			ymin-=(ymax-ymin)*geometry::hodofudgefac[stid];
+			ymax+=(ymax-ymin)*geometry::hodofudgefac[stid];
 		}
 
-//#ifdef DEBUG
-//		if(blockIdx.x<=debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax, ymin, ymax );
-		if(blockIdx.x<=debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f x_mask_min %1.4f x_mask_max %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax );
-//#endif
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax, ymin, ymax );
+#endif
 		err_x+= (xmax-xmin)*0.15;
 
 		xmin-= err_x;
@@ -903,8 +900,9 @@ __device__ bool match_tracklet_to_hodo(const int stID, const int detid, const in
 		ymin-= err_y;
 		ymax+= err_y;
 		
-		//if(blockIdx.x<=debug::EvRef)printf(" xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f \n", xmin, xmax, ymin, ymax);
-		if(blockIdx.x<=debug::EvRef)printf(" xmin %1.4f xmax %1.4f \n", xmin, xmax);
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" errx %1.4f xmin %1.4f xmax %1.4f, erry %1.4f ymin %1.4f ymax %1.4f \n", err_x, xmin, xmax, err_y, ymin, ymax);
+#endif
 		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
 			masked++;
 			break;

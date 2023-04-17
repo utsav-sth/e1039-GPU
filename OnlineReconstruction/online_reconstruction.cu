@@ -168,13 +168,13 @@ int main(int argn, char * argv[]) {
 	      plane.xoffset[ipl] = xoffset;
 	      plane.scalex[ipl] = scalex;
 	      plane.x0[ipl] = x0;
-	      plane.x1[ipl] = x1;
-	      plane.x2[ipl] = x2;
+	      plane.x1[ipl] = y1;//x1;//TODO: solve the mixing
+	      plane.x2[ipl] = y2;//x2;
 	      plane.costheta[ipl] = costheta;
 	      plane.scaley[ipl] = scaley;
 	      plane.y0[ipl] = y0;
-	      plane.y1[ipl] = y1;
-	      plane.y2[ipl] = y2;
+	      plane.y1[ipl] = x1;//y1;
+	      plane.y2[ipl] = x2;//y2;
 	      plane.sintheta[ipl] = sintheta;
 	      plane.resolution[ipl] = resolution;
 	      plane.p1x_w1[ipl] = p1x;
