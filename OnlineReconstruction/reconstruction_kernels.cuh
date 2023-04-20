@@ -453,6 +453,7 @@ __global__ void gKernel_XZ_tracking(
 				tdc[nhits_x] = hits_st2x.tdc(i_hit);
 #endif
 				drift[nhits_x] = hits_st2x.drift(i_hit);
+				sign[nhits_x] = 0;
 				nhits_x++;
 			}
 			if(hitpairs_x2[bin2+nbins_st2*i_x2].second>=0){
@@ -467,6 +468,7 @@ __global__ void gKernel_XZ_tracking(
 				tdc[nhits_x] = hits_st2xp.tdc(i_hit);
 #endif
 				drift[nhits_x] = hits_st2xp.drift(i_hit);
+				sign[nhits_x] = 0;
 				nhits_x++;
 			}
 			
@@ -489,6 +491,7 @@ __global__ void gKernel_XZ_tracking(
 				tdc[nhits_x] = hits_st3x.tdc(i_hit);
 #endif
 				drift[nhits_x] = hits_st3x.drift(i_hit);
+				sign[nhits_x] = 0;
 				nhits_x++;
 			}
 			if(hitpairs_x3[bin3+nbins_st3*i_x3].second>=0){
@@ -503,6 +506,7 @@ __global__ void gKernel_XZ_tracking(
 				tdc[nhits_x] = hits_st3xp.tdc(i_hit);
 #endif
 				drift[nhits_x] = hits_st3xp.drift(i_hit);
+				sign[nhits_x] = 0;
 				nhits_x++;
 			}
 			
@@ -584,12 +588,18 @@ __global__ void gKernel_XZ_tracking(
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
 			
-			//for(short l = 0; l<nhits_x; l++){
-			//	X[l]+= sign[l]*drift[l];
-			//}
-			//fit_2D_track(nhits_x, X, Z, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
-			//x0 = Par[0];
-			//tx = Par[1];
+			for(short l = 0; l<nhits_x; l++){
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("l %d hit sign %d drift %1.4f \n", l, sign[l], drift[l]);
+#endif
+				X[l]+= sign[l]*drift[l];
+			}
+			fit_2D_track(nhits_x, X, Z, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("before: x0 %1.4f, tx %1.4f, after: x0 %1.4f tx %1.4f \n", x0, tx, Par[0], Par[1]);
+#endif
+			x0 = Par[0];
+			tx = Par[1];
 					
 			//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 			addtrack[threadIdx.x] = true;

@@ -795,6 +795,9 @@ __device__ void resolve_single_leftright_xhits(const float x0, const float tx, c
 		
 		pos_exp = z_array[detID]*tx+x0;
 		hits_sign[n] = pos_exp>hits_pos[n]? +1 : -1;
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("pos_exp %1.4f hit_pos %1.4f sign %d \n", pos_exp, hits_pos[n], hits_sign[n]);
+#endif
 	}
 	
 }
