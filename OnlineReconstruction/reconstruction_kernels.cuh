@@ -1511,8 +1511,8 @@ __global__ void gKernel_YZ_tracking(
 				//resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign, planes, 150.);
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign, planes);
 				
-				//TODO: chi2 evaluation of track candidate
-				chi2 = chi2_track(nhits_x+nhits_uv, dd, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
+				//chi2 evaluation of track candidate
+				chi2 = chi2_track(nhits_x+nhits_uv, dd, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
 				
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
@@ -2071,7 +2071,7 @@ __global__ void gKernel_Global_tracking(
 				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
 				//TODO: chi2 fit...
-				chi2 = chi2_track(nhits_x+nhits_uv, drift, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
+				chi2 = chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef){
 					printf("thread %d invP %1.4f charge %d nhits %d \n", threadIdx.x, invP, charge, nhits_st23);
