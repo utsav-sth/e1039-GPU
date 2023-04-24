@@ -912,7 +912,7 @@ int main(int argn, char * argv[]) {
 		//for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
 		//for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
 		
-		output->fEventID = n;
+		output->fEventID = host_output_eR->EventID[n];
 				
 		for(int k = 1; k<=nChamberPlanes; k++ ){
 			nhits = host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
