@@ -712,8 +712,18 @@ __global__ void gKernel_XZ_tracking(
 
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("actual thread %d store thread %d offset %d stid %d local bin %d, bin0 st2 %d, bin0 st3 %d, st3 %d, ntkl_per_thread %d \n",  threadIdx.x, thread_min[threadIdx.x], tkl_coll_offset+array_offset, binId, i, bin0_st2, bin0_st3, st3, ntkl_per_thread[thread_min[threadIdx.x]]);
-#endif
+
 			if( threadIdx.x%2 != thread_min[threadIdx.x]%2 )printf(" !!! actual thread %d  store thread %d, st3 %d st_thread %d\n", threadIdx.x, thread_min[threadIdx.x], st3, 3+thread_min[threadIdx.x]%2);
+			
+			for(int kk = 0; kk<nthreads_busy; kk++){
+				for(int ll = 0; ll<nthreads_busy; ll++){
+					if(kk==ll)continue;
+					if(thread_min[list_of_threads[kk]]==thread_min[list_of_threads[ll]] && ntkl_per_thread[list_of_threads[kk]]==ntkl_per_thread[list_of_threads[ll]]){
+						printf("!!! alt thread chosen for thread %d: %d (n_tkl = %d) == alt thread chosen for thread %d: %d (n_tkl = %d) \n", list_of_threads[kk], thread_min[list_of_threads[kk]], ntkl_per_thread[list_of_threads[kk]], list_of_threads[ll], thread_min[list_of_threads[ll]], ntkl_per_thread[list_of_threads[ll]]);
+					}
+				}
+			}
+#endif
 			
 			tklcoll->setStationID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], (float)binId);
 			tklcoll->setThreadID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], (float)threadIdx.x);
