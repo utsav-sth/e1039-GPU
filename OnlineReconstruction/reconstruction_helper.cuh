@@ -1,5 +1,5 @@
 #include "reconstruction_classes.cuh"
-
+//#define REFINED_ER
 
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //
@@ -127,9 +127,11 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 	
 	// event reducing/hit filtering
 	for(iAH = 0; iAH<nhits; ++iAH) {
+		
 		hitflag[iAH] = 1;
 		// if hit not good, set its flag to 0 and continue;
 		if( (int(hitcoll.flag(iAH)) & hitFlagBit(1)) == 0) {
+			//if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("detid %d chan %1.4f, flag %d \n", detid, hitcoll.chan(iAH), hitflag[iAH]);
 			//if(ic[index].EventID==0)printf("hit det %d Skip out-of-time...\n", detid);
 			hitflag[iAH] = -1;
 			continue;
@@ -149,14 +151,17 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 			// we're suppose to have one signal (a second signal would be after-pulsing)
 			// if time difference between new hit and current hit is less than 80ns for DCs, it's also considered after-pulsing
 			else {
+#ifdef REFINED_ER 
 				if(detid > 36 || ((hitcoll.tdc(iAH) - tdcTime_curr >= 0.0) && (hitcoll.tdc(iAH) - tdcTime_curr < 80.0)) || ((hitcoll.tdc(iAH) - tdcTime_curr <= 0.0) && (hitcoll.tdc(iAH) - tdcTime_curr > -80.0))) {
-					//if(ic[index].EventID==0)printf("hit det %d el %d Skip after-pulse...\n", detid, hitcoll.chan(iAH));
+#endif
 					hitflag[iAH] = -1;
 					continue;
+#ifdef REFINED_ER 
 				}
 				else {
 					tdcTime_curr = hitcoll.tdc(iAH);
 				}
+#endif
 			}
 		}
 		// declustering of hits in DCs (from CPU code, I understand this one better)
@@ -195,10 +200,12 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 
 					// if 2 hits in cluster, evaluate w_max and w_min; drift distance has to be < w_min for one of the hits, while it has to be < w_max for the other hit 
 					if(cluster_iAH_arr_size == 2) {
+#ifdef REFINED_ER 
 						w_max = 0.9*0.5*(hitcoll.pos(cluster_iAH_arr[cluster_iAH_arr_size-1]) - hitcoll.pos(cluster_iAH_arr[0]));
 						w_min = 4.0/9.0*w_max;
 						
 						if((hitcoll.drift(cluster_iAH_arr[0]) > w_max && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_min) || (hitcoll.drift(cluster_iAH_arr[0]) > w_min && hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1]) > w_max)) {
+#endif
 						//if(ic[index].EventID==0)printf("hit indices: %d %d %d\n", iAH, cluster_iAH_arr[cluster_iAH_arr_size-1], cluster_iAH_arr[0]);
 							//eliminating the existing hit with the lagest drift distance
 							if(hitcoll.drift(cluster_iAH_arr[0]) > hitcoll.drift(cluster_iAH_arr[cluster_iAH_arr_size-1])) {
@@ -209,9 +216,13 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 								//if(ic[index].EventID==0)printf("2 - hit det %d elem %d Skip cluster...\n", ic->AllHits[cluster_iAH_arr[cluster_iAH_arr_size-1]].detectorID, hitcoll.chan(cluster_iAH_arr[cluster_iAH_arr_size-1]));
 								hitflag[cluster_iAH_arr[cluster_iAH_arr_size-1]] = -1;
 							}
+#ifdef REFINED_ER 
+
 						}
 						// if the time difference is less than 8 ns for detectors 19 to 24 (which btw are DC3p) we remove both
-						else if((((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) >= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) < 8.0) || ((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) <= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) > -8.0)) && (detid >= 19 && detid <= 24)) {
+						else 
+#endif
+						if((((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) >= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) < 8.0) || ((hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) <= 0.0 && (hitcoll.tdc(cluster_iAH_arr[0]) - hitcoll.tdc(cluster_iAH_arr[cluster_iAH_arr_size-1])) > -8.0)) && (detid >= 19 && detid <= 24)) {
 						        //if(ic[index].EventID==0)printf("3 - hit det %d elem %d Skip cluster...\n", detid, hitcoll.chan(iAH));
 							hitflag[cluster_iAH_arr[0]] = -1;
 							hitflag[cluster_iAH_arr[cluster_iAH_arr_size-1]] = -1;
