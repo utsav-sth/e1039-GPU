@@ -49,6 +49,7 @@ public:
   std::vector<int> fTrackHitsChan;
   std::vector<float> fTrackHitsPos;
   std::vector<float> fTrackHitsDrift;
+  std::vector<int> fTrackHitsSign;
   std::vector<float> fTrackVx;
   std::vector<float> fTrackVy;
   std::vector<float> fTrackVz;

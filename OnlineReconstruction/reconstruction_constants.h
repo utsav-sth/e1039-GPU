@@ -1,5 +1,6 @@
 //#define E1039
 //#define DEBUG 1
+//#define USE_DET_RESOL 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
@@ -51,22 +52,29 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
 	__device__ constexpr float SAGITTA_DUMP_CENTER = 1.5;
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
+#ifdef E1039
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
+	__device__ constexpr float FMAGSTR = -1.054;
+	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+#else
+	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
+	__device__ constexpr float FMAGSTR = -1.044;
+	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
+	__device__ constexpr float Z_KMAG_BEND = 1041.8;
+#endif
 	__device__ constexpr float FMAG_LENGTH = 502.92;
 	__device__ constexpr float FMAG_HOLE_LENGTH = 27.94;
 	__device__ constexpr float FMAG_HOLE_RADIUS = 1.27;
-	__device__ constexpr float FMAGSTR = -1.054;
 	__device__ constexpr int NSTEPS_FMAG = 100;
 	__device__ constexpr float STEP_FMAG = 2.5146;// FMAG_LENGTH/NSTEPS_FMAG/2 = 502.92/100/2 = 2.5146 
-	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float DEDX_UNIT_0 = 0.014282073;// 7.18274/502.92;
 	__device__ constexpr float DEDX_UNIT_1 = 7.1869681e-05;// 0.0361447/502.92;
 	__device__ constexpr float DEDX_UNIT_2 =-1.4279150e-06;//-0.000718127/502.92;
 	__device__ constexpr float DEDX_UNIT_3 = 1.5853655e-08;// 7.97312e-06/502.92;
 	__device__ constexpr float DEDX_UNIT_4 =-6.0741470e-11;//-3.05481e-08/502.92;
-	__device__ constexpr int NSTEPS_TARGET = 100;
-	__device__ constexpr float STEP_TARGET = 5.;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
+	__device__ constexpr int NSTEPS_TARGET = 200;
+	__device__ constexpr float STEP_TARGET = 2.5;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 28, 28};
 	__device__ constexpr short MaxHitsProj[3] = {20, 80, 80};
@@ -117,8 +125,8 @@ namespace datasizes{
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 
 	__host__ __device__ constexpr int MaxD0Multiplicity = 350;
-	__host__ __device__ constexpr int MaxD2Multiplicity = 170;
-	__host__ __device__ constexpr int MaxD3Multiplicity = 140;
+	__host__ __device__ constexpr int MaxD2Multiplicity = 200;
+	__host__ __device__ constexpr int MaxD3Multiplicity = 150;
 	__host__ __device__ constexpr int MaxPropMultiplicity = 1250;
 
 }
@@ -132,5 +140,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 392;
+  __host__ __device__ constexpr unsigned int EvRef = 98;
 }

@@ -357,9 +357,12 @@ __device__ float chi2_track(size_t const n_points,
 {
 	float dca;
 	float chi2 = 0;
+	float den2;
 	for( size_t i=0; i<n_points; i++ ){
-		dca = ( -deltapy[i]*(p1x[i]-x0) + deltapx[i]*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf( deltapy[i]*deltapy[i] + deltapx[i]*deltapx[i] - 2*tx*ty*deltapy[i]*deltapx[i] );
+		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
+		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
 		chi2+= ( driftdist[i]*sign[i] - dca ) * ( driftdist[i]*sign[i] - dca ) / resolutions[i] / resolutions[i];
+//		if(print)printf(" p1x %1.4f p1y %1.4f p1z %1.4f dpx %1.4f dpy %1.4f dpz %1.4f dca %1.4f drift dist %1.4f * sign %d res %1.4f chi2 %1.4f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], resolutions[i], chi2);
 	}
 	return chi2;
 }

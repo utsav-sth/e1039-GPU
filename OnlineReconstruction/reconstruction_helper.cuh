@@ -1,5 +1,5 @@
 #include "reconstruction_classes.cuh"
-//#define REFINED_ER
+#define REFINED_ER
 
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //
@@ -95,7 +95,7 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
 	}
 
-	err_y = planes->spacing[ detid ]/3.4641f * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
+	err_y = planes->spacing[ detid ]*InvSqrt12 * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
 	return true;
 }
 
@@ -264,9 +264,21 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 	}
 	//end of the hit loop
 	
+	//array to check for double hits: if one channel already has a hit, the next hit in the same channel is suppressed.
+	// better declare and initialize this array just before doing the check 
+	bool chanhashit[202];
+	for(short k = 0; k<202; k++)chanhashit[k] = 0;
+	
 	for(iAH = 0; iAH<nhits; ++iAH) {
 		if(hitflag[iAH]>0) {
-			++nAH_reduced;
+			//if the chan already has a hit, then set the hit flag in the same chan as not good.
+			if(chanhashit[(short)hitcoll.chan(iAH)]){
+				hitflag[iAH] = 0;
+			}else{
+				//otherwise, set the "chanhashit" flag as true, and proceed as usual 
+				chanhashit[(short)hitcoll.chan(iAH)] = true;
+				++nAH_reduced;
+			}
 		}
 	}
 	return nAH_reduced;
@@ -493,8 +505,9 @@ __device__ void SagittaRatioInStation1(const float x0, const float tx, const flo
 		
 		pos_st2 = x_st2*costheta_[detid_2] + y_st2*sintheta_[detid_2];
 		
-		//printf("det id %d z %1.3f s_det id %d z %1.3f x %1.3f y %1.3f \n", detid, z_st1, detid_2, z_st2, x_st2, y_st2);
-		
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("det id %d z %1.3f s_det id %d z %1.3f x %1.3f y %1.3f \n", detid, z_st1, detid_2, z_st2, x_st2, y_st2);
+#endif	
         	s2_target = pos_st2 - pos_st3*(z_st2 - geometry::Z_TARGET)/(z_st3 - geometry::Z_TARGET);
         	s2_dump   = pos_st2 - pos_st3*(z_st2 - geometry::Z_DUMP)/(z_st3 - geometry::Z_DUMP);
 
@@ -554,6 +567,7 @@ __device__ float calculate_invP(float tx, float tx_st1, const short charge)
 	return (tx_st1 - tx)*charge / geometry::PT_KICK_KMAG;
 }
 
+//EF: NB: prolly not. The function below is not as robust as I thought it was... should not be used and probably decommissioned 
 __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
 {
 	float invP = (tx_st1 - tx) / geometry::PT_KICK_KMAG;
@@ -566,6 +580,19 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
 	return invP;
 }
 
+/**
+ * This function should be as simple as possible, in order to reduce the
+ * computation time.  Therefore the condition of the charge determination
+ * uses only "x0" and "tx" (at St. 2+3).  The formula was obtained 
+ * practically by the study in DocDB 9505.  This function is valid for both 
+ * the parallel and anti-parallel FMag+KMag polarity combination.  But it 
+ * is _not_ guaranteed to be valid when the FMag and/or KMag field strength
+ * is changed largely.
+ */
+__device__ short calculate_charge(float tx, float x0)
+{
+	return -0.0033f * copysign(1.0, geometry::FMAGSTR) * x0 < tx  ?  +1  :  -1;
+}
 
 __device__ float calculate_invP_error(float err_tx, float err_tx_st1)
 {

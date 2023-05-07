@@ -49,6 +49,7 @@ void ORoutput_tree::Init()
   fTree->Branch("track.hitchan", &(fTrackHitsChan));
   fTree->Branch("track.hitpos", &(fTrackHitsPos));
   fTree->Branch("track.hitdrift", &(fTrackHitsDrift));
+  fTree->Branch("track.hitsign", &(fTrackHitsSign));
   fTree->Branch("track.vx", &(fTrackVx));
   fTree->Branch("track.vy", &(fTrackVy));
   fTree->Branch("track.vz", &(fTrackVz));
@@ -84,6 +85,7 @@ void ORoutput_tree::Clear()
   fTrackHitsChan.clear();
   fTrackHitsPos.clear();
   fTrackHitsDrift.clear();
+  fTrackHitsSign.clear();
   fTrackVx.clear();
   fTrackVy.clear();
   fTrackVz.clear();

@@ -160,7 +160,9 @@ int main(int argn, char * argv[]) {
     	      if (buffer[0] == '#') continue;
 	      std::istringstream iss;
 	      iss.str(buffer);
-	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      //TODO: solve the mixing of x1, x2 / y1, y2
+	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
 	      plane.z[ipl] = z;
 	      plane.nelem[ipl] = nelem;
 	      plane.cellwidth[ipl] = cellwidth;
@@ -168,13 +170,13 @@ int main(int argn, char * argv[]) {
 	      plane.xoffset[ipl] = xoffset;
 	      plane.scalex[ipl] = scalex;
 	      plane.x0[ipl] = x0;
-	      plane.x1[ipl] = y1;//x1;//TODO: solve the mixing
-	      plane.x2[ipl] = y2;//x2;
+	      plane.x1[ipl] = x1;
+	      plane.x2[ipl] = x2;
 	      plane.costheta[ipl] = costheta;
 	      plane.scaley[ipl] = scaley;
 	      plane.y0[ipl] = y0;
-	      plane.y1[ipl] = x1;//y1;
-	      plane.y2[ipl] = x2;//y2;
+	      plane.y1[ipl] = y1;
+	      plane.y2[ipl] = y2;
 	      plane.sintheta[ipl] = sintheta;
 	      plane.resolution[ipl] = resolution;
 	      plane.p1x_w1[ipl] = p1x;
@@ -314,7 +316,9 @@ int main(int argn, char * argv[]) {
 	}
 #endif
 	
+	
 	short detid;
+	
 	int nhits;
 	//the hit offset is to give an individual offset for each hit detector collection per event
 	int hit_ctr[nDetectors];
@@ -384,7 +388,7 @@ int main(int argn, char * argv[]) {
 					
 #ifdef DEBUG
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << "hit offsets " << detid << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0] << " " << evhitarrayoffset[detid] << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid] << ": " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+hit_ctr[detid] << " " << (rawEvent->fAllHits[m]).elementID << " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << endl;
-#endif					
+#endif										
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])] = (float)(rawEvent->fAllHits[m]).elementID;
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float)wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
@@ -688,7 +692,9 @@ int main(int argn, char * argv[]) {
 		device_gTracks,
 		device_gPlane->z,
 		device_gPlane->spacing,
+#ifdef USE_DET_RESOL
 		device_gPlane->resolution,
+#endif
 #ifdef DEBUG
 		device_gEvent->EventID,
 #endif
@@ -904,7 +910,12 @@ int main(int argn, char * argv[]) {
 		output->Clear();
 		nEvtsTotal++;
 		if(host_output_eR->nAH[n]==0)continue;
-		if(host_output_eR->HasTooManyHits[n])continue;
+		if(host_output_eR->HasTooManyHits[n]){
+#ifdef DEBUG
+			cout << " event " << host_output_eR->EventID[n] << endl;
+#endif
+			continue;
+		}
 		nEvtsPass++;
 
 		nhits_total = 0;
@@ -985,6 +996,7 @@ int main(int argn, char * argv[]) {
 					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l]);
 					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l]);
 					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+70+l]);
+					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l]);
 				}
 				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+106]);
 				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+107]);
@@ -1003,8 +1015,6 @@ int main(int argn, char * argv[]) {
 
 	cout << tklctr << " total tracks reconstructed" << endl;
 	cout << nEvtsPass << " evts with low enough number of hits on " << nEvtsTotal << " events total." << endl; 
-	//auto end_kernel = std::chrono::system_clock::now();
-
 
 	delete rawEvent;
 
