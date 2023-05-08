@@ -1,4 +1,4 @@
-//#define E1039
+#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
 #define nChamberPlanes 30
