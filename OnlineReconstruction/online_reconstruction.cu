@@ -322,7 +322,8 @@ int main(int argn, char * argv[]) {
 	int nhits;
 	//the hit offset is to give an individual offset for each hit detector collection per event
 	int hit_ctr[nDetectors];
-	int firstevent;	
+	int firstevent;
+	bool isFPGAtriggered;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -337,6 +338,10 @@ int main(int argn, char * argv[]) {
 			host_gEvent.EventID[i] = rawEvent->fEventID;
 			//host_gEvent.SpillID[i] = rawEvent->fSpillID;
 			host_gEvent.TriggerBits[i] = rawEvent->fTriggerBits;
+			isFPGAtriggered = false;
+			for(int k = 0; k<5; k++){
+				if( (rawEvent->fTriggerBits & k) != 0 )isFPGAtriggered = true;
+			}
 			//host_gEvent.TargetPos[i] = rawEvent->fTargetPos;
 			//host_gEvent.TurnID[i] = rawEvent->fTurnID;
 			//host_gEvent.RFID[i] = rawEvent->fRFID;
@@ -400,7 +405,13 @@ int main(int argn, char * argv[]) {
 				if(31 <= detid && detid <= 46){
 					if((rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
 					cout << rawEvent->fEventID << " " << detid <<  " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << hit_ctr[detid] << endl;
-					
+					//if(isFPGAtriggered){
+					//	if(33<= detid && detid <= 36)continue;
+					//	if(41<= detid && detid <= 44)continue;
+					//}else{
+					//	if(37<= detid && detid <= 40)continue;
+					//	if(32>= detid || detid >= 45)continue;
+					//}
 #ifdef DEBUG
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << hit_ctr[detid] << " " << detid << " " << (rawEvent->fAllHits[m]).elementID << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << " " << (rawEvent->fAllHits[m]).tdcTime << " " << (rawEvent->fAllHits[m]).flag << " " << (rawEvent->fAllHits[m]).driftDistance << endl;
 #endif					

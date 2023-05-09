@@ -546,7 +546,7 @@ __global__ void gKernel_XZ_tracking(
 			
 			//prop matching
 			nprop = 0;
-			checknext = true;
+//			checknext = true;
 
 			for(int n = 0; n<nhits_p1x1; n++){
 				ipos = hits_p1x1.pos(n);
@@ -556,11 +556,11 @@ __global__ void gKernel_XZ_tracking(
 #endif
 				if(fabs(ipos-xExp)<5.08f){
 					nprop++;
-					checknext = false;
+//					checknext = false;
 					break;
 				}
 			}
-			if(checknext){
+//			if(checknext){
 				for(int n = 0; n<nhits_p1x2; n++){
 					ipos = hits_p1x2.pos(n);
 					xExp = tx*z_p1x2+x0;
@@ -569,12 +569,12 @@ __global__ void gKernel_XZ_tracking(
 #endif
 					if(fabs(ipos-xExp)<5.08f){
 						nprop++;
-						checknext = false;
+//						checknext = false;
 						break;
 					}
 				}
-			}
-			if(checknext){
+//			}
+//			if(checknext){
 				for(int n = 0; n<nhits_p2x1; n++){
 					ipos = hits_p2x1.pos(n);
 					xExp = tx*z_p2x1+x0;
@@ -587,8 +587,8 @@ __global__ void gKernel_XZ_tracking(
 						break;
 					}
 				}
-			}
-			if(checknext){
+//			}
+//			if(checknext){
 				for(int n = 0; n<nhits_p2x2; n++){
 					ipos = hits_p2x2.pos(n);
 					xExp = tx*z_p2x2+x0;
@@ -597,12 +597,12 @@ __global__ void gKernel_XZ_tracking(
 #endif
 					if(fabs(ipos-xExp)<5.08f){
 						nprop++;
-						checknext = false;
+//						checknext = false;
 						break;
 					}
 				}
-			}
-			if(nprop==0)continue;
+//			}
+			if(nprop<NpropXhitsMin)continue;
 
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
@@ -965,6 +965,34 @@ __global__ void gKernel_YZ_tracking(
 #else
 	const float res_st3vp = planes->spacing[detid]*InvSqrt12;
 #endif
+
+#ifdef PROP_Y_MATCH	
+	int nprop;
+	float yExp, ipos;
+	// proportional tube hits
+	projid = 1;
+	stid = 6-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p1y1;
+	const gHits hits_p1y1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1y1);
+	const float z_p1y1 = planes->z[detid];
+
+	detid-= 1;
+	int nhits_p1y2;
+	const gHits hits_p1y2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1y2);
+	const float z_p1y2 = planes->z[detid];
+	
+	stid = 7-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p2y1;
+	const gHits hits_p2y1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2y1);
+	const float z_p2y1 = planes->z[detid];
+
+	detid-= 1;
+	int nhits_p2y2;
+	const gHits hits_p2y2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2y2);
+	const float z_p2y2 = planes->z[detid];
+#endif
 	
 	// hodoscope hits
 	stid = 1;//2-1
@@ -977,6 +1005,7 @@ __global__ void gKernel_YZ_tracking(
 	}
 #endif
 
+
 	detid = geometry::hodoplanesx[stid][1];
 	int nhits_h2x2;
 	const gHits hits_h2x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2x2);
@@ -986,6 +1015,7 @@ __global__ void gKernel_YZ_tracking(
 	}
 #endif
 
+#ifdef HODO_Y_MATCH
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h2y1;
 	const gHits hits_h2y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2y1);
@@ -1002,6 +1032,7 @@ __global__ void gKernel_YZ_tracking(
 	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h2y2 %d \n", nhits_h2y2);
 	for(int l = 0; l<nhits_h2y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h2y2.chan(l), hits_h2y2.pos(l));
 	}
+#endif
 #endif
 	
 	stid = 2;//3-1
@@ -1023,6 +1054,7 @@ __global__ void gKernel_YZ_tracking(
 	}
 #endif
 
+#ifdef HODO_Y_MATCH
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h3y1;
 	const gHits hits_h3y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3y1);
@@ -1040,7 +1072,8 @@ __global__ void gKernel_YZ_tracking(
 	for(int l = 0; l<nhits_h3y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h3y2.chan(l), hits_h3y2.pos(l));
 	}
 #endif
-
+#endif
+	
 	stid = 3;//4-1
 	detid = geometry::hodoplanesx[stid][0];
 	int nhits_h4x1;
@@ -1060,6 +1093,7 @@ __global__ void gKernel_YZ_tracking(
 	}
 #endif
 	
+#ifdef HODO_Y_MATCH
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h4y1;
 	const gHits hits_h4y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4y1);
@@ -1076,6 +1110,7 @@ __global__ void gKernel_YZ_tracking(
 	if(blockIdx.x==debug::EvRef && threadIdx.x==0){printf("nhits h4y2 %d \n", nhits_h4y2);
 	for(int l = 0; l<nhits_h4y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h4y2.chan(l), hits_h4y2.pos(l));
 	}
+#endif
 #endif
 
 #ifdef DEBUG
@@ -1264,33 +1299,7 @@ __global__ void gKernel_YZ_tracking(
 		if(blockIdx.x==debug::EvRef)printf(" evt %d x0 %1.4f +- %1.4f tx %1.4f +- %1.4f\n", blockIdx.x, x0, err_x0, tx, err_tx);
 #endif
 		
-		stid = 1;//2-1
-		maskhodo[stid] = 0;
-		detid = geometry::hodoplanesx[stid][0];
-		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x1, hits_h2x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		if(!maskhodo[stid]){
-			detid = geometry::hodoplanesx[stid][1];
-			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x2, hits_h2x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		}
-		
-		stid = 2;//3-1
-		maskhodo[stid] = 0;
-		detid = geometry::hodoplanesx[stid][0];
-		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x1, hits_h3x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		if(!maskhodo[stid]){
-			detid = geometry::hodoplanesx[stid][1];
-			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x2, hits_h3x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		}
-		
-		stid = 3;//4-1
-		maskhodo[stid] = 0;
-		detid = geometry::hodoplanesx[stid][0];
-		maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x1, hits_h4x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		if(!maskhodo[stid]){
-			detid = geometry::hodoplanesx[stid][1];
-			maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x2, hits_h4x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
-		}
-		
+				
 		ty = 0;
 		
 		for(i_uv3 = 0; i_uv3<ncomb_uv3; i_uv3++){
@@ -1451,7 +1460,7 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
-						if( fabs(y-ty*z_st2u)/err_y<=12.0f ){//since ty is *very* rough let's be generous...				
+						//if( fabs(y-ty*z_st2u)/err_y<=20.0f ){//since ty is *very* rough let's be generous...				
 							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
 							dd[nhits_x+nhits_uv] = drift[nhits_uv];
 							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
@@ -1464,7 +1473,7 @@ __global__ void gKernel_YZ_tracking(
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
-						}
+						//}
 					}
 				}
 				if(hitpairs_u2[i_u2].second>=0){
@@ -1482,7 +1491,7 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
-						if( fabs(y-ty*z_st2up)/err_y<=12.0f ){//since ty is *very* rough let's be generous...				
+						//if( fabs(y-ty*z_st2up)/err_y<=20.0f ){//since ty is *very* rough let's be generous...				
 							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
 							dd[nhits_x+nhits_uv] = drift[nhits_uv];
 							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
@@ -1495,7 +1504,7 @@ __global__ void gKernel_YZ_tracking(
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
-						}
+						//}
 					}
 				}
 				
@@ -1517,7 +1526,7 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
-						if( fabs(y-ty*z_st2v)/err_y<=12.0f ){//since ty is *very* rough let's be generous...				
+						//if( fabs(y-ty*z_st2v)/err_y<=20.0f ){//since ty is *very* rough let's be generous...				
 							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
 							dd[nhits_x+nhits_uv] = drift[nhits_uv];
 							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
@@ -1530,7 +1539,7 @@ __global__ void gKernel_YZ_tracking(
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
-						}
+						//}
 					}
 				}
 				if(hitpairs_v2[i_v2].second>=0){
@@ -1548,7 +1557,7 @@ __global__ void gKernel_YZ_tracking(
 #ifdef DEBUG
 						if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_uv], elID[nhits_uv], pos[nhits_uv], drift[nhits_uv]);
 #endif
-						if( fabs(y-ty*z_st2vp)/err_y<=12.0f ){//since ty is *very* rough let's be generous...				
+						//if( fabs(y-ty*z_st2vp)/err_y<=20.0f ){//since ty is *very* rough let's be generous...				
 							res[nhits_x+nhits_uv] = planes->resolution[detID[nhits_uv]];
 							dd[nhits_x+nhits_uv] = drift[nhits_uv];
 							p1x[nhits_x+nhits_uv] = x_bep(detID[nhits_uv], elID[nhits_uv], planes);
@@ -1561,7 +1570,7 @@ __global__ void gKernel_YZ_tracking(
 							Y[nhits_uv] = y;
 							errY[nhits_uv] = err_y;
 							nhits_uv++;
-						}
+						//}
 					}
 				}
 				
@@ -1578,40 +1587,132 @@ __global__ void gKernel_YZ_tracking(
 				
 				if(fabs(y0)>Y0_MAX+err_y0 || fabs(ty)>TY_MAX+err_ty)continue;
 
+#ifdef PROP_Y_MATCH			
+				//prop matching
+				nprop = 0;
+//				checknext = true;
+				
+				for(int n = 0; n<nhits_p1y1; n++){
+					ipos = hits_p1y1.pos(n);
+					yExp = ty*z_p1y1+y0;
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("evt %d p1y1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+					if(fabs(ipos-yExp)<5.08f){
+						nprop++;
+//						checknext = false;
+						break;
+					}
+				}
+//				if(checknext){
+				for(int n = 0; n<nhits_p1y2; n++){
+					ipos = hits_p1y2.pos(n);
+					yExp = tx*z_p1y2+x0;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p1x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+					if(fabs(ipos-yExp)<5.08f){
+						nprop++;
+//						checknext = false;
+						break;
+					}
+				}
+//				}
+//				if(checknext){
+				for(int n = 0; n<nhits_p2y1; n++){
+					ipos = hits_p2y1.pos(n);
+					yExp = tx*z_p2y1+x0;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+					if(fabs(ipos-yExp)<5.08f){
+						nprop++;
+//						checknext = false;
+						break;
+					}
+				}
+//				}
+//				if(checknext){
+				for(int n = 0; n<nhits_p2y2; n++){
+					ipos = hits_p2y2.pos(n);
+					yExp = tx*z_p2y2+x0;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+					if(fabs(ipos-yExp)<5.08f){
+						nprop++;
+//						checknext = false;
+						break;
+					}
+				}
+//				}
+				if(nprop<NpropXhitsMin)continue;
+#endif	
+
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf(" evt %d x0 %1.4f +- %1.4f tx %1.4f +- %1.4f y0 %1.4f +- %1.4f ty %1.4f +- %1.4f \n", blockIdx.x, x0, err_x0, tx, err_tx, y0, err_y0, ty, err_tx);
 #endif
 				//hodoscope matching
 				stid = 1;//2-1
+
+				maskhodo[stid] = 0;
+				detid = geometry::hodoplanesx[stid][0];
+				maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x1, hits_h2x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
 				if(!maskhodo[stid]){
-					detid = geometry::hodoplanesy[stid][0];
-					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y1, hits_h2y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					detid = geometry::hodoplanesx[stid][1];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2x2, hits_h2x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+#ifdef HODO_Y_MATCH
 					if(!maskhodo[stid]){
-						detid = geometry::hodoplanesy[stid][1];
-						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y2, hits_h2y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						detid = geometry::hodoplanesy[stid][0];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y1, hits_h2y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						if(!maskhodo[stid]){
+							detid = geometry::hodoplanesy[stid][1];
+							maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h2y2, hits_h2y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						}
 					}
+#endif
 				}
+
 				if(!maskhodo[stid])continue;
 				
 				stid = 2;//3-1
+				maskhodo[stid] = 0;
+				detid = geometry::hodoplanesx[stid][0];
+				maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x1, hits_h3x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
 				if(!maskhodo[stid]){
-					detid = geometry::hodoplanesy[stid][0];
-					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y1, hits_h3y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					detid = geometry::hodoplanesx[stid][1];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3x2, hits_h3x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+#ifdef HODO_Y_MATCH
 					if(!maskhodo[stid]){
-						detid = geometry::hodoplanesy[stid][1];
-						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y2, hits_h3y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						detid = geometry::hodoplanesy[stid][0];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y1, hits_h3y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						if(!maskhodo[stid]){
+							detid = geometry::hodoplanesy[stid][1];
+							maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h3y2, hits_h3y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						}
 					}
+#endif
 				}
+
 				if(!maskhodo[stid])continue;
 				
 				stid = 3;//4-1
+				maskhodo[stid] = 0;
+				detid = geometry::hodoplanesx[stid][0];
+				maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x1, hits_h4x1, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
 				if(!maskhodo[stid]){
-					detid = geometry::hodoplanesy[stid][0];
-					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y1, hits_h4y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+					detid = geometry::hodoplanesx[stid][1];
+					maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4x2, hits_h4x2, x0, 0, tx, 0, err_x0, 0, err_tx, 0, planes);
+#ifdef HODO_Y_MATCH
 					if(!maskhodo[stid]){
-						detid = geometry::hodoplanesy[stid][1];
-						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y2, hits_h4y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						detid = geometry::hodoplanesy[stid][0];
+						maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y1, hits_h4y1, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						if(!maskhodo[stid]){
+							detid = geometry::hodoplanesy[stid][1];
+							maskhodo[stid] = match_tracklet_to_hodo(stid, detid, nhits_h4y2, hits_h4y2, x0, y0, tx, ty, err_x0, err_y0, err_tx, err_ty, planes);
+						}
 					}
+#endif
 				}
 				if(!maskhodo[stid])continue;
 				
@@ -1819,6 +1920,7 @@ __global__ void gKernel_Global_tracking(
 	}
 #endif
 	
+#ifdef HODO_Y_MATCH
 	detid = geometry::hodoplanesy[stid][0];
 	int nhits_h1y1;
 	const gHits hits_h1y1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h1y1);
@@ -1836,7 +1938,7 @@ __global__ void gKernel_Global_tracking(
 	for(int l = 0; l<nhits_h1y2; l++)printf("det %d chan %1.0f pos %1.4f \n", detid, hits_h1y2.chan(l), hits_h1y2.pos(l));
 	}
 #endif
-	
+#endif	
 	bool maskhodo;
 	
 	//Sagitta ratio
@@ -2045,12 +2147,14 @@ __global__ void gKernel_Global_tracking(
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf(" evt %d x0_st1 %1.4f +- %1.4f tx_st1 %1.4f +- %1.4f y0 %1.4f +- %1.4f ty %1.4f +- %1.4f invP %1.4f +- %1.4f \n", blockIdx.x, x0_st1, errx0_st1, tx_st1, errtx_st1, y0, erry0, ty, errty, invP, errinvP);
 #endif
+
 			maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x1, hits_h1x1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
 			if(!maskhodo){
 				detid = geometry::hodoplanesx[stid][1];
 				maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x2, hits_h1x2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
 			}
 
+#ifdef HODO_Y_MATCH
 			if(!maskhodo){
 				detid = geometry::hodoplanesy[stid][0];
 				maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1y1, hits_h1y1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
@@ -2060,6 +2164,7 @@ __global__ void gKernel_Global_tracking(
 				}
 			}
 			if(!maskhodo)continue;
+#endif
 			
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){

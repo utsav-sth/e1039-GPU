@@ -1,6 +1,8 @@
 //#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
+//#define PROP_Y_MATCH 1
+#define HODO_Y_MATCH 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
@@ -28,6 +30,7 @@ const float Y0_MAX = 50;
 const float INVP_MAX = 0.2;
 const float INVP_MIN = 0.01;
 const float InvSqrt12 = 0.288675135;
+const short NpropXhitsMin = 1;
 
 namespace geometry{
 #ifdef E1039
