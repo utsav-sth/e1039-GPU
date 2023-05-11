@@ -1,3 +1,4 @@
+#define GLDISPLAY 1
 //#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
@@ -31,6 +32,7 @@ const float INVP_MAX = 0.2;
 const float INVP_MIN = 0.01;
 const float InvSqrt12 = 0.288675135;
 const short NpropXhitsMin = 1;
+
 
 namespace geometry{
 #ifdef E1039

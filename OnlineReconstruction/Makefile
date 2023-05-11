@@ -8,6 +8,8 @@ DEFS = -DUSE_CUBLAS
 LD = $(CXX)
 LDFLAGS = 
 LIBS = -L${ROOTSYS}/lib -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand
+LIBS += $(GLLINK)
+LIBS += -lGL -lGLU -lglut
 # -linterface_main 
 
 PROGRAM = online_reconstruction
@@ -21,6 +23,7 @@ COMPILE = $(CXX) $(CXXFLAGS) -std=c++14 -m64 $(DEFS) \
 
 $(PROGRAM) : $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $(PROGRAM)
+#$@ $+ $(LIBRARIES)
 
 online_reconstruction.o : online_reconstruction.cu 
 	$(COMPILE) online_reconstruction.cu -o online_reconstruction.o
