@@ -549,6 +549,36 @@ struct gEventTrackCollection{
 };
 
 
+//Histograms
+struct gHist1D {
+	public:
+	const unsigned int m_nbins;
+	const float m_binhw;
+	float* m_bincenter;
+	float* m_bincontent;
+	
+	__host__ __device__ gHist1D(const int nbins, const float xmin, const float xmax) :
+    		m_nbins(nbins),  m_binhw( (xmax-xmin)/nbins )
+    		{
+			for(int i = 0; i<m_nbins; i++){
+				m_bincenter[i] = xmin+m_binhw*(i+0.5f);
+				m_bincontent[i] = 0;
+			}
+		}
+
+	__host__ __device__ gHist1D(const int nbins, const float binhw, float* xpts, float* values) :
+		m_nbins(nbins),  m_binhw(binhw), m_bincenter(reinterpret_cast<float*>(xpts)), m_bincontent(reinterpret_cast<float*>(values)){}
+	
+	__device__ void Fill(const float x)
+		{
+			for(int i = 0; i<m_nbins; i++){
+				if(m_bincenter[i]-m_binhw <= x && x < m_bincenter[i]+m_binhw);
+				m_bincontent[i]+= 1.f;
+			}
+		}
+};
+
+
 //geometry carrier
 struct gPlane {
       public:

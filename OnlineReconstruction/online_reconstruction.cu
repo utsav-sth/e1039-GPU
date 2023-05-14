@@ -39,15 +39,17 @@
 #include "OROutput.h"
 #include "reconstruction_kernels.cuh"
 
+#ifdef GLDISPLAY
+#include "display_utils.cuh"
+#endif
+//#else
+
 #ifdef E1039
 #include "SQEvent_v1.h"
 #include "SQHit_v1.h"
 #include "SQHitVector_v1.h"
 #endif
 
-#ifdef GLDISPLAY
-#include "display_utils.cuh"
-#endif
 
 // function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -701,13 +703,7 @@ int main(int argn, char * argv[]) {
 	auto cp4 = std::chrono::system_clock::now();
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
-	
-#ifdef GLDISPLAY
-	//I'll take care of exception handling later...
-	initGL(&argn, argv);
-#endif	
 
-	
 	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
 		device_gTracks,
@@ -807,9 +803,8 @@ int main(int argn, char * argv[]) {
 	//The display should come after the vertexing - but before the copy of the output back to the CPU.
 #ifdef GLDISPLAY
 	//I'll take care of exception handling later...
-	//initGL(&argc, argv);
-#endif	
-	
+	runDisplay(argn, argv);
+#endif		
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
 	//gpuErrchk( cudaPeekAtLastError() );

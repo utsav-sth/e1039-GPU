@@ -2680,7 +2680,6 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 }
 
 
-
 #ifdef OLDCODE
 
 
