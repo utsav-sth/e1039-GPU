@@ -1,4 +1,5 @@
-#define GLDISPLAY 1
+//#define GLDISPLAY 1
+//#define ROOTSAVE 1
 //#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
@@ -24,12 +25,21 @@ const int EstnAHMax = 4096;
 const int EstnTHMax = 256;
 const int ClusterSizeMax = 192;
 
+const int NVars = 11;
+const int Nbins_Hists = 128;
 const float TX_MAX = 0.15;
 const float TY_MAX = 0.1;
-const float X0_MAX = 150;
-const float Y0_MAX = 50;
-const float INVP_MAX = 0.2;
-const float INVP_MIN = 0.01;
+const float X0_MAX = 150;//cm
+const float Y0_MAX = 50;//cm
+const float INVP_MAX = 0.2;//GeV-1
+const float INVP_MIN = 0.01;//GeV-1
+const float VXY_MAX = 20.0;//cm
+const float VZ_MIN = -500.0;//cm
+const float VZ_MAX = +300.0;//cm
+const float PXY_MAX = 20.0;//GeV
+const float PZ_MIN = 0.0;//GeV
+const float PZ_MAX = 150.0;//GeV
+
 const float InvSqrt12 = 0.288675135;
 const short NpropXhitsMin = 1;
 

@@ -2679,6 +2679,64 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 	
 }
 
+// --------------------------------------------- //
+//
+// function to fill the "histograms"/arrays to be displayed
+// 
+// --------------------------------------------- //
+//__global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, float* xpts, float* pts_hw, float* values, const bool* hastoomanyhits)
+__global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, gHistsArrays *HistsArrays, const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	unsigned int nTracks;
+	float vars[NVars];
+	float x_hw, x;
+	
+	int bin;
+	int i, j, k;
+	
+	__shared__ float values_[NVars*Nbins_Hists];
+	for(j = 0; j<Nbins_Hists*NVars; j++)values_[j] = 0;
+	
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, nTracks);
+		
+	for(i = 0; i<nTracks; i++){
+		if(Tracks.stationID(i)<7)continue;
+		
+		vars[0] = Tracks.x0(i);
+		vars[1] = Tracks.y0(i);
+		vars[2] = Tracks.invP(i);
+		vars[3] = Tracks.tx(i);
+		vars[4] = Tracks.ty(i);
+		
+		vars[5] = Tracks.vx(i);
+		vars[6] = Tracks.vy(i);
+		vars[7] = Tracks.vz(i);
+		vars[8] = Tracks.px(i);
+		vars[9] = Tracks.py(i);
+		vars[10] = Tracks.pz(i);
+		
+		for(j = 0; j<Nbins_Hists; j++){
+			//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
+			for(k = 0; k<NVars; k++){
+				bin = j+Nbins_Hists*k;
+				x_hw = HistsArrays->pts_hw[k];
+				x = HistsArrays->xpts[bin];
+				if(x-x_hw<=vars[k] && vars[k]<x+x_hw){
+					//HistsArrays->values[bin]+=1.f;
+					values_[bin]+=1.f;
+				}
+			}
+		}
+	}
+	__syncthreads();
+	//cudaDeviceSynchronize();
+	for(j = 0; j<Nbins_Hists*NVars; j++){
+		HistsArrays->values[j]+= values_[j];
+	}
+}
+
 
 #ifdef OLDCODE
 

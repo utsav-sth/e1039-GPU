@@ -395,6 +395,39 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+124 + ihit ];
 		}
 #endif
+	//vertex parameters...
+	__host__ __device__ inline float vx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+106];
+		}
+	__host__ __device__ inline float vy(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+107];
+		}
+	__host__ __device__ inline float vz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+108];
+		}
+	__host__ __device__ inline float px(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+109];
+		}
+	__host__ __device__ inline float py(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+110];
+		}
+	__host__ __device__ inline float pz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+111];
+		}
+	
+
 	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index) const
 		{
 			assert(index < NTracksTotal);
@@ -548,36 +581,12 @@ struct gEventTrackCollection{
 #endif
 };
 
-
-//Histograms
-struct gHist1D {
+struct gHistsArrays{
 	public:
-	const unsigned int m_nbins;
-	const float m_binhw;
-	float* m_bincenter;
-	float* m_bincontent;
-	
-	__host__ __device__ gHist1D(const int nbins, const float xmin, const float xmax) :
-    		m_nbins(nbins),  m_binhw( (xmax-xmin)/nbins )
-    		{
-			for(int i = 0; i<m_nbins; i++){
-				m_bincenter[i] = xmin+m_binhw*(i+0.5f);
-				m_bincontent[i] = 0;
-			}
-		}
-
-	__host__ __device__ gHist1D(const int nbins, const float binhw, float* xpts, float* values) :
-		m_nbins(nbins),  m_binhw(binhw), m_bincenter(reinterpret_cast<float*>(xpts)), m_bincontent(reinterpret_cast<float*>(values)){}
-	
-	__device__ void Fill(const float x)
-		{
-			for(int i = 0; i<m_nbins; i++){
-				if(m_bincenter[i]-m_binhw <= x && x < m_bincenter[i]+m_binhw);
-				m_bincontent[i]+= 1.f;
-			}
-		}
+	float pts_hw[NVars];
+	float xpts[NVars*Nbins_Hists];
+	float values[NVars*Nbins_Hists];
 };
-
 
 //geometry carrier
 struct gPlane {
@@ -611,3 +620,36 @@ struct gPlane {
       float slope_max[nDetectors];
       float inter_max[nDetectors];
 };
+
+
+/*
+//Histograms
+struct gHist1D {
+	public:
+	const unsigned int m_nbins;
+	const float m_binhw;
+	float* m_bincenter;
+	float* m_bincontent;
+	
+	__host__ __device__ gHist1D(const int nbins, const float xmin, const float xmax) :
+    		m_nbins(nbins),  m_binhw( (xmax-xmin)/nbins )
+    		{
+			for(int i = 0; i<m_nbins; i++){
+				m_bincenter[i] = xmin+m_binhw*(i+0.5f);
+				m_bincontent[i] = 0;
+			}
+		}
+
+	__host__ __device__ gHist1D(const int nbins, const float binhw, float* xpts, float* values) :
+		m_nbins(nbins),  m_binhw(binhw), m_bincenter(reinterpret_cast<float*>(xpts)), m_bincontent(reinterpret_cast<float*>(values)){}
+	
+	__device__ void Fill(const float x)
+		{
+			for(int i = 0; i<m_nbins; i++){
+				if(m_bincenter[i]-m_binhw <= x && x < m_bincenter[i]+m_binhw);
+				m_bincontent[i]+= 1.f;
+			}
+		}
+};
+*/
+
