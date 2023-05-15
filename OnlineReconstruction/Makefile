@@ -8,6 +8,8 @@ DEFS = -DUSE_CUBLAS
 LD = $(CXX)
 LDFLAGS = 
 LIBS = -L${ROOTSYS}/lib -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTDataFrame -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lm -ldl -lcublas -lcurand -linterface_main 
+LIBS += $(GLLINK)
+LIBS += -lGL -lGLU -lglut
 
 PROGRAM = online_reconstruction
 

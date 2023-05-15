@@ -270,10 +270,11 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 	for(short k = 0; k<202; k++)chanhashit[k] = 0;
 	
 	for(iAH = 0; iAH<nhits; ++iAH) {
+	//for(iAH = nhits-1; iAH>=0; --iAH) {
 		if(hitflag[iAH]>0) {
 			//if the chan already has a hit, then set the hit flag in the same chan as not good.
 			if(chanhashit[(short)hitcoll.chan(iAH)]){
-				hitflag[iAH] = 0;
+				hitflag[iAH] = -1;
 			}else{
 				//otherwise, set the "chanhashit" flag as true, and proceed as usual 
 				chanhashit[(short)hitcoll.chan(iAH)] = true;
@@ -281,6 +282,16 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 			}
 		}
 	}
+	
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0){
+		for(iAH = 0; iAH<nhits; ++iAH) {
+			printf("detid %d iah %d chan %1.0f time %1.4f hitflag %d \n", detid, iAH, hitcoll.chan(iAH), hitcoll.tdc(iAH), hitflag[iAH]);
+		}
+	}	
+#endif
+	
+
 	return nAH_reduced;
 }
 
@@ -295,8 +306,6 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	short bin;
 	const short MaxHits = geometry::MaxHitsProj[projID];
 
-#ifdef DEBUG
-#endif
 	for(bin = bin0; bin<bin0+Nbins; bin++){
 		npairs[bin-bin0] = 0;
 	}

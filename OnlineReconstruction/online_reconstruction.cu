@@ -28,6 +28,7 @@
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
+#ifdef ROOTSAVE
 #include <TRandom.h>
 #include <TMatrixD.h>
 #include <TLorentzVector.h>
@@ -35,15 +36,24 @@
 #include <TStopwatch.h>
 #include <TTimeStamp.h>
 #include <TString.h>
+#include <TCanvas.h>
+#include <TH1D.h>
+#endif
 //#include "LoadInput.h"
 #include "OROutput.h"
 #include "reconstruction_kernels.cuh"
+
+#ifdef GLDISPLAY
+#include "display_utils.cuh"
+#endif
+//#else
 
 #ifdef E1039
 #include "SQEvent_v1.h"
 #include "SQHit_v1.h"
 #include "SQHitVector_v1.h"
 #endif
+
 
 // function to check GPU status
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -322,7 +332,8 @@ int main(int argn, char * argv[]) {
 	int nhits;
 	//the hit offset is to give an individual offset for each hit detector collection per event
 	int hit_ctr[nDetectors];
-	int firstevent;	
+	int firstevent;
+	bool isFPGAtriggered;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -337,6 +348,10 @@ int main(int argn, char * argv[]) {
 			host_gEvent.EventID[i] = rawEvent->fEventID;
 			//host_gEvent.SpillID[i] = rawEvent->fSpillID;
 			host_gEvent.TriggerBits[i] = rawEvent->fTriggerBits;
+			isFPGAtriggered = false;
+			for(int k = 0; k<5; k++){
+				if( (rawEvent->fTriggerBits & k) != 0 )isFPGAtriggered = true;
+			}
 			//host_gEvent.TargetPos[i] = rawEvent->fTargetPos;
 			//host_gEvent.TurnID[i] = rawEvent->fTurnID;
 			//host_gEvent.RFID[i] = rawEvent->fRFID;
@@ -400,7 +415,13 @@ int main(int argn, char * argv[]) {
 				if(31 <= detid && detid <= 46){
 					if((rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits > EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes)
 					cout << rawEvent->fEventID << " " << detid <<  " " << (rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits << " " << EstnEvtMax*nChamberPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes << " " << hit_ctr[detid] << endl;
-					
+					//if(isFPGAtriggered){
+					//	if(33<= detid && detid <= 36)continue;
+					//	if(41<= detid && detid <= 44)continue;
+					//}else{
+					//	if(37<= detid && detid <= 40)continue;
+					//	if(32>= detid || detid >= 45)continue;
+					//}
 #ifdef DEBUG
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << hit_ctr[detid] << " " << detid << " " << (rawEvent->fAllHits[m]).elementID << " " << wire_position[detid][(rawEvent->fAllHits[m]).elementID] << " " << (rawEvent->fAllHits[m]).tdcTime << " " << (rawEvent->fAllHits[m]).flag << " " << (rawEvent->fAllHits[m]).driftDistance << endl;
 #endif					
@@ -606,55 +627,59 @@ int main(int argn, char * argv[]) {
 	auto evt_prep = cp2-cp1;
 	cout<<"Read/prepare events: "<<evt_prep.count()/1000000000.<<endl;
 
+	
 	// evaluate the total size of the gEvent array (and the SW array) for memory allocation 
 	// (the memory cannot be dynamically allocated) 
 	size_t NBytesAllEvent = sizeof(gEvent);
 	size_t NBytesAllHits = sizeof(gEventHitCollections);
 	size_t NBytesAllTracks = sizeof(gEventTrackCollection);
-	//size_t NBytesAllOutputEvent = sizeof(gOutputEvent);
-	size_t NBytesAllPlanes =  sizeof(gPlane);
-	//size_t NBytesFitterTools = sizeof(gStraightFitArrays);
-	//size_t NBytesStraightTrackBuilders = sizeof(gStraightTrackBuilder);
-	//size_t NBytesFullTrackBuilders = sizeof(gFullTrackBuilder);
-	//size_t NBytesKalmanFilterTools = sizeof(gStraightFitArrays);
+	size_t NBytesHistsArrays = sizeof(gHistsArrays);
+	size_t NBytesPlanes = sizeof(gPlane);
 	
-	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesAllPlanes+NBytesAllHits+NBytesAllTracks << endl;
-	cout << " input events: " << NBytesAllEvent //<< "; output events: " << NBytesAllOutputEvent 
+	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesPlanes+NBytesAllHits+NBytesAllTracks+NBytesHistsArrays << endl;
+	cout << " input events: " << NBytesAllEvent  
 		<< "; raw hits: " << NBytesAllHits << "; tracks " << NBytesAllTracks
-		//<< "; straight track builder tools: " << NBytesStraightTrackBuilders
-	//     << "; fitter tools: " << NBytesFitterTools << "; straight track builders: " << NBytesStraightTrackBuilders 
-	//     << "; full track builders: " << NBytesFullTrackBuilders << "; kalman filters: " << NBytesKalmanFilterTools
-		<< "; planes info: " << NBytesAllPlanes << endl;  
+		<< "; histograms arrays " << NBytesHistsArrays << "; planes info: " << NBytesPlanes << endl;  
 	
 	gEvent* host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gEventHitCollections* host_output_gHits = (gEventHitCollections*)malloc(NBytesAllHits);
 	gEventTrackCollection* host_output_gTracks = (gEventTrackCollection*)malloc(NBytesAllTracks);
-	//gOutputEvent* host_output_TKL = (gOutputEvent*)malloc(NBytesAllOutputEvent);
+	gHistsArrays* host_hists = (gHistsArrays*)malloc(NBytesHistsArrays);
+	
+	float varmin[NVars] = {-X0_MAX, -Y0_MAX, INVP_MIN, -TX_MAX, -TY_MAX, -VXY_MAX, -VXY_MAX, VZ_MIN, -PXY_MAX, -PXY_MAX, PZ_MIN};
+	float varmax[NVars] = {+X0_MAX, +Y0_MAX, INVP_MAX, +TX_MAX, +TY_MAX, +VXY_MAX, +VXY_MAX, VZ_MAX, +PXY_MAX, +PXY_MAX, PZ_MAX};
+	
+#ifdef ROOTSAVE
+	string wintitle[NVars] = {"x0", "y0", "invp", "tx", "ty", "vx", "vy", "vz", "px", "py", "pz"};
+	TH1D* h1[NVars];
+#endif	
+	for(int k = 0; k<NVars; k++){	
+#ifdef ROOTSAVE
+		h1[k] = new TH1D(Form("h%d", k), wintitle[k].c_str(), Nbins_Hists, varmin[k], varmax[k]);
+#endif
+		host_hists->pts_hw[k] = (varmax[k]-varmin[k])/Nbins_Hists;
+		for(int l = 0; l<Nbins_Hists; l++){
+			host_hists->xpts[k*Nbins_Hists+l] = varmin[k]+host_hists->pts_hw[k]*(l+0.5f);
+			//cout << k << " " << l << " " << host_hists->xpts[k*Nbins_Hists+l] << endl;
+			host_hists->values[k*Nbins_Hists+l] = 0;
+		}
+	}
 	
 	// declaring gEvent objects for the device (GPU) to use.
 	gEvent* device_gEvent;
 	gEventHitCollections* device_gHits;
 	gEventTrackCollection* device_gTracks;
-	//gOutputEvent* device_output_TKL;
+	gHistsArrays* device_gHistsArrays;
 	gPlane* device_gPlane;
-	//gStraightFitArrays* device_gFitArrays;
-	//gStraightTrackBuilder* device_gStraightTrackBuilder;
-	//gFullTrackBuilder* device_gFullTrackBuilder;
-	//gKalmanFitArrays* device_gKalmanFitArrays;
-
-
-	//printDeviceStatus();
-
+	
 	// copy of data from host to device: evaluate operation time 
 	// Allocating memory for GPU (pointer to allocated device ); check for errors in the process; stops the program if issues encountered
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_gHits, NBytesAllHits));
 	gpuErrchk( cudaMalloc((void**)&device_gTracks, NBytesAllTracks));
-	//gpuErrchk( cudaMalloc((void**)&device_output_TKL, NBytesAllOutputEvent));
+	gpuErrchk( cudaMalloc((void**)&device_gHistsArrays, NBytesHistsArrays));
 	//allocating the memory for the planes
-	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesAllPlanes));
-	//gpuErrchk( cudaMalloc((void**)&device_gFitArrays, NBytesFitterTools));
-	//gpuErrchk( cudaMalloc((void**)&device_gStraightTrackBuilder, NBytesStraightTrackBuilders));
+	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesPlanes));
 	
 	std::size_t free_bytes;
 	std::size_t total_bytes;
@@ -664,7 +689,8 @@ int main(int argn, char * argv[]) {
 	
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
-	gpuErrchk( cudaMemcpy(device_gPlane, &plane, NBytesAllPlanes, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gPlane, &plane, NBytesPlanes, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gHistsArrays, &host_hists, NBytesHistsArrays, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, &host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gHits, &host_gEventHits, NBytesAllHits, cudaMemcpyHostToDevice));
 		
@@ -686,7 +712,26 @@ int main(int argn, char * argv[]) {
 	auto cp4 = std::chrono::system_clock::now();
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
-	
+
+	//for test only
+#ifdef DEBUG
+#ifdef GLDISPLAY
+	//since the transfer takes so little time, it can be considered to do it all on CPU, if needed...
+	//runDisplay(argn, argv, device_gHistsArrays->xpts, device_gHistsArrays->values);
+
+	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
+	cudaFree(device_gHistsArrays);
+	//TEST ONLY
+	for(int k = 0; k<128; k++)host_hists->values[k] = 1000.*sin(k*3.141592653/180.);
+	//
+	for(int k = 0; k<128; k++)cout << "  k " << k << " data " << host_hists->values[k] 
+					//<< " " << host_hists->xpts[k] << " " << (int)1000*sin(host_hists->xpts[k]) 
+					<< "  ";
+	cout << endl;
+	runDisplay(argn, argv, host_hists->values);
+#endif
+#endif
+
 	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
 		device_gTracks,
@@ -783,14 +828,48 @@ int main(int argn, char * argv[]) {
 	auto gpu_vtx = cp8-cp7;
 	cout<<"GPU: Vertexing: "<<gpu_vtx.count()/1000000000.<<endl;
 
+	
+	gKernel_fill_display_histograms<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gHistsArrays, device_gEvent->HasTooManyHits);
+	
+#ifdef ROOTSAVE
+	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
+	cudaFree(device_gHistsArrays);
+	
+	for(int k = 0; k<NVars; k++){
+		for(int l = 0; l<Nbins_Hists; l++){
+			h1[k]->SetBinContent(l+1, host_hists->values[k*Nbins_Hists+l]);
+		}
+	}
+	
+	TCanvas* C1 = new TCanvas("C1", "display OR", 1350, 800);
+	C1->Divide(3, 2);
+	for(int k = 0; k<5; k++){
+		C1->cd(k+1);
+		h1[k]->Draw("hist");
+	}
+	C1->SaveAs("DISPLAY.pdf");
+#endif		
+	//The display should come after the vertexing - but before the copy of the output back to the CPU.
+#ifdef GLDISPLAY
+	//since the transfer takes so little time, it can be considered to do it all on CPU, if needed...
+	//runDisplay(argn, argv, device_gHistsArrays->xpts, device_gHistsArrays->values);
+
+	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
+	cudaFree(device_gHistsArrays);
+	//TEST ONLY
+	for(int k = 0; k<128; k++)host_hists->values[k] = 1000.*sin(k*3.141592653/180.);
+	//
+	for(int k = 0; k<128; k++)cout << "  k " << k << " data " << host_hists->values[k] 
+					//<< " " << host_hists->xpts[k] << " " << (int)1000*sin(host_hists->xpts[k]) 
+					<< "  ";
+	cout << endl;
+	runDisplay(argn, argv, host_hists->values);
+#endif		
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
-	//gpuErrchk( cudaPeekAtLastError() );
-	//gpuErrchk( cudaDeviceSynchronize() );
-	
-	//auto cp8 = std::chrono::system_clock::now();
-	//auto gpu_kf = cp8-cp7;
-	//cout<<"GPU: kalman filtering: "<<gpu_gt.count()/1000000000.<<endl;
+	auto cp9 = std::chrono::system_clock::now();
+	auto gpu_dis = cp9-cp8;
+	cout<<"GPU: Histograming and displaying: "<<gpu_dis.count()/1000000000.<<endl;
 
 	// data transfer from device to host
 	gpuErrchk( cudaMemcpy(host_output_eR, device_gEvent, NBytesAllEvent, cudaMemcpyDeviceToHost));
@@ -801,12 +880,14 @@ int main(int argn, char * argv[]) {
 
 	gpuErrchk( cudaMemcpy(host_output_gTracks, device_gTracks, NBytesAllTracks, cudaMemcpyDeviceToHost));
 	cudaFree(device_gHits);
+
+#ifndef ROOTSAVE
+	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
+	cudaFree(device_gHistsArrays);
+#endif
 	
-	//gpuErrchk( cudaMemcpy(host_output_TKL, device_output_TKL, NBytesAllOutputEvent, cudaMemcpyDeviceToHost));
-	//cudaFree(device_output_TKL);
-	
-	auto cp9 = std::chrono::system_clock::now();
-	auto cp_to_cpu = cp9-cp8;
+	auto cp10 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp10-cp9;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 	
 	int nGood = EstnEvtMax;
@@ -1018,8 +1099,8 @@ int main(int argn, char * argv[]) {
 
 	delete rawEvent;
 
-	auto cp10 = std::chrono::system_clock::now();
-	auto write_output = cp10-cp9;
+	auto cp11 = std::chrono::system_clock::now();
+	auto write_output = cp11-cp10;
 	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
 
 	// printing the time required for all operations
