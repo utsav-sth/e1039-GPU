@@ -4,7 +4,7 @@
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
 //#define PROP_Y_MATCH 1
-#define HODO_Y_MATCH 1
+//#define HODO_Y_MATCH 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
 #define nPropPlanes 8
@@ -155,5 +155,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 98;
+  __host__ __device__ constexpr unsigned int EvRef = 13;
 }

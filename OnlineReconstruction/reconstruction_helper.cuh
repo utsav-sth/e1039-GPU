@@ -972,7 +972,7 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 	
 	const float xhodo = planes->z[detid]*tx+x0;
 	const float yhodo = planes->z[detid]*ty+y0;
-		
+	
 	float err_x = 3.f*(fabs(planes->z[detid]*err_tx)+err_x0);
 	float err_y = 3.f*(fabs(planes->z[detid]*err_ty)+err_y0);
 	
@@ -980,7 +980,7 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 	//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
 	//calculate the track position at the hodoscope plane z
 #ifdef DEBUG
-	if(blockIdx.x==debug::EvRef)printf(" evt %d stid %d detid %d, xhodo %1.4f yhodo %1.4f zhodo %1.4f errx %1.4f erry %1.4f fudge factor %1.2f \n", blockIdx.x, stid, detid, xhodo, yhodo, planes->z[detid], err_x, err_y, geometry::hodofudgefac[stid] );
+	if(blockIdx.x==debug::EvRef)printf(" evt %d stid %d detid %d, xhodo %1.4f yhodo %1.4f zhodo %1.4f posErrX %1.4f posErrY %1.4f errx %1.4f erry %1.4f fudge factor %1.2f \n", blockIdx.x, stid, detid, xhodo, yhodo, planes->z[detid], fabs(planes->z[detid]*err_tx)+err_x0, fabs(planes->z[detid]*err_ty)+err_y0, err_x, err_y, geometry::hodofudgefac[stid] );
 #endif
 		
 	// loop on the hits and select hodoscope hits corresponding to the station
@@ -1016,7 +1016,7 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax, ymin, ymax );
 #endif
-		err_x+= (xmax-xmin)*0.15;
+		err_x+= (xmax-xmin)*0.15f;
 
 		xmin-= err_x;
 		xmax+= err_x;
@@ -1027,6 +1027,9 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 		if(blockIdx.x==debug::EvRef)printf(" errx %1.4f xmin %1.4f xmax %1.4f, erry %1.4f ymin %1.4f ymax %1.4f \n", err_x, xmin, xmax, err_y, ymin, ymax);
 #endif
 		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("evt %d track x0 %1.4f det %d match in element %d \n", blockIdx.x, x0, detid, (short)hits.chan(i) );
+#endif
 			masked++;
 			break;
 		}
