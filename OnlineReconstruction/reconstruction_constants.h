@@ -1,9 +1,9 @@
 //#define GLDISPLAY 1
 //#define ROOTSAVE 1
-#define E1039
+//#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
-//#define PROP_Y_MATCH 1
+#define PROP_Y_MATCH 1
 //#define HODO_Y_MATCH 1
 #define nChamberPlanes 30
 #define nHodoPlanes 16
@@ -41,7 +41,7 @@ const float PZ_MIN = 0.0;//GeV
 const float PZ_MAX = 150.0;//GeV
 
 const float InvSqrt12 = 0.288675135;
-const short NpropXhitsMin = 1;
+const short NpropXhitsMin = 2;
 
 
 namespace geometry{

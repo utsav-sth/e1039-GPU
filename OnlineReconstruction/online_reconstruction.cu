@@ -724,10 +724,10 @@ int main(int argn, char * argv[]) {
 	//TEST ONLY
 	for(int k = 0; k<128; k++)host_hists->values[k] = 1000.*sin(k*3.141592653/180.);
 	//
-	for(int k = 0; k<128; k++)cout << "  k " << k << " data " << host_hists->values[k] 
-					//<< " " << host_hists->xpts[k] << " " << (int)1000*sin(host_hists->xpts[k]) 
-					<< "  ";
-	cout << endl;
+	//for(int k = 0; k<128; k++)cout << "  k " << k << " data " << host_hists->values[k] 
+	//				//<< " " << host_hists->xpts[k] << " " << (int)1000*sin(host_hists->xpts[k]) 
+	//				<< "  ";
+	//cout << endl;
 	runDisplay(argn, argv, host_hists->values);
 #endif
 #endif

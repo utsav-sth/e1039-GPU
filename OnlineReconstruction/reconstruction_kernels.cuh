@@ -546,8 +546,9 @@ __global__ void gKernel_XZ_tracking(
 			
 			//prop matching
 			nprop = 0;
-//			checknext = true;
+			checknext = true;
 
+			//we want at least one hit in p1x1 or p1x2...
 			for(int n = 0; n<nhits_p1x1; n++){
 				ipos = hits_p1x1.pos(n);
 				xExp = tx*z_p1x1+x0;
@@ -556,11 +557,11 @@ __global__ void gKernel_XZ_tracking(
 #endif
 				if(fabs(ipos-xExp)<5.08f){
 					nprop++;
-//					checknext = false;
+					checknext = false;
 					break;
 				}
 			}
-//			if(checknext){
+			if(checknext){
 				for(int n = 0; n<nhits_p1x2; n++){
 					ipos = hits_p1x2.pos(n);
 					xExp = tx*z_p1x2+x0;
@@ -573,35 +574,38 @@ __global__ void gKernel_XZ_tracking(
 						break;
 					}
 				}
-//			}
-//			if(checknext){
+			}
+			//and at least one hit in p2x1 or p2x2
+			checknext = true;
+			
+			if(checknext){
 				for(int n = 0; n<nhits_p2x1; n++){
 					ipos = hits_p2x1.pos(n);
 					xExp = tx*z_p2x1+x0;
 #ifdef DEBUG
 					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
 #endif
-					if(fabs(ipos-xExp)<5.08f){
+					if(fabs(ipos-xExp)<10.16f){
 						nprop++;
 						checknext = false;
 						break;
 					}
 				}
-//			}
-//			if(checknext){
+			}
+			if(checknext){
 				for(int n = 0; n<nhits_p2x2; n++){
 					ipos = hits_p2x2.pos(n);
 					xExp = tx*z_p2x2+x0;
 #ifdef DEBUG
 					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
 #endif
-					if(fabs(ipos-xExp)<5.08f){
+					if(fabs(ipos-xExp)<10.16f){
 						nprop++;
 //						checknext = false;
 						break;
 					}
 				}
-//			}
+			}
 			if(nprop<NpropXhitsMin)continue;
 
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
@@ -969,6 +973,8 @@ __global__ void gKernel_YZ_tracking(
 #ifdef PROP_Y_MATCH	
 	int nprop;
 	float yExp, ipos;
+	bool checknext;
+
 	// proportional tube hits
 	projid = 1;
 	stid = 6-1;
@@ -1590,7 +1596,7 @@ __global__ void gKernel_YZ_tracking(
 #ifdef PROP_Y_MATCH			
 				//prop matching
 				nprop = 0;
-//				checknext = true;
+				checknext = true;
 				
 				for(int n = 0; n<nhits_p1y1; n++){
 					ipos = hits_p1y1.pos(n);
@@ -1600,52 +1606,54 @@ __global__ void gKernel_YZ_tracking(
 #endif
 					if(fabs(ipos-yExp)<5.08f){
 						nprop++;
-//						checknext = false;
+						checknext = false;
 						break;
 					}
 				}
-//				if(checknext){
-				for(int n = 0; n<nhits_p1y2; n++){
-					ipos = hits_p1y2.pos(n);
-					yExp = tx*z_p1y2+x0;
+				if(checknext){
+					for(int n = 0; n<nhits_p1y2; n++){
+						ipos = hits_p1y2.pos(n);
+						yExp = ty*z_p1y2+y0;
 #ifdef DEBUG
-					if(blockIdx.x<=debug::EvRef)printf("evt %d p1x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p1x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
-					if(fabs(ipos-yExp)<5.08f){
-						nprop++;
-//						checknext = false;
-						break;
+						if(fabs(ipos-yExp)<5.08f){
+							nprop++;
+//							checknext = false;
+							break;
+						}
 					}
 				}
-//				}
+				checknext = true;
+				
 //				if(checknext){
 				for(int n = 0; n<nhits_p2y1; n++){
 					ipos = hits_p2y1.pos(n);
-					yExp = tx*z_p2y1+x0;
+					yExp = ty*z_p2y1+y0;
 #ifdef DEBUG
 					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
-					if(fabs(ipos-yExp)<5.08f){
+					if(fabs(ipos-yExp)<15.24f){
 						nprop++;
-//						checknext = false;
+						checknext = false;
 						break;
 					}
 				}
 //				}
-//				if(checknext){
-				for(int n = 0; n<nhits_p2y2; n++){
-					ipos = hits_p2y2.pos(n);
-					yExp = tx*z_p2y2+x0;
+				if(checknext){
+					for(int n = 0; n<nhits_p2y2; n++){
+						ipos = hits_p2y2.pos(n);
+						yExp = ty*z_p2y2+y0;
 #ifdef DEBUG
-					if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
-					if(fabs(ipos-yExp)<5.08f){
-						nprop++;
-//						checknext = false;
-						break;
+						if(fabs(ipos-yExp)<15.24f){
+							nprop++;
+//							checknext = false;
+							break;
+						}
 					}
 				}
-//				}
 				if(nprop<NpropXhitsMin)continue;
 #endif	
 
