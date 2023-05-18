@@ -806,6 +806,12 @@ int main(int argn, char * argv[]) {
 	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
+	//gKernel_TrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+	//	device_gHits,
+	//	device_gTracks,
+	//	device_gPlane->z,
+	//	device_gEvent->HasTooManyHits);
+
 	gKernel_Vertexing<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gTracks,
 		device_gPlane->z,
@@ -1053,7 +1059,7 @@ int main(int argn, char * argv[]) {
 		for(int m = 0; m<THREADS_PER_BLOCK; m++){
 			tklmult_idx = n*THREADS_PER_BLOCK+m;
 			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
-			
+
 			ntkl = host_output_gTracks->NTracks[tklmult_idx];
 			nTracklets+= ntkl;
 			for(int k = 0; k<ntkl; k++ ){

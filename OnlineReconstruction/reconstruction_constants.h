@@ -67,6 +67,8 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
 	__device__ constexpr float SAGITTA_DUMP_CENTER = 1.5;
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
+//	__device__ constexpr float X_KMAG_BEND = 144.78;
+//	__device__ constexpr float Y_KMAG_BEND = 101.6;
 #ifdef E1039
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
 	__device__ constexpr float FMAGSTR = -1.054;
@@ -155,5 +157,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 13;
+  __host__ __device__ constexpr unsigned int EvRef = 961;
 }

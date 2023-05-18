@@ -538,6 +538,7 @@ __global__ void gKernel_XZ_tracking(
 			tx = Par[1];
 			
 			if(fabs(x0)>X0_MAX+ParErr[0] || fabs(tx)>TX_MAX+ParErr[1])continue;
+			//if(fabs(x0+tx*geometry::Z_KMAG_BEND)>geometry::X_KMAG_BEND)continue;
 
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("evt %d x0 = %1.4f, tx = %1.4f \n", blockIdx.x, x0, tx);
@@ -585,7 +586,7 @@ __global__ void gKernel_XZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
 #endif
-					if(fabs(ipos-xExp)<10.16f){
+					if(fabs(ipos-xExp)<7.62f){
 						nprop++;
 						checknext = false;
 						break;
@@ -599,13 +600,14 @@ __global__ void gKernel_XZ_tracking(
 #ifdef DEBUG
 					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
 #endif
-					if(fabs(ipos-xExp)<10.16f){
+					if(fabs(ipos-xExp)<7.62f){
 						nprop++;
 //						checknext = false;
 						break;
 					}
 				}
 			}
+			//
 			if(nprop<NpropXhitsMin)continue;
 
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
@@ -623,6 +625,12 @@ __global__ void gKernel_XZ_tracking(
 #endif
 			x0 = Par[0];
 			tx = Par[1];
+			
+			if(fabs(x0)>X0_MAX || fabs(tx)>TX_MAX)continue;
+			//the following does not figure in the ktracker selection... yet it is fairly effective
+			//if(fabs(x0)<10.0)continue;
+			//if(x0<0 && tx<-x0*0.0008)continue;
+			//if(x0>0 && tx>-x0*0.0008)continue;
 			
 			//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 			addtrack[threadIdx.x] = true;
@@ -1592,8 +1600,9 @@ __global__ void gKernel_YZ_tracking(
 				err_ty = ParErr[1];
 				
 				if(fabs(y0)>Y0_MAX+err_y0 || fabs(ty)>TY_MAX+err_ty)continue;
+				//if(fabs(y0+ty*geometry::Z_KMAG_BEND)>geometry::Y_KMAG_BEND)continue;
 
-#ifdef PROP_Y_MATCH			
+#ifdef PROP_Y_MATCH
 				//prop matching
 				nprop = 0;
 				checknext = true;
@@ -1615,7 +1624,7 @@ __global__ void gKernel_YZ_tracking(
 						ipos = hits_p1y2.pos(n);
 						yExp = ty*z_p1y2+y0;
 #ifdef DEBUG
-						if(blockIdx.x<=debug::EvRef)printf("evt %d p1x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p1x2, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
 						if(fabs(ipos-yExp)<5.08f){
 							nprop++;
@@ -1631,9 +1640,9 @@ __global__ void gKernel_YZ_tracking(
 					ipos = hits_p2y1.pos(n);
 					yExp = ty*z_p2y1+y0;
 #ifdef DEBUG
-					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
-					if(fabs(ipos-yExp)<15.24f){
+					if(fabs(ipos-yExp)<10.16f){
 						nprop++;
 						checknext = false;
 						break;
@@ -1645,9 +1654,9 @@ __global__ void gKernel_YZ_tracking(
 						ipos = hits_p2y2.pos(n);
 						yExp = ty*z_p2y2+y0;
 #ifdef DEBUG
-						if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
 #endif
-						if(fabs(ipos-yExp)<15.24f){
+						if(fabs(ipos-yExp)<10.16f){
 							nprop++;
 //							checknext = false;
 							break;
@@ -1983,7 +1992,12 @@ __global__ void gKernel_Global_tracking(
 	float tdc[6];
 #endif
 	short sign[6];
-
+	
+	float Y[12];
+	float errY[12];
+	float Z_[12];
+	short nyhits = 0;
+	
 	float X[3];
 	float errX[3];
 	float Z[3];
@@ -2050,6 +2064,18 @@ __global__ void gKernel_Global_tracking(
 #endif
 		
 		if(nx1==0 || nu1==0 || nv1==0)continue;
+		
+		nyhits = 0;
+		for(int k = 0; k<nhits_st23; k++){
+			if(planes->costheta[(short)Tracks.hits_detid(i, k)]>0.99)continue;
+			
+			if(calculate_y_uvhit(Tracks.hits_detid(i, k), Tracks.hits_chan(i, k), Tracks.hits_drift(i, k), Tracks.hits_sign(i, k), x0, tx, planes, y, err_y)){
+				Y[nyhits] = y;
+				errY[nyhits] = err_y;
+				Z_[nyhits] = planes->z[(short)Tracks.hits_detid(i, k)];
+				nyhits++;
+			}
+		}
 		
 		ncomb_uv = nu1*nv1;
 		
@@ -2148,32 +2174,6 @@ __global__ void gKernel_Global_tracking(
 						
 			if(invP>INVP_MAX+errinvP || invP<INVP_MIN-errinvP)continue;
 			
-			stid = 0;//1-1
-			maskhodo = 0;
-			detid = geometry::hodoplanesx[stid][0];
-
-#ifdef DEBUG
-			if(blockIdx.x==debug::EvRef)printf(" evt %d x0_st1 %1.4f +- %1.4f tx_st1 %1.4f +- %1.4f y0 %1.4f +- %1.4f ty %1.4f +- %1.4f invP %1.4f +- %1.4f \n", blockIdx.x, x0_st1, errx0_st1, tx_st1, errtx_st1, y0, erry0, ty, errty, invP, errinvP);
-#endif
-
-			maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x1, hits_h1x1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
-			if(!maskhodo){
-				detid = geometry::hodoplanesx[stid][1];
-				maskhodo = maskhodo || match_tracklet_to_hodo(stid, detid, nhits_h1x2, hits_h1x2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
-			}
-
-#ifdef HODO_Y_MATCH
-			if(!maskhodo){
-				detid = geometry::hodoplanesy[stid][0];
-				maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1y1, hits_h1y1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
-				if(!maskhodo){
-					detid = geometry::hodoplanesy[stid][1];
-					maskhodo = maskhodo || match_tracklet_to_hodo(stid, detid, nhits_h1y2, hits_h1y2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
-				}
-			}
-			if(!maskhodo)continue;
-#endif
-			
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
@@ -2218,6 +2218,10 @@ __global__ void gKernel_Global_tracking(
 							dpy[nhits_x+nhits_uv] = planes->deltapy[detID[nhits_uv]];
 							dpz[nhits_x+nhits_uv] = planes->deltapz[detID[nhits_uv]];
 
+							Y[nyhits+nhits_uv] = y;
+							errY[nyhits+nhits_uv] = err_y;
+							Z_[nyhits+nhits_uv] = z_st1u;
+							
 							nhits_uv++;
 						//}
 					}
@@ -2225,7 +2229,6 @@ __global__ void gKernel_Global_tracking(
 				if(hitpairs_u1[i_u].second>=0){
 					detID[nhits_x+nhits_uv] = detid_list[3];
 					i_hit = hitpairs_u1[i_u].second;
-					Z[nhits_x+nhits_uv] = z_st1up;
 					elID[nhits_x+nhits_uv] = (short)hits_st1up.chan(i_hit);
 #ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1up.tdc(i_hit);
@@ -2252,6 +2255,10 @@ __global__ void gKernel_Global_tracking(
 							dpy[nhits_x+nhits_uv] = planes->deltapy[detID[nhits_uv]];
 							dpz[nhits_x+nhits_uv] = planes->deltapz[detID[nhits_uv]];
 
+							Y[nyhits+nhits_uv] = y;
+							errY[nyhits+nhits_uv] = err_y;
+							Z_[nyhits+nhits_uv] = z_st1up;
+							
 							nhits_uv++;
 						//}
 					}
@@ -2263,7 +2270,6 @@ __global__ void gKernel_Global_tracking(
 				if(hitpairs_v1[i_v].first>=0){
 					detID[nhits_x+nhits_uv] = detid_list[4];
 					i_hit = hitpairs_v1[i_v].first;
-					Z[nhits_x+nhits_uv] = z_st1v;
 					elID[nhits_x+nhits_uv] = (short)hits_st1v.chan(i_hit);
 #ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1v.tdc(i_hit);
@@ -2290,6 +2296,10 @@ __global__ void gKernel_Global_tracking(
 							dpy[nhits_x+nhits_uv] = planes->deltapy[detID[nhits_uv]];
 							dpz[nhits_x+nhits_uv] = planes->deltapz[detID[nhits_uv]];
 
+							Y[nyhits+nhits_uv] = y;
+							errY[nyhits+nhits_uv] = err_y;
+							Z_[nyhits+nhits_uv] = z_st1v;
+							
 							nhits_uv++;
 						//}
 					}
@@ -2297,7 +2307,6 @@ __global__ void gKernel_Global_tracking(
 				if(hitpairs_v1[i_v].second>=0){
 					detID[nhits_x+nhits_uv] = detid_list[5];
 					i_hit = hitpairs_v1[i_v].second;
-					Z[nhits_x+nhits_uv] = z_st1vp;
 					elID[nhits_x+nhits_uv] = (short)hits_st1vp.chan(i_hit);
 #ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1vp.tdc(i_hit);
@@ -2323,6 +2332,10 @@ __global__ void gKernel_Global_tracking(
 							dpy[nhits_x+nhits_uv] = planes->deltapy[detID[nhits_uv]];
 							dpz[nhits_x+nhits_uv] = planes->deltapz[detID[nhits_uv]];
 
+							Y[nyhits+nhits_uv] = y;
+							errY[nyhits+nhits_uv] = err_y;
+							Z_[nyhits+nhits_uv] = z_st1vp;
+							
 							nhits_uv++;
 						//}
 					}
@@ -2333,8 +2346,43 @@ __global__ void gKernel_Global_tracking(
 #endif
 				if(nhits_v==0)continue;
 				
-				// matching hodoscope 
+				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+				
+				y0 = Par[0];
+				ty = Par[1];
+
+				erry0 = ParErr[0];
+				errty = ParErr[1];
+				
+				if(fabs(y0)>Y0_MAX+erry0 || fabs(ty)>TY_MAX+errty)continue;
+
+				// matching hodoscope here!
 				stid = 0;//1-1
+				maskhodo = 0;
+				detid = geometry::hodoplanesx[stid][0];
+
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf(" evt %d x0_st1 %1.4f +- %1.4f tx_st1 %1.4f +- %1.4f y0 %1.4f +- %1.4f ty %1.4f +- %1.4f invP %1.4f +- %1.4f \n", blockIdx.x, x0_st1, errx0_st1, tx_st1, errtx_st1, y0, erry0, ty, errty, invP, errinvP);
+#endif
+
+				maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1x1, hits_h1x1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+				if(!maskhodo){
+					detid = geometry::hodoplanesx[stid][1];
+					maskhodo = maskhodo || match_tracklet_to_hodo(stid, detid, nhits_h1x2, hits_h1x2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+				}
+	
+#ifdef HODO_Y_MATCH
+				if(!maskhodo){
+					detid = geometry::hodoplanesy[stid][0];
+					maskhodo = match_tracklet_to_hodo(stid, detid, nhits_h1y1, hits_h1y1, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+					if(!maskhodo){
+						detid = geometry::hodoplanesy[stid][1];
+						maskhodo = maskhodo || match_tracklet_to_hodo(stid, detid, nhits_h1y2, hits_h1y2, x0_st1, y0, tx_st1, ty, errx0_st1, erry0, errtx_st1, errty, planes);
+					}
+				}
+				if(!maskhodo)continue;
+#endif
+				
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf(" x0_st1 %1.4f tx_st1 %1.4f y0 %1.4f ty %1.4f \n", x0_st1, tx_st1, y0, ty);
 #endif
@@ -2665,6 +2713,370 @@ __global__ void gKernel_Vertexing(
 	
 	
 }
+
+// --------------------------------------------- //
+//
+// function to clean the tracks again after full processing
+// 
+// --------------------------------------------- //
+
+__global__ void gKernel_TrackCleaning(
+	gEventHitCollections* hitcolls,
+	gEventTrackCollection* tklcoll,
+	const float* z_array,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+
+
+	float x0, tx;
+	float y0, ty;
+	
+	float invP;
+	
+	//proportional tubes
+	short stid, projid, detid;
+	short nprop;
+	float xExp, yExp, ipos;
+	bool checknext;
+	float prop_pos[2];
+	float prop_z[2];
+	float a, b;
+	bool goodsegmentx;
+	bool goodsegmenty;
+
+	projid = 0;
+	stid = 6-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p1x1;
+	const gHits hits_p1x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x1);
+	const float z_p1x1 = z_array[detid];
+
+	detid-= 1;
+	int nhits_p1x2;
+	const gHits hits_p1x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1x2);
+	const float z_p1x2 = z_array[detid];
+	
+	stid = 7-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p2x1;
+	const gHits hits_p2x1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x1);
+	const float z_p2x1 = z_array[detid];
+
+	detid-= 1;
+	int nhits_p2x2;
+	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
+	const float z_p2x2 = z_array[detid];
+	
+	// proportional tube hits
+	projid = 1;
+	stid = 6-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p1y1;
+	const gHits hits_p1y1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1y1);
+	const float z_p1y1 = z_array[detid];
+
+	detid-= 1;
+	int nhits_p1y2;
+	const gHits hits_p1y2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p1y2);
+	const float z_p1y2 = z_array[detid];
+	
+	stid = 7-1;
+	detid = geometry::detsuperid[stid][projid]*2;
+	int nhits_p2y1;
+	const gHits hits_p2y1 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2y1);
+	const float z_p2y1 = z_array[detid];
+
+	detid-= 1;
+	int nhits_p2y2;
+	const gHits hits_p2y2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2y2);
+	const float z_p2y2 = z_array[detid];
+	
+	//tracks
+	unsigned int Ntracks;
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+		
+	float cut = 0.03;
+	
+	for(int i = 0; i<Ntracks; i++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+		if(Tracks.stationID(i)<6)continue;
+		
+		x0 = Tracks.x0(i);
+		y0 = Tracks.y0(i);
+		tx = Tracks.tx(i);
+		ty = Tracks.ty(i);
+		invP = Tracks.invP(i);
+		
+		cut = max(invP*0.11825f, 0.00643f-0.00009f/invP+0.00000046f/invP/invP);
+		
+		goodsegmentx = false;
+		// *very rough* tracklet segment
+		// loop on first plane first
+		for(int n = 0; n<nhits_p1x1; n++){
+			ipos = hits_p1x1.pos(n);
+			xExp = tx*z_p1x1+x0;
+			prop_pos[0] = ipos;
+			prop_z[0] = z_p1x1;
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("evt %d p1x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+			if(fabs(ipos-xExp)<5.08f){
+				nprop++;
+				for(int m = 0; m<nhits_p2x1; m++){
+					ipos = hits_p2x1.pos(m);
+					xExp = tx*z_p2x1+x0;
+					prop_pos[1] = ipos;
+					prop_z[1] = z_p2x1;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+					if(fabs(ipos-xExp)>7.62f)continue;
+
+					a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+					//if(blockIdx.x<=debug::EvRef && st3==3 && hits_p1x1.chan(n)==21 && hits_p2x1.chan(m)==19)printf("a %1.4f tx %1.4f, chan p1x1 %1.0f pos %1.4f, chan p2x1 %1.0f  pos %1.4f \n", a, tx, hits_p1x1.chan(n), prop_pos[0], hits_p2x1.chan(m), prop_pos[1] );
+					if(fabs(a)>TX_MAX)continue;
+					if(fabs(a-tx)>cut)continue;
+					b = prop_pos[0]-a*prop_z[0];
+					//if(blockIdx.x<=debug::EvRef && st3==3 && hits_p1x1.chan(n)==21 && hits_p2x1.chan(m)==19)printf("a %1.4f tx %1.4f, b %1.4f, x0 %1.4f, chan p1x1 %1.0f, chan p2x1 %1.0f \n", a, tx, b, x0, hits_p1x1.chan(n), hits_p2x1.chan(m) );
+					if(fabs(b)>X0_MAX)continue;
+					if(fabs( (tx*2028.19f+x0)-(a*2028.19f+b) )>3.0f )continue;
+					//if(blockIdx.x<=debug::EvRef && threadIdx.x%2==0 && hits_p1x1.chan(n)==21 && hits_p2x1.chan(m)==19)printf("thread %d a %1.4f tx %1.4f, b %1.4f, x0 %1.4f, pos_tkl %1.4f pos_seg %1.4f, detID[0] %d, detID[2] %d elID[0-3] %d %d %d %d \n", threadIdx.x, a, tx, b, x0, tx*2028.19f+x0, a*2028.19f+b, detID[0], detID[2], elID[0], elID[1], elID[2], elID[3] );
+					
+					nprop++;
+					checknext = false;
+					goodsegmentx = true;
+					break;
+				}
+				if(!goodsegmentx){
+					for(int m = 0; m<nhits_p2x2; m++){
+					ipos = hits_p2x2.pos(m);
+					xExp = tx*z_p2x2+x0;
+					prop_pos[1] = ipos;
+					prop_z[1] = z_p2x2;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+					if(fabs(ipos-xExp)>7.62f)continue;
+
+					a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+					if(fabs(a)>TX_MAX)continue;
+					if(fabs(a-tx)>cut)continue;
+					b = prop_pos[0]-a*prop_z[0];
+					if(fabs(b)>X0_MAX)continue;
+					if(fabs( (tx*2028.19f+x0)-(a*2028.19f+b) )>3.0f )continue;
+						
+					nprop++;
+					checknext = false;
+					goodsegmentx = true;
+					break;
+					}
+				}
+			}
+		}
+		
+		if(!goodsegmentx){
+			for(int n = 0; n<nhits_p1x2; n++){
+				ipos = hits_p1x2.pos(n);
+				xExp = tx*z_p1x2+x0;
+				prop_pos[0] = ipos;
+				prop_z[0] = z_p1x2;
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("evt %d p1x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+				if(fabs(ipos-xExp)<5.08f){
+					nprop++;
+					for(int m = 0; m<nhits_p2x1; m++){
+						ipos = hits_p2x1.pos(m);
+						xExp = tx*z_p2x1+x0;
+						prop_pos[1] = ipos;
+						prop_z[1] = z_p2x1;
+#ifdef DEBUG
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2x1, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+						if(fabs(ipos-xExp)>7.62f)continue;
+	
+						a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+						if(fabs(a)>TX_MAX)continue;
+						if(fabs(a-tx)>cut)continue;
+						b = prop_pos[0]-a*prop_z[0];
+						if(fabs(b)>X0_MAX)continue;
+						if(fabs( (tx*2028.19f+x0)-(a*2028.19f+b) )>3.0f )continue;
+							
+						nprop++;
+						checknext = false;
+						goodsegmentx = true;
+						break;
+					}
+					if(!goodsegmentx){
+						for(int m = 0; m<nhits_p2x2; m++){
+						ipos = hits_p2x2.pos(m);
+						xExp = tx*z_p2x2+x0;
+						prop_pos[1] = ipos;
+						prop_z[1] = z_p2x2;
+#ifdef DEBUG
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2x2, ipos = %1.4f, xExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, xExp, ipos-xExp);
+#endif
+						if(fabs(ipos-xExp)>7.62f)continue;
+	
+						a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+						if(fabs(a)>TX_MAX)continue;
+						if(fabs(a-tx)>cut)continue;
+						b = prop_pos[0]-a*prop_z[0];
+						if(fabs(b)>X0_MAX)continue;
+						if(fabs( (tx*2028.19f+x0)-(a*2028.19f+b) )>3.0f )continue;
+							
+						nprop++;
+						checknext = false;
+						goodsegmentx = true;
+						break;
+						}
+					}
+				}
+			}
+		}
+		if(!goodsegmentx){
+			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			continue;
+		}
+		
+		goodsegmenty = false;
+		// *very rough* tracklet segment
+		// loop on first plane first
+		for(int n = 0; n<nhits_p1y1; n++){
+			ipos = hits_p1y1.pos(n);
+			yExp = ty*z_p1y1+y0;
+			prop_pos[0] = ipos;
+			prop_z[0] = z_p1y1;
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("evt %d p1y1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+			if(fabs(ipos-yExp)<5.08f){
+				nprop++;
+				for(int m = 0; m<nhits_p2y1; m++){
+					ipos = hits_p2y1.pos(m);
+					yExp = ty*z_p2y1+y0;
+					prop_pos[1] = ipos;
+					prop_z[1] = z_p2y1;
+#ifdef DEBUG
+					if(blockIdx.x<=debug::EvRef)printf("evt %d p2y1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+					if(fabs(ipos-yExp)>10.16f)continue;
+
+					a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+					if(fabs(a)>TY_MAX)continue;
+					if(fabs(a-ty)>cut)continue;
+					b = prop_pos[0]-a*prop_z[0];
+					if(fabs(b)>Y0_MAX)continue;
+					if(fabs( (ty*2028.19f+y0)-(a*2028.19f+b) )>3.0f )continue;
+				
+					nprop++;
+					checknext = false;
+					goodsegmenty = true;
+					break;
+				}
+				if(!goodsegmenty){
+					for(int m = 0; m<nhits_p2y2; m++){
+						ipos = hits_p2y2.pos(m);
+						yExp = ty*z_p2y2+y0;
+						prop_pos[1] = ipos;
+						prop_z[1] = z_p2y2;
+#ifdef DEBUG
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+						if(fabs(ipos-yExp)>10.16f)continue;
+		
+						a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+						if(fabs(a)>TY_MAX)continue;
+						if(fabs(a-ty)>cut)continue;
+						b = prop_pos[0]-a*prop_z[0];
+						if(fabs(b)>Y0_MAX)continue;
+						if(fabs( (ty*2028.19f+y0)-(a*2028.19f+b) )>3.0f )continue;
+							
+						nprop++;
+						checknext = false;
+						goodsegmenty = true;
+						break;
+					}
+				}
+			}
+		}
+			
+		if(!goodsegmenty){
+			for(int n = 0; n<nhits_p1y2; n++){
+				ipos = hits_p1y2.pos(n);
+				yExp = ty*z_p1y2+y0;
+				prop_pos[0] = ipos;
+				prop_z[0] = z_p1y2;
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("evt %d p1y1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+				if(fabs(ipos-yExp)<5.08f){
+					nprop++;
+					for(int m = 0; m<nhits_p2y1; m++){
+						ipos = hits_p2y1.pos(m);
+						yExp = ty*z_p2y1+y0;
+						prop_pos[1] = ipos;
+						prop_z[1] = z_p2y1;
+#ifdef DEBUG
+						if(blockIdx.x<=debug::EvRef)printf("evt %d p2y1, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+						if(fabs(ipos-yExp)>10.16f)continue;
+		
+						a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+						if(fabs(a)>TY_MAX)continue;
+						if(fabs(a-ty)>cut)continue;
+						b = prop_pos[0]-a*prop_z[0];
+						if(fabs(b)>Y0_MAX)continue;
+						if(fabs( (ty*2028.19f+y0)-(a*2028.19f+b) )>3.0f )continue;
+							
+						nprop++;
+						checknext = false;
+						goodsegmenty = true;
+						break;
+					}
+					if(!goodsegmenty){
+						for(int m = 0; m<nhits_p2y2; m++){
+							ipos = hits_p2y2.pos(m);
+							yExp = ty*z_p2y2+y0;
+							prop_pos[1] = ipos;
+							prop_z[1] = z_p2y2;
+#ifdef DEBUG
+							if(blockIdx.x<=debug::EvRef)printf("evt %d p2y2, ipos = %1.4f, yExp = %1.4f, diff = %1.4f \n", blockIdx.x, ipos, yExp, ipos-yExp);
+#endif
+							if(fabs(ipos-yExp)>10.16f)continue;
+	
+							a = (prop_pos[1]-prop_pos[0])/(prop_z[1]-prop_z[0]);
+							if(fabs(a)>TY_MAX)continue;
+							if(fabs(a-ty)>cut)continue;
+							b = prop_pos[0]-a*prop_z[0];
+							if(fabs(b)>Y0_MAX)continue;
+							if(fabs( (ty*2028.19f+y0)-(a*2028.19f+b) )>3.0f )continue;
+								
+							nprop++;
+							checknext = false;
+							goodsegmenty = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		if(!goodsegmenty){
+			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			continue;
+		}
+	
+	}
+	
+	
+	
+}
+
+
 
 // --------------------------------------------- //
 //
