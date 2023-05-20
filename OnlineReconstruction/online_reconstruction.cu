@@ -657,10 +657,15 @@ int main(int argn, char * argv[]) {
 #ifdef ROOTSAVE
 		h1[k] = new TH1D(Form("h%d", k), wintitle[k].c_str(), Nbins_Hists, varmin[k], varmax[k]);
 #endif
-		host_hists->pts_hw[k] = (varmax[k]-varmin[k])/Nbins_Hists;
+		host_hists->pts_hw[k] = (varmax[k]-varmin[k])*0.5f/Nbins_Hists;
 		for(int l = 0; l<Nbins_Hists; l++){
-			host_hists->xpts[k*Nbins_Hists+l] = varmin[k]+host_hists->pts_hw[k]*(l+0.5f);
-			//cout << k << " " << l << " " << host_hists->xpts[k*Nbins_Hists+l] << endl;
+			host_hists->xpts[k*Nbins_Hists+l] = varmin[k]+host_hists->pts_hw[k]*(2.f*l+1.f);
+			if(k==2){
+#ifdef DEBUG
+				if(l==0)cout << host_hists->pts_hw[k] << " ";
+				cout << k << " " << l << " " << k*Nbins_Hists+l << " " << host_hists->xpts[k*Nbins_Hists+l] << endl;
+#endif
+			}
 			host_hists->values[k*Nbins_Hists+l] = 0;
 		}
 	}
@@ -690,9 +695,18 @@ int main(int argn, char * argv[]) {
 	// cudaMemcpy(dst, src, count, kind): copies data between host and device:
 	// dst: destination memory address; src: source memory address; count: size in bytes; kind: type of transfer
 	gpuErrchk( cudaMemcpy(device_gPlane, &plane, NBytesPlanes, cudaMemcpyHostToDevice));
-	gpuErrchk( cudaMemcpy(device_gHistsArrays, &host_hists, NBytesHistsArrays, cudaMemcpyHostToDevice));
+	gpuErrchk( cudaMemcpy(device_gHistsArrays, host_hists, NBytesHistsArrays, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gEvent, &host_gEvent, NBytesAllEvent, cudaMemcpyHostToDevice));
 	gpuErrchk( cudaMemcpy(device_gHits, &host_gEventHits, NBytesAllHits, cudaMemcpyHostToDevice));
+	
+#ifdef DEBUG
+	gkernel_checkHistos<<<16, Nbins_Hists>>>(device_gHistsArrays, 2);
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
+	cout << " x_hw " << host_hists->pts_hw[2] << " ";
+	for(int k = 0; k<Nbins_Hists; k++)cout << "  k " << k << " idx " << 2*Nbins_Hists+k << " x " << host_hists->xpts[2*Nbins_Hists+k] << " data " << host_hists->values[2*Nbins_Hists+k]  << endl;
+#endif
 		
 	auto cp3 = std::chrono::system_clock::now();
 
@@ -806,11 +820,14 @@ int main(int argn, char * argv[]) {
 	auto gpu_gt = cp7-cp6;
 	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
 
-	//gKernel_TrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
-	//	device_gHits,
-	//	device_gTracks,
-	//	device_gPlane->z,
-	//	device_gEvent->HasTooManyHits);
+//	gKernel_TrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+//		device_gHits,
+//		device_gTracks,
+//		device_gPlane->z,
+//#ifdef DEBUG
+//		device_gEvent->EventID,
+//#endif
+//		device_gEvent->HasTooManyHits);
 
 	gKernel_Vertexing<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gTracks,
@@ -822,6 +839,7 @@ int main(int argn, char * argv[]) {
 
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
+
 
 #ifdef DEBUG
 	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
@@ -861,15 +879,15 @@ int main(int argn, char * argv[]) {
 	//runDisplay(argn, argv, device_gHistsArrays->xpts, device_gHistsArrays->values);
 
 	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
-	cudaFree(device_gHistsArrays);
 	//TEST ONLY
-	for(int k = 0; k<128; k++)host_hists->values[k] = 1000.*sin(k*3.141592653/180.);
+	//for(int k = 0; k<128; k++)host_hists->values[k] = 1000.*sin(k*3.141592653/180.);
 	//
-	for(int k = 0; k<128; k++)cout << "  k " << k << " data " << host_hists->values[k] 
-					//<< " " << host_hists->xpts[k] << " " << (int)1000*sin(host_hists->xpts[k]) 
-					<< "  ";
+#ifdef DEBUG
+	for(int k = 0; k<Nbins_Hists; k++)cout << "  k " << k << " " << host_hists->xpts[2*Nbins_Hists+k] << " data " << host_hists->values[2*Nbins_Hists+k] << endl;
+#endif
 	cout << endl;
 	runDisplay(argn, argv, host_hists->values);
+	cudaFree(device_gHistsArrays);
 #endif		
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 

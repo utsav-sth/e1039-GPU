@@ -1,5 +1,4 @@
 #include "reconstruction_classes.cuh"
-#define REFINED_ER
 
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //

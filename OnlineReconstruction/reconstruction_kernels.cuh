@@ -135,11 +135,11 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	}
 	
 	hastoomanyhits[blockIdx.x] = false;
-	if(station_mult[0]>datasizes::MaxD0Multiplicity)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[1]>datasizes::MaxD2Multiplicity)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[2]>datasizes::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
-	if(station_mult[3]>datasizes::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
-	//if(station_mult[4]>datasizes::MaxPropMultiplicity)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[0]>selection::MaxD0Multiplicity)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[1]>selection::MaxD2Multiplicity)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[2]>selection::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
+	if(station_mult[3]>selection::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
+	//if(station_mult[4]>selection::MaxPropMultiplicity)hastoomanyhits[blockIdx.x] = true;
 
 	if(blockIdx.x==debug::EvRef){
 #ifdef DEBUG
@@ -608,7 +608,7 @@ __global__ void gKernel_XZ_tracking(
 				}
 			}
 			//
-			if(nprop<NpropXhitsMin)continue;
+			if(nprop<selection::NpropXYhitsMin)continue;
 
 			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
@@ -1663,7 +1663,7 @@ __global__ void gKernel_YZ_tracking(
 						}
 					}
 				}
-				if(nprop<NpropXhitsMin)continue;
+				if(nprop<selection::NpropXYhitsMin)continue;
 #endif	
 
 #ifdef DEBUG
@@ -2804,6 +2804,10 @@ __global__ void gKernel_TrackCleaning(
 	for(int i = 0; i<Ntracks; i++){
 		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
 		if(Tracks.stationID(i)<6)continue;
+		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax){
+			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			continue;
+		}
 		
 		x0 = Tracks.x0(i);
 		y0 = Tracks.y0(i);
@@ -3099,12 +3103,22 @@ __global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool*
 	
 }
 
+
+
+__global__ void gkernel_checkHistos(gHistsArrays *HistsArrays, const short hist_num){
+	const int idx = blockIdx.x*blockDim.x+threadIdx.x;
+	if(blockIdx.x==hist_num || hist_num==-1){
+		if(threadIdx.x==0)printf(" hw %1.4f ", HistsArrays->pts_hw[blockIdx.x]);
+		printf(" thread %d idx %d xpts %1.4f values %1.4f\n", threadIdx.x, idx, HistsArrays->xpts[idx], HistsArrays->values[idx]);
+	}
+}
+
+
 // --------------------------------------------- //
 //
 // function to fill the "histograms"/arrays to be displayed
 // 
 // --------------------------------------------- //
-//__global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, float* xpts, float* pts_hw, float* values, const bool* hastoomanyhits)
 __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, gHistsArrays *HistsArrays, const bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x])return;
@@ -3116,13 +3130,13 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 	int bin;
 	int i, j, k;
 	
-	__shared__ float values_[NVars*Nbins_Hists];
-	for(j = 0; j<Nbins_Hists*NVars; j++)values_[j] = 0;
+	//__shared__ float values_[NVars*Nbins_Hists];
+	//for(j = 0; j<Nbins_Hists*NVars; j++)values_[j] = 0;
 	
 	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, nTracks);
-		
+	
 	for(i = 0; i<nTracks; i++){
-		if(Tracks.stationID(i)<7)continue;
+		if(Tracks.stationID(i)<7 && Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax)continue;
 		
 		vars[0] = Tracks.x0(i);
 		vars[1] = Tracks.y0(i);
@@ -3144,17 +3158,20 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 				x_hw = HistsArrays->pts_hw[k];
 				x = HistsArrays->xpts[bin];
 				if(x-x_hw<=vars[k] && vars[k]<x+x_hw){
-					//HistsArrays->values[bin]+=1.f;
-					values_[bin]+=1.f;
+					HistsArrays->values[bin]+=1.f;
+					//values_[bin]+=1.f;
+#ifdef DEBUG
+					if(k==2)printf(" bin %d  %1.4f < %1.4f < %1.4f : %1.4f; ", bin, x-x_hw, vars[k], x+x_hw, HistsArrays->values[bin]);
+#endif
 				}
 			}
 		}
 	}
 	__syncthreads();
 	//cudaDeviceSynchronize();
-	for(j = 0; j<Nbins_Hists*NVars; j++){
-		HistsArrays->values[j]+= values_[j];
-	}
+	//for(j = 0; j<Nbins_Hists*NVars; j++){
+	//	HistsArrays->values[j]+= values_[j];
+	//}
 }
 
 

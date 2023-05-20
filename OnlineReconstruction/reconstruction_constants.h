@@ -1,8 +1,9 @@
-//#define GLDISPLAY 1
+#define GLDISPLAY 1
 //#define ROOTSAVE 1
 //#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
+#define REFINED_ER
 #define PROP_Y_MATCH 1
 //#define HODO_Y_MATCH 1
 #define nChamberPlanes 30
@@ -41,7 +42,6 @@ const float PZ_MIN = 0.0;//GeV
 const float PZ_MAX = 150.0;//GeV
 
 const float InvSqrt12 = 0.288675135;
-const short NpropXhitsMin = 2;
 
 
 namespace geometry{
@@ -140,12 +140,16 @@ namespace datasizes{
 	};
 	__host__ __device__ constexpr int TrackSizeMax = 1280;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
+}
 
-	__host__ __device__ constexpr int MaxD0Multiplicity = 350;
-	__host__ __device__ constexpr int MaxD2Multiplicity = 200;
-	__host__ __device__ constexpr int MaxD3Multiplicity = 150;
-	__host__ __device__ constexpr int MaxPropMultiplicity = 1250;
-
+namespace selection{
+	__host__ __device__ constexpr short MaxD0Multiplicity = 350;
+	__host__ __device__ constexpr short MaxD2Multiplicity = 200;
+	__host__ __device__ constexpr short MaxD3Multiplicity = 150;
+	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
+	
+	__host__ __device__ constexpr float chi2dofmax = 250;
+	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 }
 
 namespace extrapolation_tools{
