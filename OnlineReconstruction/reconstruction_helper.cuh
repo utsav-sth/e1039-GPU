@@ -677,7 +677,7 @@ __device__ float refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitA
 // function to resolve the left right ambiguities in the track //
 // ----------------------------------------------------------- //
 
-__device__ void resolve_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const float err_x0, const float err_tx, const float err_y0, const float err_ty, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const gPlane* planes, const float thr)
+__device__ void resolve_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const float err_x0, const float err_tx, const float err_y0, const float err_ty, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const gPlane* planes, const float thr, const bool print = false)
 {
 	short i, j;
 	int indexmin = -1;
@@ -687,34 +687,38 @@ __device__ void resolve_leftright_newhits(const float x0, const float tx, const 
 	float slope_exp, inter_exp;
 	float err_slope, err_inter;
 	short detID_i, detID_j;
-
-	for(short n = 0; n<nhits; n+=2){
+	short k, n;
+	for(n = 0; n<nhits; n+=2){
 		i = n;
 		j = i+1;
 		detID_i = hits_detid[i];
 		detID_j = hits_detid[j];
+		//check this
+		if(blockIdx.x==debug::EvRef && print)printf("n %d detid_i %d detid_j %d \n", n, detID_i, detID_j);
+
 		if( abs(detID_i-detID_j)!=1 ){
 		    n--;//step back by 1 to move by 1 hit instead of 2
 		    continue;		    
 		}
-				
+		
+		//that should be correct
 		slope_exp = planes->costheta[detID_i]*tx + planes->sintheta[detID_i]*ty;
 		err_slope = fabs(planes->costheta[detID_i]*err_tx) + fabs(planes->sintheta[detID_i]*err_ty);
-		
+		//that should be correct too
 		inter_exp = planes->costheta[detID_i]*x0 + planes->sintheta[detID_i]*y0;
 		err_inter = fabs(planes->costheta[detID_i]*err_x0) + fabs(planes->sintheta[detID_i]*err_y0);
 		//position(const float pos, const float drift, const short sign)
-#ifdef DEBUG
-		printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
-		printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
-			position(hits_pos[i], hits_drift[i], +1), position(hits_pos[i], hits_drift[i], -1), 
-			position(hits_pos[j], hits_drift[j], +1), position(hits_pos[i], hits_drift[j], -1));
-#endif
+//#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef && print)printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
+		if(blockIdx.x==debug::EvRef && print)printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
+						position(hits_pos[i], hits_drift[i], +1), position(hits_pos[i], hits_drift[i], -1), 
+						position(hits_pos[j], hits_drift[j], +1), position(hits_pos[i], hits_drift[j], -1));
+//#endif
 		
 		if(hits_sign[i]*hits_sign[j]==0){
 			indexmin = -1;
 			pull_min = 1.e6;
-			for(int k = 0; k<4; k++){
+			for(k = 0; k<4; k++){
 				slope_local = ( position( hits_pos[i], hits_drift[i],  geometry::lrpossibility[k][0]) - position(hits_pos[j], hits_drift[j],  geometry::lrpossibility[k][1]) ) / ( planes->z[detID_i]-planes->z[detID_j] );
 				inter_local = position(hits_pos[i], hits_drift[i], geometry::lrpossibility[k][0]) - slope_local*planes->z[detID_i];
 				
@@ -722,10 +726,10 @@ __device__ void resolve_leftright_newhits(const float x0, const float tx, const 
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
-#ifdef DEBUG
-				printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
-				printf("pull %1.4f\n", pull);
-#endif		
+//#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef && print)printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
+				if(blockIdx.x==debug::EvRef && print)printf("pull %1.4f\n", pull);
+//#endif		
 				if(pull<pull_min){
 					indexmin = k;
 					pull_min = pull;
@@ -767,7 +771,8 @@ __device__ void resolve_single_leftright_newhits(const float x0, const float tx,
 
 
 
-__device__ void resolve_leftright_xhits(const float x0, const float tx, const float err_x0, const float err_tx, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const float* zarray, const float* slope_max, const float* inter_max, const float thr)
+__device__ void resolve_leftright_xhits(const float x0, const float tx, const float err_x0, const float err_tx, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const float* zarray, const float thr)
+//const float* slope_max, const float* inter_max, 
 {
 	short i, j;
 	int indexmin = -1;
@@ -808,7 +813,7 @@ __device__ void resolve_leftright_xhits(const float x0, const float tx, const fl
 				slope_local = ( position( hits_pos[i], hits_drift[i],  geometry::lrpossibility[k][0]) - position(hits_pos[j], hits_drift[j],  geometry::lrpossibility[k][1]) ) / ( zarray[detID_i]-zarray[detID_j] );
 				inter_local = position(hits_pos[i], hits_drift[i], geometry::lrpossibility[k][0]) - slope_local*zarray[detID_i];
 				
-				if(fabs(slope_local) > slope_max[detID_i] || fabs(inter_local) > inter_max[detID_i])continue;
+				//if(fabs(slope_local) > slope_max[detID_i] || fabs(inter_local) > inter_max[detID_i])continue;
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				

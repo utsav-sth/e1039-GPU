@@ -610,7 +610,7 @@ __global__ void gKernel_XZ_tracking(
 			//
 			if(nprop<selection::NpropXYhitsMin)continue;
 
-			//resolve_leftright_xhits(x0, tx, 0, 0, ParErr[0], ParErr[1], 0, 0, nhits_uv, detID, pos, drift, sign, planes, 150.);
+			resolve_leftright_xhits(x0, tx, ParErr[0], ParErr[1], nhits_x, detID, X, drift, sign, z_array, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
 			
 			for(short l = 0; l<nhits_x; l++){
@@ -1733,8 +1733,13 @@ __global__ void gKernel_YZ_tracking(
 				}
 				if(!maskhodo[stid])continue;
 				
+				//if(blockIdx.x==debug::EvRef && threadIdx.x%2==0 && Tracks.hits_chan(i, 0)==37 && Tracks.hits_chan(i, 1)==38 && Tracks.hits_chan(i, 2)==26 && Tracks.hits_chan(i, 3)==25 && elID[0]==44 && elID[1]==43 && elID[2]==28  && elID[3]==27 && elID[4]==45  && elID[5]==46 && detID[4]==18  && detID[5]==17 )// 
+				//	printf("thread %d detid(4) %d detid(5) %d detid(6) %d detid(7) %d  %d detid(8) %d detid(9) %d x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f  \n", threadIdx.x, detID[0], detID[1], detID[2], detID[3], detID[4], detID[5], x0, y0, tx, ty);
+				
 				//LR ambiguity resolution
-				//resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign, planes, 150.);
+				resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign+nhits_x, planes, 150.);
+//					( blockIdx.x==debug::EvRef && threadIdx.x%2==0 && Tracks.hits_chan(i, 0)==37 && Tracks.hits_chan(i, 1)==38 && Tracks.hits_chan(i, 2)==26 && Tracks.hits_chan(i, 3)==25 && elID[0]==44 && elID[1]==43 && elID[2]==28  && elID[3]==27 && elID[4]==45  && elID[5]==46 && detID[4]==18  && detID[5]==17 ) 
+//				
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign+nhits_x, planes);
 				
 				//chi2 evaluation of track candidate
@@ -2153,6 +2158,7 @@ __global__ void gKernel_Global_tracking(
 			errx0_st1 = Par[0];
 			errtx_st1 = Par[1];
 
+			resolve_leftright_xhits(x0_st1, tx_st1, errx0_st1, errtx_st1, nhits_x, detID, X, drift, sign, planes->z, 150.);
 			resolve_single_leftright_xhits(x0_st1, tx_st1, nhits_x, detID, X, sign, planes->z);
 			
 			for(short l = 0; l<nhits_x; l++){
@@ -2385,13 +2391,13 @@ __global__ void gKernel_Global_tracking(
 				
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf(" x0_st1 %1.4f tx_st1 %1.4f y0 %1.4f ty %1.4f \n", x0_st1, tx_st1, y0, ty);
-#endif
 				
-				//TODO: resolve left right...
-				//resolve_leftright_newhits(x0_st1, tx_st1, y0, ty, errx0_st1, errtx_st1, erry0, errty, nhits_x+nhits_uv, detID, pos, drift, sign, planes, 150.);
+#endif
+				//resolve left right...
+				resolve_leftright_newhits(x0_st1, tx_st1, y0, ty, errx0_st1, errtx_st1, erry0, errty, nhits_x+nhits_uv, detID, pos, drift, sign, planes, 150.);
 				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
-				//TODO: chi2 fit...
+				//chi2 fit...
 				chi2 = Tracks.chisq(i)+chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 				if(chi2>100000)continue;
 #ifdef DEBUG

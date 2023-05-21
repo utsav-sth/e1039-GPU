@@ -1,4 +1,4 @@
-#define GLDISPLAY 1
+//#define GLDISPLAY 1
 //#define ROOTSAVE 1
 //#define E1039
 //#define DEBUG 1
