@@ -677,7 +677,7 @@ __device__ float refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitA
 // function to resolve the left right ambiguities in the track //
 // ----------------------------------------------------------- //
 
-__device__ void resolve_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const float err_x0, const float err_tx, const float err_y0, const float err_ty, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const gPlane* planes, const float thr, const bool print = false)
+__device__ void resolve_leftright_newhits(const float x0, const float tx, const float y0, const float ty, const float err_x0, const float err_tx, const float err_y0, const float err_ty, const short nhits, const short* hits_detid, const float* hits_pos, const float* hits_drift, short* hits_sign, const gPlane* planes, const float thr)
 {
 	short i, j;
 	int indexmin = -1;

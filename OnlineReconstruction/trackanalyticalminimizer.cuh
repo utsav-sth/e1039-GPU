@@ -28,8 +28,8 @@ __device__ void chi2_simplefit(size_t const n_points, float* const x_array, floa
 
 }
 
-
-__device__ void fit_2D_track(size_t const n_points, float *x_points, float *z_points, float *x_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2){
+//Function to fit 2D tracks with errors
+__device__ void fit_2D_track(size_t const n_points, const float *x_points, const float *z_points, const float *x_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2){
 	//For a 2D fit to a straight-line:
 	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2
 	// dchi^2/dX = -2 * (xi - (X+Xp*zi))* wxi = 0
@@ -71,6 +71,55 @@ __device__ void fit_2D_track(size_t const n_points, float *x_points, float *z_po
 		chi2+= x_weights[i]*x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[1])*(output_parameters[0]+z_points[i]*output_parameters[1]);
 	}
 }
+
+
+//Same as previous, but the position is "corrected" for the drift
+__device__ void fit_2D_track_drift(size_t const n_points, const float *x_points, const float *drift, const short *sign, const float *z_points, const float *x_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2){
+	//For a 2D fit to a straight-line:
+	// chi^2 = sum_i wxi * (xi- (X + Xp*zi))^2
+	// dchi^2/dX = -2 * (xi - (X+Xp*zi))* wxi = 0
+	// dchi^2/dXp = -2 * (xi - (X+Xp*zi))*zi * wxi = 0
+	
+	for(int j = 0; j<2; j++){
+		B[j] = 0;
+		for(int k = 0; k<2; k++){
+			A[j*2+k] = 0;
+			Ainv[j*2+k] = 0;
+		}
+	}
+
+	for( int i=0; i<n_points; i++ ){
+	//if(isnan(x_points[i]) || isnan(z_points[i]) || isnan(x_weights[i]))printf("%1.4f %1.4f %1.4f \n", x_points[i], z_points[i], x_weights[i]);
+		B[0] += x_weights[i]*(x_points[i]+drift[i]*sign[i]);
+		B[1] += x_weights[i]*(x_points[i]+drift[i]*sign[i])*z_points[i];
+		
+		// first index: row; second index: col;
+		// (consistent with what is used in the matrix inversion routine) 
+		A[0] += x_weights[i];//0*2+0
+		A[1] += x_weights[i]*z_points[i];//0*2+1
+		
+		A[2] += x_weights[i]*z_points[i];//1*2+0
+		A[3] += x_weights[i]*z_points[i]*z_points[i];//1*2+1
+    	}
+	matinv_2x2_matrix_per_thread(A, Ainv);
+
+	for(int j = 0; j<2; j++){//row
+		output_parameters[j] = 0.0;
+		output_parameters_errors[j] = sqrtf(fabs(Ainv[j*2+j]));
+		for(int k = 0; k<2; k++){//column
+			output_parameters[j]+= Ainv[j*2+k]*B[k];
+		}
+	}
+	
+	chi2 = 0;
+	for( int i=0; i<n_points; i++ ){
+		chi2+= x_weights[i]*x_weights[i]*(output_parameters[0]+z_points[i]*output_parameters[1])*(output_parameters[0]+z_points[i]*output_parameters[1]);
+	}
+}
+
+
+
+
 
 
 __device__ void fit_3D_track(size_t const n_points, float *x_points, float *y_points, float *z_points, float *x_weights, float *y_weights, float *A, float* Ainv, float* B, float* output_parameters, float* output_parameters_errors, float& chi2)
@@ -136,3 +185,4 @@ __device__ void fit_3D_track(size_t const n_points, float *x_points, float *y_po
 	}
 
 }
+
