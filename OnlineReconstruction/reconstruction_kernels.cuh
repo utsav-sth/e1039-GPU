@@ -1,5 +1,4 @@
 #include "reconstruction_helper.cuh"
-//#include "tracknumericalminimizer.cuh"
 #include "trackanalyticalminimizer.cuh"
 
 // kernel functions: 
@@ -140,9 +139,11 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 	if(station_mult[2]>selection::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
 	if(station_mult[3]>selection::MaxD3Multiplicity)hastoomanyhits[blockIdx.x] = true;
 	//if(station_mult[4]>selection::MaxPropMultiplicity)hastoomanyhits[blockIdx.x] = true;
+	
+#ifdef DEBUG
+	if(blockIdx.x!=debug::EvRef)hastoomanyhits[blockIdx.x] = true;
 
 	if(blockIdx.x==debug::EvRef){
-#ifdef DEBUG
 		for(int k = 0; k<3; k++){
 		int nhits_chambers_ = hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid_chambers[k]-1];
 		gHits hitcoll_chambers = gHits(hitcolls->HitsChambersRawData, nhits_chambers_, offsets_hitcoll_chambers[k]);
@@ -169,8 +170,8 @@ __global__ void gkernel_eR(gEventHitCollections* hitcolls, bool* hastoomanyhits)
 
 		}
 		if(threadIdx.x==0)for(int i = 0; i<5; i++)printf("thread %d station %d mult %d \n ", threadIdx.x, i, station_mult[i]);
-#endif
 	}
+#endif
 }
 
 
@@ -340,6 +341,7 @@ __global__ void gKernel_XZ_tracking(
 	int nhits_p2x2;
 	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
 	const float z_p2x2 = z_array[detid];
+
 
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
@@ -1180,7 +1182,7 @@ __global__ void gKernel_YZ_tracking(
 
 	float y, err_y;
 	
-	float chi2min = 1000000.1f;
+	float chi2min = 10000.1f;
 
 	int localbin;
 
@@ -1239,7 +1241,7 @@ __global__ void gKernel_YZ_tracking(
 		err_tx = Tracks.err_tx(i);
 		nhits_x =  Tracks.nHits(i);
 		update_track = false;
-		chi2min = 1000000.1f;
+		chi2min = 10000.1f;
 		
 		//get the corresponding local bin!
 		//binId = threadIdx.x+THREADS_PER_BLOCK*localbin;
@@ -2023,7 +2025,7 @@ __global__ void gKernel_Global_tracking(
 	float dpy[6];
 	float dpz[6];
 
-	float chi2min = 100000.1f;
+	float chi2min = 10000.1f;
 
 	//get the tracks...
 	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
@@ -2040,7 +2042,7 @@ __global__ void gKernel_Global_tracking(
 		nhits_st23 = Tracks.nHits(i);
 		
 		if(Tracks.stationID(i)<5)continue;
-		chi2min = 100000.1f;
+		chi2min = 10000.1f;
 		
 		x0 = Tracks.x0(i);
 		tx = Tracks.tx(i);
@@ -2064,7 +2066,11 @@ __global__ void gKernel_Global_tracking(
 		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid], pos_exp[projid]+window[projid]);
 
 #ifdef DEBUG
-		if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
+nx1, nu1, nv1);
+		if(blockIdx.x==debug::EvRef){
+			printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
+			for(int ll=0; ll<3; ll++)printf(" %d pos %1.4f window %1.4f  =>  %1.4f < %1.4f \n ", ll, pos_exp[ll], window[ll], pos_exp[ll]-window[ll], pos_exp[ll]+window[ll]);
+		}
 #endif
 		
 		if(nx1==0 || nu1==0 || nv1==0)continue;
@@ -2728,18 +2734,85 @@ __global__ void gKernel_Vertexing(
 
 // --------------------------------------------- //
 //
-// function to clean the tracks again after full processing
+// function to clean the tracks after XZ-YZ processing
 // 
 // --------------------------------------------- //
 
-__global__ void gKernel_TrackCleaning(
+__global__ void gKernel_BackTrackCleaning(
+	gEventTrackCollection* tklcoll,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	//tracks
+	unsigned int Ntracks;
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	int i, j; 
+	short ihit, jhit;
+	short nhitsi, nhitsj;
+	
+	
+	int nhits_common = 0;	
+		
+	for(i = 0; i<Ntracks; i++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+		if(Tracks.stationID(i)<5)continue;
+		nhitsi = Tracks.nHits(i);
+		nhits_common = 0;
+		
+		for(j = i+1; j<Ntracks; j++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+			if(Tracks.stationID(j)<5)continue;
+			nhitsj = Tracks.nHits(j);
+			
+			for(ihit = 0; ihit<nhitsi; ihit++){
+				for(jhit = 0; jhit<nhitsj; jhit++){
+					if( Tracks.hits_detid(j, jhit)==Tracks.hits_detid(i, ihit) && Tracks.hits_chan(j, jhit)==Tracks.hits_chan(i, ihit) ){
+						nhits_common++;
+						break;
+					}
+				}
+			}
+			
+			if(Tracks.chisq(i)/(nhitsi-4) < Tracks.chisq(j)/(nhitsj-4)){
+				if(nhits_common>nhitsi*0.3333f ){
+					tklcoll->setStationID(tkl_coll_offset+array_thread_offset, j, 3);
+				}
+			
+			}else{
+				if(nhits_common>nhitsj*0.3333f ){
+					tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 3);
+				}
+			
+			} 
+
+		}	
+
+	}
+}
+
+
+
+
+// --------------------------------------------- //
+//
+// function to clean the tracks after full processing
+// 
+// --------------------------------------------- //
+
+__global__ void gKernel_GlobalTrackCleaning(
 	gEventHitCollections* hitcolls,
 	gEventTrackCollection* tklcoll,
 	const float* z_array,
 	const bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x])return;
-
+	
+	int i, j;
 
 	float x0, tx;
 	float y0, ty;
@@ -2757,6 +2830,8 @@ __global__ void gKernel_TrackCleaning(
 	bool goodsegmentx;
 	bool goodsegmenty;
 
+	int n, m;
+	
 	projid = 0;
 	stid = 6-1;
 	detid = geometry::detsuperid[stid][projid]*2;
@@ -2810,16 +2885,32 @@ __global__ void gKernel_TrackCleaning(
 	
 	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
 	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
-		
+	
 	float cut = 0.03;
 	
-	for(int i = 0; i<Ntracks; i++){
+	for(i = 0; i<Ntracks; i++){
 		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
 		if(Tracks.stationID(i)<6)continue;
-		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax){
+
+		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax || Tracks.chisq(i)>100.f){
 			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
 			continue;
 		}
+		
+		for(j = i+1; j<Ntracks; j++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+			if(Tracks.stationID(j)<6)continue;
+			
+				
+			if(Tracks.chisq(i)/(Tracks.nHits(i)-5) < Tracks.chisq(j)/(Tracks.nHits(j)-5)){
+				if( (Tracks.invP(i)-Tracks.invP(j))/Tracks.invP(i) < selection::merge_thres)  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, j, 5);
+			}else{
+				if( (Tracks.invP(i)-Tracks.invP(i))/Tracks.invP(j) < selection::merge_thres)  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			} 
+
+		}	
+
+
 		
 		x0 = Tracks.x0(i);
 		y0 = Tracks.y0(i);
@@ -2827,12 +2918,13 @@ __global__ void gKernel_TrackCleaning(
 		ty = Tracks.ty(i);
 		invP = Tracks.invP(i);
 		
-		cut = max(invP*0.11825f, 0.00643f-0.00009f/invP+0.00000046f/invP/invP);
+		//cut = max(invP*0.11825f, 0.00643f-0.00009f/invP+0.00000046f/invP/invP);
+		cut = 0.03f;
 		
 		goodsegmentx = false;
 		// *very rough* tracklet segment
 		// loop on first plane first
-		for(int n = 0; n<nhits_p1x1; n++){
+		for(n = 0; n<nhits_p1x1; n++){
 			ipos = hits_p1x1.pos(n);
 			xExp = tx*z_p1x1+x0;
 			prop_pos[0] = ipos;
@@ -2842,7 +2934,7 @@ __global__ void gKernel_TrackCleaning(
 #endif
 			if(fabs(ipos-xExp)<5.08f){
 				nprop++;
-				for(int m = 0; m<nhits_p2x1; m++){
+				for(m = 0; m<nhits_p2x1; m++){
 					ipos = hits_p2x1.pos(m);
 					xExp = tx*z_p2x1+x0;
 					prop_pos[1] = ipos;
@@ -2868,7 +2960,7 @@ __global__ void gKernel_TrackCleaning(
 					break;
 				}
 				if(!goodsegmentx){
-					for(int m = 0; m<nhits_p2x2; m++){
+					for(m = 0; m<nhits_p2x2; m++){
 					ipos = hits_p2x2.pos(m);
 					xExp = tx*z_p2x2+x0;
 					prop_pos[1] = ipos;
@@ -2895,7 +2987,7 @@ __global__ void gKernel_TrackCleaning(
 		}
 		
 		if(!goodsegmentx){
-			for(int n = 0; n<nhits_p1x2; n++){
+			for(n = 0; n<nhits_p1x2; n++){
 				ipos = hits_p1x2.pos(n);
 				xExp = tx*z_p1x2+x0;
 				prop_pos[0] = ipos;
@@ -2905,7 +2997,7 @@ __global__ void gKernel_TrackCleaning(
 #endif
 				if(fabs(ipos-xExp)<5.08f){
 					nprop++;
-					for(int m = 0; m<nhits_p2x1; m++){
+					for(m = 0; m<nhits_p2x1; m++){
 						ipos = hits_p2x1.pos(m);
 						xExp = tx*z_p2x1+x0;
 						prop_pos[1] = ipos;
@@ -2928,7 +3020,7 @@ __global__ void gKernel_TrackCleaning(
 						break;
 					}
 					if(!goodsegmentx){
-						for(int m = 0; m<nhits_p2x2; m++){
+						for(m = 0; m<nhits_p2x2; m++){
 						ipos = hits_p2x2.pos(m);
 						xExp = tx*z_p2x2+x0;
 						prop_pos[1] = ipos;
@@ -2962,7 +3054,7 @@ __global__ void gKernel_TrackCleaning(
 		goodsegmenty = false;
 		// *very rough* tracklet segment
 		// loop on first plane first
-		for(int n = 0; n<nhits_p1y1; n++){
+		for(n = 0; n<nhits_p1y1; n++){
 			ipos = hits_p1y1.pos(n);
 			yExp = ty*z_p1y1+y0;
 			prop_pos[0] = ipos;
@@ -2972,7 +3064,7 @@ __global__ void gKernel_TrackCleaning(
 #endif
 			if(fabs(ipos-yExp)<5.08f){
 				nprop++;
-				for(int m = 0; m<nhits_p2y1; m++){
+				for(m = 0; m<nhits_p2y1; m++){
 					ipos = hits_p2y1.pos(m);
 					yExp = ty*z_p2y1+y0;
 					prop_pos[1] = ipos;
@@ -2995,7 +3087,7 @@ __global__ void gKernel_TrackCleaning(
 					break;
 				}
 				if(!goodsegmenty){
-					for(int m = 0; m<nhits_p2y2; m++){
+					for(m = 0; m<nhits_p2y2; m++){
 						ipos = hits_p2y2.pos(m);
 						yExp = ty*z_p2y2+y0;
 						prop_pos[1] = ipos;
@@ -3022,7 +3114,7 @@ __global__ void gKernel_TrackCleaning(
 		}
 			
 		if(!goodsegmenty){
-			for(int n = 0; n<nhits_p1y2; n++){
+			for(n = 0; n<nhits_p1y2; n++){
 				ipos = hits_p1y2.pos(n);
 				yExp = ty*z_p1y2+y0;
 				prop_pos[0] = ipos;
@@ -3032,7 +3124,7 @@ __global__ void gKernel_TrackCleaning(
 #endif
 				if(fabs(ipos-yExp)<5.08f){
 					nprop++;
-					for(int m = 0; m<nhits_p2y1; m++){
+					for(m = 0; m<nhits_p2y1; m++){
 						ipos = hits_p2y1.pos(m);
 						yExp = ty*z_p2y1+y0;
 						prop_pos[1] = ipos;
@@ -3055,7 +3147,7 @@ __global__ void gKernel_TrackCleaning(
 						break;
 					}
 					if(!goodsegmenty){
-						for(int m = 0; m<nhits_p2y2; m++){
+						for(m = 0; m<nhits_p2y2; m++){
 							ipos = hits_p2y2.pos(m);
 							yExp = ty*z_p2y2+y0;
 							prop_pos[1] = ipos;
@@ -3148,7 +3240,7 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, nTracks);
 	
 	for(i = 0; i<nTracks; i++){
-		if(Tracks.stationID(i)<7 && Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax)continue;
+		if(Tracks.stationID(i)<7 || Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax || Tracks.chisq(i)>100.f)continue;
 		
 		vars[0] = Tracks.x0(i);
 		vars[1] = Tracks.y0(i);

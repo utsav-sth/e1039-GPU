@@ -52,7 +52,8 @@ namespace geometry{
 #endif
 	__device__ constexpr float spacingplane[28] = {0., 0.40, 0.40, 0.40, 0.40, 0.40, 0.40, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 4.0, 4.0, 7.0, 7.0, 8.0, 12.0, 12.0, 10.0, 3.0, 3.0, 3.0, 3.0};
 	__device__ constexpr short detsuperid[7][3] = {{2, 1, 3}, {5, 6, 4}, {8, 9, 7}, {11, 12, 10}, {14, 15, 13}, {25, 24, -1}, {26, 27, -1}}; 
-	__device__ constexpr short planetype[15] = {1, 0, 2, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1};
+	__device__ constexpr short planetype[15] = {1, 0, 2, 1, 0, 2, 2, 0, 1, 2, 0, 1, 2, 0, 1};
+	//__device__ constexpr short sagitta_detid[3] = {1};
 	//__device__ constexpr short detmap_zincr[31] = {-1,  0,  1,  3,  2,  4,  5,  0,  1,  3,  2,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 12, 13, 14, 15, 16, 17};
 	//__device__ constexpr short dets_x[6] = {15, 16, 21, 22, 27, 28};
 	//__device__ constexpr short hodoplanerange[5][2] = {{31, 34}, {31, 34}, {35, 38}, {39, 40}, {41, 46}};// range of planes to look for hits
@@ -61,7 +62,6 @@ namespace geometry{
 	__device__ constexpr float hodofudgefac[4] = {0.25, 0.2, 0.15, 0.0};
 	__device__ constexpr float X_BEAM = 0;
 	__device__ constexpr float Y_BEAM = 0;
-	__device__ constexpr float Z_TARGET = -300;
 	__device__ constexpr float Z_DUMP = 42;
 	__device__ constexpr float SAGITTA_TARGET_CENTER = 1.85;
 	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
@@ -74,11 +74,13 @@ namespace geometry{
 	__device__ constexpr float FMAGSTR = -1.054;
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+	__device__ constexpr float Z_TARGET = -300;
 #else
 	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
 	__device__ constexpr float FMAGSTR = -1.044;
 	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
 	__device__ constexpr float Z_KMAG_BEND = 1041.8;
+	__device__ constexpr float Z_TARGET = -129.54;
 #endif
 	__device__ constexpr float FMAG_LENGTH = 502.92;
 	__device__ constexpr float FMAG_HOLE_LENGTH = 27.94;
@@ -150,6 +152,7 @@ namespace selection{
 	
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
+	__host__ __device__ constexpr float merge_thres = 0.015;
 }
 
 namespace extrapolation_tools{
@@ -161,5 +164,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 1253;
+  __host__ __device__ constexpr unsigned int EvRef = 8157;
 }

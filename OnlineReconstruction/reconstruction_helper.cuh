@@ -503,7 +503,9 @@ __device__ void SagittaRatioInStation1(const float x0, const float tx, const flo
 		
 		pos_st3 = x_st3*costheta_[detid_2] + y_st3*sintheta_[detid_2];
 
-		//printf(" i %d idx %d  pos %1.3f \n", i, idx, pos_st3);
+#ifdef DEBUG
+		printf(" i %d idx %d  pos %1.3f \n", i, idx, pos_st3);
+#endif	
 		
 		z_st1 = z_[detid];
 		z_st2 = z_[detid_2];
@@ -694,7 +696,6 @@ __device__ void resolve_leftright_newhits(const float x0, const float tx, const 
 		detID_i = hits_detid[i];
 		detID_j = hits_detid[j];
 		//check this
-		if(blockIdx.x==debug::EvRef && print)printf("n %d detid_i %d detid_j %d \n", n, detID_i, detID_j);
 
 		if( abs(detID_i-detID_j)!=1 ){
 		    n--;//step back by 1 to move by 1 hit instead of 2
@@ -708,12 +709,12 @@ __device__ void resolve_leftright_newhits(const float x0, const float tx, const 
 		inter_exp = planes->costheta[detID_i]*x0 + planes->sintheta[detID_i]*y0;
 		err_inter = fabs(planes->costheta[detID_i]*err_x0) + fabs(planes->sintheta[detID_i]*err_y0);
 		//position(const float pos, const float drift, const short sign)
-//#ifdef DEBUG
-		if(blockIdx.x==debug::EvRef && print)printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
-		if(blockIdx.x==debug::EvRef && print)printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("hits dets %d %d; exp slope %1.4f +- %1.4f inter %1.4f +- %1.4f \n", detID_i, hits_detid[j], slope_exp, err_slope, inter_exp, err_inter);
+		if(blockIdx.x==debug::EvRef)printf("hit 1 positions %1.4f, %1.4f hit 2 positions %1.4f, %1.4f \n", 
 						position(hits_pos[i], hits_drift[i], +1), position(hits_pos[i], hits_drift[i], -1), 
 						position(hits_pos[j], hits_drift[j], +1), position(hits_pos[i], hits_drift[j], -1));
-//#endif
+#endif
 		
 		if(hits_sign[i]*hits_sign[j]==0){
 			indexmin = -1;
@@ -726,10 +727,10 @@ __device__ void resolve_leftright_newhits(const float x0, const float tx, const 
 				
 				pull = sqrtf( (slope_exp-slope_local)*(slope_exp-slope_local)/err_slope/err_slope + (inter_exp-inter_local)*(inter_exp-inter_local)/err_inter/err_inter );
 				
-//#ifdef DEBUG
-				if(blockIdx.x==debug::EvRef && print)printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
-				if(blockIdx.x==debug::EvRef && print)printf("pull %1.4f\n", pull);
-//#endif		
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("lr %d %d, slope %1.4f inter %1.4f\n", geometry::lrpossibility[k][0], geometry::lrpossibility[k][1], slope_local, inter_local);
+				if(blockIdx.x==debug::EvRef)printf("pull %1.4f\n", pull);
+#endif		
 				if(pull<pull_min){
 					indexmin = k;
 					pull_min = pull;

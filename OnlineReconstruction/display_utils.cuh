@@ -18,7 +18,7 @@ int win_[6];
 
 #define LIMIT_X 0.2      // limit
 #define CENTER_X (LIMIT_X-LIMIT_X)      // limit
-#define LIMIT_Y 3500.0      // limit
+#define LIMIT_Y 600.0      // limit
 #define CENTER_Y (LIMIT_Y-LIMIT_Y-1)      // limit
 
 GLuint vbo;
