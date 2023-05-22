@@ -342,6 +342,36 @@ __global__ void gKernel_XZ_tracking(
 	const gHits hits_p2x2 = hitcolls->hitsprop(blockIdx.x, detid, nhits_p2x2);
 	const float z_p2x2 = z_array[detid];
 
+	// hodoscope hits
+	stid = 1;//2-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h2x1;
+	const gHits hits_h2x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2x1);
+
+	detid = geometry::hodoplanesx[stid][1];
+	int nhits_h2x2;
+	const gHits hits_h2x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h2x2);
+	
+	stid = 2;//3-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h3x1;
+	const gHits hits_h3x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3x1);
+
+	detid = geometry::hodoplanesx[stid][1];
+	int nhits_h3x2;
+	const gHits hits_h3x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h3x2);
+
+	stid = 3;//4-1
+	detid = geometry::hodoplanesx[stid][0];
+	int nhits_h4x1;
+	const gHits hits_h4x1 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4x1);
+
+	detid = geometry::hodoplanesx[stid][1];
+	int nhits_h4x2;
+	const gHits hits_h4x2 = hitcolls->hitshodos(blockIdx.x, detid, nhits_h4x2);
+
+	bool maskhodo[4];
+
 
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
@@ -374,7 +404,7 @@ __global__ void gKernel_XZ_tracking(
 	float ParErr[2];
 	float chi2;
 
-	float x0, tx;
+	float x0, tx, errx0, errtx;
 	
 	//Arrays for other basic hit info
 	short elID[4];
@@ -538,16 +568,27 @@ __global__ void gKernel_XZ_tracking(
 			fit_2D_track(nhits_x, X, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
 			x0 = Par[0];
 			tx = Par[1];
+			errx0 = ParErr[0];
+			errtx = ParErr[1];
+
+			if(fabs(x0)>X0_MAX+2*errx0 || fabs(tx)>TX_MAX+2*errtx)continue;
 			
-			resolve_leftright_xhits(x0, tx, ParErr[0], ParErr[1], nhits_x, detID, X, drift, sign, z_array, 150.);
+			resolve_leftright_xhits(x0, tx, errx0, errtx, nhits_x, detID, X, drift, sign, z_array, 150.);
 			resolve_single_leftright_xhits(x0, tx, nhits_x, detID, X, sign, z_array);
 			
 			fit_2D_track_drift(nhits_x, X, drift, sign, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
 			x0 = Par[0];
 			tx = Par[1];
+			errx0 = ParErr[0];
+			errtx = ParErr[1];
 
-			if(fabs(x0)>X0_MAX+ParErr[0] || fabs(tx)>TX_MAX+ParErr[1])continue;
+			if(fabs(x0)>X0_MAX || fabs(tx)>TX_MAX)continue;
 			//if(fabs(x0+tx*geometry::Z_KMAG_BEND)>geometry::X_KMAG_BEND)continue;
+			//the following does not figure in the ktracker selection... yet it is fairly effective
+			//if(fabs(x0)<10.0)continue;
+			//if(x0<0 && tx<-x0*0.0008)continue;
+			//if(x0>0 && tx>-x0*0.0008)continue;
+
 			
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("evt %d x0 = %1.4f, tx = %1.4f \n", blockIdx.x, x0, tx);
@@ -619,24 +660,37 @@ __global__ void gKernel_XZ_tracking(
 			//
 			if(nprop<selection::NpropXYhitsMin)continue;
 			
-			for(short l = 0; l<nhits_x; l++){
-#ifdef DEBUG
-				if(blockIdx.x==debug::EvRef)printf("l %d hit sign %d drift %1.4f \n", l, sign[l], drift[l]);
-#endif
-				X[l]+= sign[l]*drift[l];
+			//hodoscope
+			stid = 1;//2-1
+
+			maskhodo[stid] = 0;
+			detid = geometry::hodoplanesx[stid][0];
+			maskhodo[stid] = match_track_XZ_to_hodo(stid, detid, nhits_h2x1, hits_h2x1, x0, tx, errx0, errtx, z_array);
+			if(!maskhodo[stid]){
+				detid = geometry::hodoplanesx[stid][1];
+				maskhodo[stid] = maskhodo[stid] || match_track_XZ_to_hodo(stid, detid, nhits_h2x2, hits_h2x2, x0, tx, errx0, errtx, z_array);
 			}
-			fit_2D_track(nhits_x, X, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
-#ifdef DEBUG
-			if(blockIdx.x==debug::EvRef)printf("before: x0 %1.4f, tx %1.4f, after: x0 %1.4f tx %1.4f \n", x0, tx, Par[0], Par[1]);
-#endif
-			x0 = Par[0];
-			tx = Par[1];
+			if(!maskhodo[stid])continue;
 			
-			if(fabs(x0)>X0_MAX || fabs(tx)>TX_MAX)continue;
-			//the following does not figure in the ktracker selection... yet it is fairly effective
-			//if(fabs(x0)<10.0)continue;
-			//if(x0<0 && tx<-x0*0.0008)continue;
-			//if(x0>0 && tx>-x0*0.0008)continue;
+			stid = 2;//3-1
+			maskhodo[stid] = 0;
+			detid = geometry::hodoplanesx[stid][0];
+			maskhodo[stid] = match_track_XZ_to_hodo(stid, detid, nhits_h3x1, hits_h3x1, x0, tx, errx0, errtx, z_array);
+			if(!maskhodo[stid]){
+				detid = geometry::hodoplanesx[stid][1];
+				maskhodo[stid] = maskhodo[stid] || match_track_XZ_to_hodo(stid, detid, nhits_h3x2, hits_h3x2, x0, tx, errx0, errtx, z_array);
+			}
+			if(!maskhodo[stid])continue;
+
+			stid = 3;//4-1
+			maskhodo[stid] = 0;
+			detid = geometry::hodoplanesx[stid][0];
+			maskhodo[stid] = match_track_XZ_to_hodo(stid, detid, nhits_h4x1, hits_h4x1, x0, tx, errx0, errtx, z_array);
+			if(!maskhodo[stid]){
+				detid = geometry::hodoplanesx[stid][1];
+				maskhodo[stid] = maskhodo[stid] || match_track_XZ_to_hodo(stid, detid, nhits_h4x2, hits_h4x2, x0, tx, errx0, errtx, z_array);
+			}
+			if(!maskhodo[stid])continue;
 			
 			//we can probably afford to spare time for synchronization here since XZ is extremely fast!
 			addtrack[threadIdx.x] = true;
@@ -757,8 +811,8 @@ __global__ void gKernel_XZ_tracking(
 			tklcoll->setnHits(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], (float)nhits_x);
 			tklcoll->setTx(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], tx);
 			tklcoll->setX0(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], x0);
-			tklcoll->setErrTx(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], ParErr[1]);
-			tklcoll->setErrX0(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], ParErr[0]);
+			tklcoll->setErrTx(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], errtx);
+			tklcoll->setErrX0(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], errx0);
 			
 			for(int n = 0; n<nhits_x; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, detID[n]);

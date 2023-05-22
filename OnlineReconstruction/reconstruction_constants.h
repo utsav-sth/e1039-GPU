@@ -60,9 +60,10 @@ namespace geometry{
 	__device__ constexpr short hodoplanesx[4][2] = {{31, 32}, {37, 38}, {39, 40}, {45, 46}};// range of planes to look for hits
 	__device__ constexpr short hodoplanesy[4][2] = {{33, 34}, {35, 36}, {41, 42}, {43, 44}};// range of planes to look for hits
 	__device__ constexpr float hodofudgefac[4] = {0.25, 0.2, 0.15, 0.0};
-	__device__ constexpr float X_BEAM = 0;
-	__device__ constexpr float Y_BEAM = 0;
-	__device__ constexpr float Z_DUMP = 42;
+	__device__ constexpr float hodoXcellwidth[4] = {7.32, 13.0f, 14.5875, 19.6475};
+	__device__ constexpr float X_BEAM = 0.;
+	__device__ constexpr float Y_BEAM = 0.;
+	__device__ constexpr float Z_DUMP = 42.;
 	__device__ constexpr float SAGITTA_TARGET_CENTER = 1.85;
 	__device__ constexpr float SAGITTA_TARGET_WIDTH = 0.25;
 	__device__ constexpr float SAGITTA_DUMP_CENTER = 1.5;
@@ -74,7 +75,7 @@ namespace geometry{
 	__device__ constexpr float FMAGSTR = -1.054;
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
-	__device__ constexpr float Z_TARGET = -300;
+	__device__ constexpr float Z_TARGET = -300.;
 #else
 	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
 	__device__ constexpr float FMAGSTR = -1.044;

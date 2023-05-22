@@ -965,7 +965,7 @@ __device__ void resolve_single_leftright(const gTracklet tkl, float* hitsign, co
 }
 
 
-// function to match a tracklet to a hodoscope hit
+// functions to match a tracklet to a hodoscope hit
 __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhits, const gHits hits, const float x0, const float y0, const float tx, const float ty, const float err_x0, const float err_y0, const float err_tx, const float err_ty, const gPlane* planes)
 {
 	int masked = 0;//false
@@ -974,6 +974,9 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 	if(detid>40)stid = 3;
 	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
 	// define the region in which we are supposed to have hits:
+
+	const float fudgefac = geometry::hodofudgefac[stid];
+	const float cellwidth = planes->cellwidth[detid];
 	
 	const float xhodo = planes->z[detid]*tx+x0;
 	const float yhodo = planes->z[detid]*ty+y0;
@@ -982,6 +985,7 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 	float err_y = 3.f*(fabs(planes->z[detid]*err_ty)+err_y0);
 	
 	float xmin, xmax, ymin, ymax;
+	
 	//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
 	//calculate the track position at the hodoscope plane z
 #ifdef DEBUG
@@ -992,31 +996,36 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 	for(int i = 0; i<nhits; i++){
 		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
 		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
+#ifdef MATCH_Y_HODO
 		if(planes->costheta[detid]>0.99){
-			xmin = hits.pos(i)-planes->cellwidth[detid]*0.5f;
-			xmax = hits.pos(i)+planes->cellwidth[detid]*0.5f;
+#endif
+			xmin = hits.pos(i)-cellwidth*0.5f;
+			xmax = hits.pos(i)+cellwidth*0.5f;
 			
 			ymin = planes->y1[detid];
 			ymax = planes->y2[detid];
 			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stid];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stid];
+			xmin-=(xmax-xmin)*fudgefac;
+			xmax+=(xmax-xmin)*fudgefac;
 			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stid];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stid];
+			ymin-=(ymax-ymin)*fudgefac;
+			ymax+=(ymax-ymin)*fudgefac;
+#ifdef MATCH_Y_HODO
 		}else{
+
 			xmin = planes->x1[detid];
 			xmax = planes->x2[detid];
 			
-			ymin = hits.pos(i)-planes->cellwidth[detid]*0.5f;
-			ymax = hits.pos(i)+planes->cellwidth[detid]*0.5f;
+			ymin = hits.pos(i)-cellwidth*0.5f;
+			ymax = hits.pos(i)+cellwidth*0.5f;
 			
-			xmin-=(xmax-xmin)*geometry::hodofudgefac[stid];
-			xmax+=(xmax-xmin)*geometry::hodofudgefac[stid];
+			xmin-=(xmax-xmin)*fudgefac;
+			xmax+=(xmax-xmin)*fudgefac;
 			
-			ymin-=(ymax-ymin)*geometry::hodofudgefac[stid];
-			ymax+=(ymax-ymin)*geometry::hodofudgefac[stid];
+			ymin-=(ymax-ymin)*fudgefac;
+			ymax+=(ymax-ymin)*fudgefac;
 		}
+#endif
 
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax, ymin, ymax );
@@ -1032,6 +1041,63 @@ __device__ bool match_tracklet_to_hodo(int stid, const int detid, const int nhit
 		if(blockIdx.x==debug::EvRef)printf(" errx %1.4f xmin %1.4f xmax %1.4f, erry %1.4f ymin %1.4f ymax %1.4f \n", err_x, xmin, xmax, err_y, ymin, ymax);
 #endif
 		if(xmin <= xhodo && xhodo <= xmax && ymin <= yhodo && yhodo <= ymax ){
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("evt %d track x0 %1.4f det %d match in element %d \n", blockIdx.x, x0, detid, (short)hits.chan(i) );
+#endif
+			masked++;
+			break;
+		}
+		
+	}
+	// 
+	return masked>0;
+}
+
+
+__device__ bool match_track_XZ_to_hodo(int stid, const int detid, const int nhits, const gHits hits, const float x0, const float tx, const float err_x0, const float err_tx, const float* z_array)
+{
+	int masked = 0;//false
+	if(nhits==0)return masked;
+	
+	if(detid>40)stid = 3;
+	// first, define the search region, and foremost, the planes on which we define this search region, which depends on the station ID we're looking at
+	// define the region in which we are supposed to have hits:
+	
+	const float xhodo = z_array[detid]*tx+x0;
+	const float fudgefac = geometry::hodofudgefac[stid];
+	const float cellwidth = geometry::hodoXcellwidth[stid];
+	
+	float err_x = 3.f*(fabs(z_array[detid]*err_tx)+err_x0);
+	float xmin, xmax;
+	
+	//we only consider hits in the hodoscopes planes corresponding to the station where the tracklet is reconstructed 
+	//calculate the track position at the hodoscope plane z
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" evt %d stid %d detid %d, xhodo %1.4f yhodo %1.4f zhodo %1.4f posErrX %1.4f posErrY %1.4f errx %1.4f erry %1.4f fudge factor %1.2f \n", blockIdx.x, stid, detid, xhodo, yhodo, z_array[detid], fabs(z_array[detid]*err_tx)+err_x0, fabs(z_array[detid]*err_ty)+err_y0, err_x, err_y, geometry::hodofudgefac[stid] );
+#endif
+		
+	// loop on the hits and select hodoscope hits corresponding to the station
+	for(int i = 0; i<nhits; i++){
+		//calculate "xmin, xmax, ymin, ymax" in which the track is supposed to pass through; 
+		//these are basicially defined as the spatial coverage of the hit hodoscope element (plus some fudge factor for x)
+		xmin = hits.pos(i)-cellwidth*0.5f;
+		xmax = hits.pos(i)+cellwidth*0.5f;
+			
+		xmin-=(xmax-xmin)*fudgefac;
+		xmax+=(xmax-xmin)*fudgefac;
+
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" evt %d detid %d elid %1.0f pos %1.4f xmin %1.4f xmax %1.4f, ymin %1.4f ymax %1.4f\n", blockIdx.x, detid, hits.chan(i), hits.pos(i), xmin, xmax, ymin, ymax );
+#endif
+		err_x+= (xmax-xmin)*0.15f;
+
+		xmin-= err_x;
+		xmax+= err_x;
+		
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" errx %1.4f xmin %1.4f xmax %1.4f \n", err_x, xmin, xmax);
+#endif
+		if(xmin <= xhodo && xhodo <= xmax ){
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("evt %d track x0 %1.4f det %d match in element %d \n", blockIdx.x, x0, detid, (short)hits.chan(i) );
 #endif
