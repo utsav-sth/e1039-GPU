@@ -46,7 +46,6 @@ struct gHits {
 		}
 };
 
-<<<<<<< HEAD
 
 
 struct gEvent {
@@ -73,14 +72,6 @@ struct gEvent {
 	int nTracklets[EstnEvtMax];
 	bool HasTooManyHits[EstnEvtMax];//bool to flag an event with too many hits
 };
-=======
-class gTrackXZ {
-      public:
-      
-      bool d3p;
-      
-      short nXHits;
->>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 
 struct gEventHitCollections {
 	public:
@@ -115,34 +106,7 @@ struct gEventHitCollections {
 
 struct gTracklet {
 	public:
-<<<<<<< HEAD
 	float* m_trackletdata;
-=======
-	gEvent(){
-		RunID = EventID = SpillID = -1;
-	}
-	int RunID; // Run Number
-	int EventID; // Event number
-	int SpillID; // Spill number
-	int TriggerBits; // hash of the trigger bits: 0-4: MATRIX1-5; 5-9: NIM1-5;
-	short TargetPos; // target position: proxy for target ID?
-	int TurnID; // => related to beam intensity
-	int RFID; // => related to beam intensity
-	int Intensity[33]; //  16 before, one onset, and 16 after
-	short TriggerEmu; // 1 if MC event
-	short NRoads[4]; // 0, positive top; 1, positive bottom; 2, negative top; 3, negative bottom
-	int NHits[nDetectors+1]; // number of hits in each detector plane
-	int nAH; // size of AllHits
-	int nTH; // size of TriggerHits
-	gHit AllHits[EstnAHMax]; // array of all hits
-	gHit TriggerHits[EstnTHMax]; // array of trigger hits
-	bool HasTooManyHits;//bool to flag an event with too many hits
-};
-
-class gFullTrackBuilder{
-public:
-	gTrackXZ TrackXZ_st1;
->>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 	
 	__host__ __device__ gTracklet(float* basedata, const unsigned offset = 0) :
 		m_trackletdata(reinterpret_cast<float*>(basedata) + offset)
@@ -286,7 +250,6 @@ struct gTracks {
 	const unsigned int TrackSize;
 	float* m_trackdata;
 	
-<<<<<<< HEAD
 	__host__ __device__ gTracks(float* basedata, const unsigned total_number_of_tracks, const unsigned offset = 0) :
 		m_trackdata(reinterpret_cast<float*>(basedata) + offset), NTracksTotal(total_number_of_tracks), TrackSize(datasizes::NTracksParam)
 		{
@@ -464,31 +427,6 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+111];
 		}
 	
-=======
-	int nTracksXZ;
-	gTrackXZ TrackXZ[Track2DSizeMax];
-	int nTracksYZ;
-	gTrackYZ TrackYZ[Track2DSizeMax];
-
-	//pairs in station 2
-	thrust::pair<int, int> hitpairs_x2[100];
-	thrust::pair<int, int> hitpairs_u2[100];
-	thrust::pair<int, int> hitpairs_v2[100];
-	//pairs in station 3
-	thrust::pair<int, int> hitpairs_x3p[100];
-	thrust::pair<int, int> hitpairs_u3p[100];
-	thrust::pair<int, int> hitpairs_v3p[100];
-	thrust::pair<int, int> hitpairs_x3m[100];
-	thrust::pair<int, int> hitpairs_u3m[100];
-	thrust::pair<int, int> hitpairs_v3m[100];
-
-	//util arrays for pair making
-	int hitidx1[100];
-	int hitidx2[100];
-	short hitflag1[100];
-	short hitflag2[100];
-};
->>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 
 	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index) const
 		{
