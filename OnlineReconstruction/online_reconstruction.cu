@@ -129,8 +129,11 @@ struct lessthan {
 	}
 };
 
+<<<<<<< HEAD
 #endif
 
+=======
+>>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 
 int main(int argn, char * argv[]) {
 	
@@ -229,10 +232,17 @@ int main(int argn, char * argv[]) {
 			wire_position[i][j] = pos;
 		}
 	}
+<<<<<<< HEAD
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
 		//cout << plane[i].nelem << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
           		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9];
+=======
+	for(int i = nChamberPlanes; i<nChamberPlanes+nHodoPlanes; ++i){
+		cout << plane[i].nelem << endl;
+	      	for(int j = 0; j < plane[i].nelem; ++j){
+          		double pos = plane[i].x0*plane[i].costheta + plane[i].y0*plane[i].sintheta + plane[i].xoffset + (j - (plane[i].nelem+1)/2.)*plane[i].spacing + plane[i].deltaW_[0];
+>>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 			wire_position[i][j] = pos;
 		}
 	}
@@ -726,6 +736,7 @@ int main(int argn, char * argv[]) {
 	auto cp4 = std::chrono::system_clock::now();
 	auto gpu_er = cp4-cp3;
 	cout<<"GPU: event reducing: "<<gpu_er.count()/1000000000.<<endl;
+<<<<<<< HEAD
 
 	//for test only
 #ifdef DEBUG
@@ -759,6 +770,10 @@ int main(int argn, char * argv[]) {
 #endif
 		device_gEvent->nTracklets,
 		device_gEvent->HasTooManyHits);
+=======
+	
+	gKernel_XZ_YZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gEvent, device_output_TKL, device_gStraightTrackBuilder, device_gFitArrays, device_gPlane);
+>>>>>>> e04fbf96b0c9a61c7bd2cf5732b68f3000b4ed2d
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
