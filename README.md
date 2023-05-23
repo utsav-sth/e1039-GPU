@@ -8,10 +8,8 @@ System requirements:
 - CUDA Toolkit 11.0
 - ROOT 6.14
 - CMake 3.11 or later
-- GPUfit library (https://github.com/gpufit/Gpufit)
 - cuBLASLt API (https://docs.nvidia.com/cuda/cublas/index.html)
-- Boost 1.58 or later (To build the tests)
-- Python for building the Python bindings (Python version 2.x or 3.x)
+- Python (?) for building the Python bindings (Python version 2.x or 3.x)
 
 Input files:
 - Rootfiles in E-906/E-1039 format
