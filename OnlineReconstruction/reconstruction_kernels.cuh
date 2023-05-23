@@ -1659,9 +1659,26 @@ __global__ void gKernel_YZ_tracking(
 				err_y0 = ParErr[0];
 				err_ty = ParErr[1];
 				
-				if(fabs(y0)>Y0_MAX+err_y0 || fabs(ty)>TY_MAX+err_ty)continue;
+				if(fabs(y0)>Y0_MAX+2*err_y0 || fabs(ty)>TY_MAX+2*err_ty)continue;
 				//if(fabs(y0+ty*geometry::Z_KMAG_BEND)>geometry::Y_KMAG_BEND)continue;
 
+				//LR ambiguity resolution
+				resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign+nhits_x, planes, 150.);
+				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign+nhits_x, planes);
+				
+				for(int ll = 0; ll<nhits_uv; ll++){
+					Y[ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
+				}
+				fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+				
+				y0 = Par[0];
+				ty = Par[1];
+
+				err_y0 = ParErr[0];
+				err_ty = ParErr[1];
+				
+				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
+				
 #ifdef PROP_Y_MATCH
 				//prop matching
 				nprop = 0;
@@ -1792,14 +1809,11 @@ __global__ void gKernel_YZ_tracking(
 #endif
 				}
 				if(!maskhodo[stid])continue;
-								
-				//LR ambiguity resolution
-				resolve_leftright_newhits(x0, tx, y0, ty, err_x0, err_tx, err_y0, err_ty, nhits_uv, detID, pos, drift, sign+nhits_x, planes, 150.);
-				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign+nhits_x, planes);
+				
 				
 				//chi2 evaluation of track candidate
 				chi2 = chi2_track(nhits_x+nhits_uv, dd, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
-				if(chi2>1000000)continue;
+				//if(chi2>1000000)continue;
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && elID[0]==13 && elID[1]==13 && elID[2]==30 && elID[3]==30 && elID[4]==36 && elID[5]==36 && elID[6]==40 && elID[7]==41 ){
 //				chi2 = chi2_track(nhits_x+nhits_uv, dd, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty, true);
@@ -2426,8 +2440,26 @@ nx1, nu1, nv1);
 				erry0 = ParErr[0];
 				errty = ParErr[1];
 				
-				if(fabs(y0)>Y0_MAX+erry0 || fabs(ty)>TY_MAX+errty)continue;
+				if(fabs(y0)>Y0_MAX+2*erry0 || fabs(ty)>TY_MAX+2*errty)continue;
 
+				//resolve left right...
+				resolve_leftright_newhits(x0_st1, tx_st1, y0, ty, errx0_st1, errtx_st1, erry0, errty, nhits_x+nhits_uv, detID, pos, drift, sign, planes, 150.);
+				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
+				
+				for(int ll = 0; ll<nhits_uv; ll++){
+					Y[nyhits+ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[nhits_x+nhits_uv]];
+				}
+				
+				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+				
+				y0 = Par[0];
+				ty = Par[1];
+
+				erry0 = ParErr[0];
+				errty = ParErr[1];
+				
+				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
+	
 				// matching hodoscope here!
 				stid = 0;//1-1
 				maskhodo = 0;
@@ -2459,13 +2491,10 @@ nx1, nu1, nv1);
 				if(blockIdx.x==debug::EvRef)printf(" x0_st1 %1.4f tx_st1 %1.4f y0 %1.4f ty %1.4f \n", x0_st1, tx_st1, y0, ty);
 				
 #endif
-				//resolve left right...
-				resolve_leftright_newhits(x0_st1, tx_st1, y0, ty, errx0_st1, errtx_st1, erry0, errty, nhits_x+nhits_uv, detID, pos, drift, sign, planes, 150.);
-				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
 				//chi2 fit...
 				chi2 = Tracks.chisq(i)+chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
-				if(chi2>100000)continue;
+				if(chi2>10000.f)continue;
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && Tracks.hits_chan(i, 4)==13 && Tracks.hits_chan(i, 5)==13 && Tracks.hits_chan(i, 6)==30 && Tracks.hits_chan(i, 7)==30 && Tracks.hits_chan(i, 8)==36 && Tracks.hits_chan(i, 9)==36 && Tracks.hits_chan(i, 10)==40 && Tracks.hits_chan(i, 11)==41 ){
 //					chi2 = chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty, true);
@@ -2946,7 +2975,7 @@ __global__ void gKernel_GlobalTrackCleaning(
 		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
 		if(Tracks.stationID(i)<6)continue;
 
-		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax || Tracks.chisq(i)>100.f){
+		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax){//  || Tracks.chisq(i)>100.f
 			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
 			continue;
 		}
@@ -3294,7 +3323,7 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, nTracks);
 	
 	for(i = 0; i<nTracks; i++){
-		if(Tracks.stationID(i)<7 || Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax || Tracks.chisq(i)>100.f)continue;
+		if(Tracks.stationID(i)<7 || Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax)continue;// || Tracks.chisq(i)>100.f
 		
 		vars[0] = Tracks.x0(i);
 		vars[1] = Tracks.y0(i);

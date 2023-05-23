@@ -72,28 +72,27 @@ __device__ float err_y_trk(const float erry0, const float errty, const float z)
 
 __device__ bool calculate_y_uvhit(const int detid, const int elid, const float drift, const short hitsign, const float x0, const float tx, const gPlane* planes, float &y, float &err_y){
 	float p1x = x_bep(detid, elid, planes);
-	float p1y = y_bep(detid, elid, planes);
-	float p2x = x_tep(detid, elid, planes);
+	float p2x = p1x+planes->deltapx[detid];//must win some time to no try to access the same plane variables twice//x_tep(detid, elid, planes);
 	
 	float x_trk = x0+planes->z[ detid ]*tx;
 
+	if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
+	if( x_trk+drift<p1x && x_trk+drift<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
+
+	float p1y = y_bep(detid, elid, planes);
+
 	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
+	if(hitsign!=0)y += hitsign*drift*planes->sintheta[detid];
 	
 #ifdef DEBUG
 	if(blockIdx.x==debug::EvRef)printf("det %d chan %d p1x %1.4f p1y %1.4f p2x %1.4f dpy %1.4f dpx% 1.4f x_trk %1.4f y %1.4f \n", detid, elid, p1x, p1y, p2x, planes->deltapy[ detid ], planes->deltapx[ detid ], x_trk, y );
 #endif
 	//if hitsign is zero, we don't want to toss a hit that could potentially be in range of the track accounting for the drift distance
-	if(hitsign==0){
-		if( x_trk-drift>p1x && x_trk-drift>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
-		if( x_trk+drift<p1x && x_trk+drift<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
 
-		y = max(y, p1y);
-		y = min(y, p1y+planes->deltapy[ detid ]);
-	}else{
-		if( x_trk>p1x && x_trk>p2x)return false;// if xtrk>p1x and >p2x, no overlap possible
-		if( x_trk<p1x && x_trk<p2x)return false;// if xtrk<p1x and <p2x, no overlap possible
-	}
 
+	y = max(y, p1y);
+	y = min(y, p1y+planes->deltapy[ detid ]);
+	
 	err_y = planes->spacing[ detid ]*InvSqrt12 * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
 	return true;
 }
