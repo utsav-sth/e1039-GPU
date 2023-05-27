@@ -792,15 +792,24 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
+
+	auto cp6 = std::chrono::system_clock::now();
+	auto gpu_sty = cp6-cp5;
+	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 	
 	gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
-	
-	auto cp6 = std::chrono::system_clock::now();
-	auto gpu_sty = cp6-cp5;
-	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
+
+	gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+		
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	auto cp7 = std::chrono::system_clock::now();
+	auto gpu_bpt_clean = cp7-cp6;
+	cout<<"GPU: straight track cleaning: "<<gpu_bpt_clean.count()/1000000000.<<endl;	
 	
 	gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
@@ -814,6 +823,10 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
+	auto cp8 = std::chrono::system_clock::now();
+	auto gpu_gt = cp8-cp7;
+	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+	
 #ifdef DEBUG
 	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
 
@@ -830,12 +843,18 @@ int main(int argn, char * argv[]) {
 #endif
 		device_gEvent->HasTooManyHits);
 
+
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	auto cp7 = std::chrono::system_clock::now();
-	auto gpu_gt = cp7-cp6;
-	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+	gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+		
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	auto cp9 = std::chrono::system_clock::now();
+	auto gpu_gt_clean = cp9-cp8;
+	cout<<"GPU: global track cleaning: "<<gpu_gt_clean.count()/1000000000.<<endl;
 
 
 	gKernel_Vertexing<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
@@ -857,8 +876,8 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	auto cp8 = std::chrono::system_clock::now();
-	auto gpu_vtx = cp8-cp7;
+	auto cp10 = std::chrono::system_clock::now();
+	auto gpu_vtx = cp10-cp9;
 	cout<<"GPU: Vertexing: "<<gpu_vtx.count()/1000000000.<<endl;
 
 	
@@ -900,8 +919,8 @@ int main(int argn, char * argv[]) {
 #endif		
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
-	auto cp9 = std::chrono::system_clock::now();
-	auto gpu_dis = cp9-cp8;
+	auto cp11 = std::chrono::system_clock::now();
+	auto gpu_dis = cp11-cp10;
 	cout<<"GPU: Histograming and displaying: "<<gpu_dis.count()/1000000000.<<endl;
 
 	// data transfer from device to host
@@ -919,8 +938,8 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gHistsArrays);
 #endif
 	
-	auto cp10 = std::chrono::system_clock::now();
-	auto cp_to_cpu = cp10-cp9;
+	auto cp12 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp12-cp11;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 	
 	int nGood = EstnEvtMax;
@@ -1132,8 +1151,8 @@ int main(int argn, char * argv[]) {
 
 	delete rawEvent;
 
-	auto cp11 = std::chrono::system_clock::now();
-	auto write_output = cp11-cp10;
+	auto cp13 = std::chrono::system_clock::now();
+	auto write_output = cp13-cp12;
 	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
 
 	// printing the time required for all operations

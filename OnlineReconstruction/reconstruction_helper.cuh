@@ -41,6 +41,22 @@ __device__ float position(const float pos, const float drift, const short sign)
 	return (pos+sign*drift);
 }
 
+
+__device__ float residual(const short detid, const short elid, const float drift, const short sign, const gPlane* planes, const float x0, const float y0, const float tx, const float ty)
+{
+	float p1x = x_bep(detid, elid, planes);
+	float p1y = y_bep(detid, elid, planes);
+	float p1z = z_bep(detid, elid, planes);
+	float deltapx = planes->deltapx[detid];
+	float deltapy = planes->deltapy[detid];
+	float deltapz = planes->deltapz[detid];
+		
+	float den2 = deltapy*deltapy*(1+tx*tx) + deltapx*deltapx*(1+ty*ty) - 2*( ty*deltapx*deltapz + ty*deltapy*deltapz + tx*ty*deltapx*deltapy);
+	float dca = ( (ty*deltapz-deltapy)*(p1x-x0) + (deltapx-tx*deltapz)*(p1y-y0) + p1z*(tx*deltapy-ty*deltapx) ) / sqrtf(den2);
+	
+	return drift*sign - dca;
+}
+
 // ---------------------------------------------------------------- //
 // functions to return track state at a certain z
 // ---------------------------------------------------------------- //
@@ -758,7 +774,8 @@ __device__ void resolve_single_leftright_newhits(const float x0, const float tx,
 		// don't do anything for hits whichs already have a sign...
 		if(hits_sign[n])continue;
 		detID = hits_detid[n];
-		
+		if(detID<0)continue;
+				
 		pos_exp = (planes->z[detID]*tx+x0)*planes->costheta[detID]+(planes->z[detID]*ty+y0)*planes->sintheta[detID];
 		hits_sign[n] = pos_exp>hits_pos[n]? +1 : -1;
 
