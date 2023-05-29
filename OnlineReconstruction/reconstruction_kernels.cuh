@@ -3175,9 +3175,8 @@ __global__ void gKernel_BackTrackCleaning(
 	short ihit, jhit;
 	short nhitsi, nhitsj;
 	
-	
 	int nhits_common = 0;	
-		
+	
 	for(i = 0; i<Ntracks; i++){
 		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
 		if(Tracks.stationID(i)<5)continue;
@@ -3213,6 +3212,72 @@ __global__ void gKernel_BackTrackCleaning(
 		}	
 
 	}
+}
+
+
+__global__ void gKernel_BackTrackCleaning_crossthreads(
+	gEventTrackCollection* tklcoll,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	//tracks
+	unsigned int Ntracks, Ntracks_trd;
+	gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	unsigned int array_thread_offset[THREADS_PER_BLOCK];// = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	int i_trd;
+	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+		//Tracks[i_trd] = tklcoll->tracks(blockIdx.x, i_trd, Ntracks[i_trd]);
+		array_thread_offset[i_trd] = i_trd*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	}
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	
+	int i, j; 
+	short ihit, jhit;
+	short nhitsi, nhitsj;
+	
+	int nhits_common = 0;	
+
+	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+		if(i_trd==threadIdx.x)continue;
+		gTracks Tracks_trd = tklcoll->tracks(blockIdx.x, i_trd, Ntracks_trd);
+	
+		for(i = 0; i<Ntracks; i++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+			if(Tracks.stationID(i)<5)continue;
+			nhitsi = Tracks.nHits(i);
+			nhits_common = 0;
+		
+			for(j = 0; j<Ntracks_trd; j++){
+			//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+				if(Tracks_trd.stationID(j)<5)continue;
+				nhitsj = Tracks_trd.nHits(j);
+				
+				for(ihit = 0; ihit<nhitsi; ihit++){
+					for(jhit = 0; jhit<nhitsj; jhit++){
+						if( Tracks_trd.hits_detid(j, jhit)==Tracks.hits_detid(i, ihit) && Tracks_trd.hits_chan(j, jhit)==Tracks.hits_chan(i, ihit) ){	
+							nhits_common++;
+							break;
+						}
+					}
+				}
+			
+				if(Tracks.chisq(i)/(nhitsi-4) < Tracks_trd.chisq(j)/(nhitsj-4)){
+					if(nhits_common>nhitsi*0.3333f ){
+						tklcoll->setStationID(tkl_coll_offset+array_thread_offset[i_trd], j, 3);
+					}
+			
+				}else{
+					if(nhits_common>nhitsj*0.3333f ){
+						tklcoll->setStationID(tkl_coll_offset+array_thread_offset[threadIdx.x], i, 3);
+					}
+				} 
+			}
+		}
+	}
+	
 }
 
 
