@@ -1,6 +1,6 @@
 //#define GLDISPLAY 1
 //#define ROOTSAVE 1
-#define E1039
+//#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
 #define REFINED_ER
