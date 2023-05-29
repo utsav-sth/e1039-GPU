@@ -54,9 +54,9 @@ __device__ float residual(const short detid, const short elid, const float drift
 	float den2 = deltapy*deltapy*(1+tx*tx) + deltapx*deltapx*(1+ty*ty) - 2*( ty*deltapx*deltapz + ty*deltapy*deltapz + tx*ty*deltapx*deltapy);
 	float dca = ( (ty*deltapz-deltapy)*(p1x-x0) + (deltapx-tx*deltapz)*(p1y-y0) + p1z*(tx*deltapy-ty*deltapx) ) / sqrtf(den2);
 
-//#ifdef DEBUG
-	if(blockIdx.x==debug::EvRef)printf("p1x %1.4f p1y %1.4f p1z %1.4f deltapx %1.4f deltapy %1.4f deltapz %1.4f den2 %1.4f dca %1.4f drift %1.4f sign %d \n", p1x, p1y, p1z, deltapx, deltapy, deltapz, den2, dca, drift, sign);
-//#endif	
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f p1x %1.4f p1y %1.4f p1z %1.4f deltapx %1.4f deltapy %1.4f deltapz %1.4f den2 %1.4f dca %1.4f drift %1.4f sign %d \n", x0, y0, tx, ty, p1x, p1y, p1z, deltapx, deltapy, deltapz, den2, dca, drift, sign);
+#endif	
 	return drift*sign - dca;
 }
 
