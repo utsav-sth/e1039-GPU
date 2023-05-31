@@ -3,6 +3,7 @@
 //#define E1039
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
+//#define SAVE_ALL_TRACKS 1
 #define REFINED_ER
 #define PROP_Y_MATCH 1
 //#define HODO_Y_MATCH 1
@@ -130,7 +131,7 @@ namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
 	__host__ __device__ constexpr int NTracksParam = 112;
 #ifdef FULLCODE
-	__host__ __device__ constexpr int NTracksParam = 142;
+	__host__ __device__ constexpr int NTracksParam = 148;
 #endif
   //__host__ __device__ constexpr int NRecTracksParam = 6;
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;

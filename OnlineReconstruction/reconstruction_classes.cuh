@@ -354,78 +354,80 @@ struct gTracks {
 			return m_trackdata[TrackSize*index+15];
 		}
 
+	//vertex parameters...
+	__host__ __device__ inline float vx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+16];
+		}
+	__host__ __device__ inline float vy(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+17];
+		}
+	__host__ __device__ inline float vz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+18];
+		}
+	__host__ __device__ inline float px(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+19];
+		}
+	__host__ __device__ inline float py(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+20];
+		}
+	__host__ __device__ inline float pz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+21];
+		}
+	
+	//then hits...
 	__host__ __device__ inline float hits_detid(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+16 + ihit ];
+			return m_trackdata[TrackSize*index+22 + ihit ];
 		}
 
 	__host__ __device__ inline float hits_chan(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+34 + ihit ];
+			return m_trackdata[TrackSize*index+40 + ihit ];
 		}
 
 	__host__ __device__ inline float hits_pos(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+52 + ihit ];
+			return m_trackdata[TrackSize*index+58 + ihit ];
 		}
 
 	__host__ __device__ inline float hits_drift(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+70 + ihit ];
+			return m_trackdata[TrackSize*index+76 + ihit ];
 		}
 	
 	__host__ __device__ inline float hits_sign(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+88 + ihit ];
+			return m_trackdata[TrackSize*index+94 + ihit ];
 		}
 #ifdef FULLCODE	
 	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+124 + ihit ];
+			return m_trackdata[TrackSize*index+112 + ihit ];
 		}
 	__host__ __device__ inline float hits_residual(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+124 + ihit ];
+			return m_trackdata[TrackSize*index+130 + ihit ];
 		}
 #endif
-	//vertex parameters...
-	__host__ __device__ inline float vx(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+106];
-		}
-	__host__ __device__ inline float vy(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+107];
-		}
-	__host__ __device__ inline float vz(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+108];
-		}
-	__host__ __device__ inline float px(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+109];
-		}
-	__host__ __device__ inline float py(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+110];
-		}
-	__host__ __device__ inline float pz(const unsigned index) const
-		{
-			assert(index < NTracksTotal);
-			return m_trackdata[TrackSize*index+111];
-		}
 	
 
 	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index) const
@@ -527,56 +529,47 @@ struct gEventTrackCollection{
 	__device__ void setCharge(const unsigned int evt_offset, const unsigned int itrack, const float charge) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+15] = charge;
 	}
+	//vertex info
+	__device__ void setVtxPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+16+i] = pos[i];
+	}
+	__device__ void setVtxMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+19+i] = mom[i];
+	}
 	//hit info
 	__device__ void setHitDetID(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float detid) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+16+ihit] = detid;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+22+ihit] = detid;
 	}
 	__device__ void setHitChan(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float chan) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+34+ihit] = chan;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+40+ihit] = chan;
 	}
 	__device__ void setHitPos(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float pos) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+52+ihit] = pos;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+58+ihit] = pos;
 	}
 	__device__ void setHitDrift(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float drift) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+70+ihit] = drift;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+76+ihit] = drift;
 	}
 	__device__ void setHitSign(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float sign) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+88+ihit] = sign;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+94+ihit] = sign;
 	}
 #ifdef FULLCODE
 	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float tdc) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+ihit] = tdc;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+112+ihit] = tdc;
 	}
 	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
-		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+124+ihit] = resid;
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+130+ihit] = resid;
 	}
-	__device__ void setVtxPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+142+i] = pos[i];
-	}
-	__device__ void setVtxMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+145+i] = mom[i];
-	}
-	__device__ void setDumpPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
+	__device__ void setTargetPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
 		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+148+i] = pos[i];
 	}
-	__device__ void setDumpMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
+	__device__ void setTargetMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
 		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+151+i] = mom[i];
 	}
-#endif
-	__device__ void setVtxPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+106+i] = pos[i];
-	}
-	__device__ void setVtxMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+109+i] = mom[i];
-	}
-#ifdef FULLCODE
 	__device__ void setDumpPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
-		assert(sizeof(pos)>=sizeof(float)*3);
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+112+i] = pos[i];
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+154+i] = pos[i];
 	}
 	__device__ void setDumpMom(const unsigned int evt_offset, const unsigned int itrack, const float* mom) {
-		assert(sizeof(mom)>=sizeof(float)*3);
-		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+115+i] = mom[i];
+		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+157+i] = mom[i];
 	}
 #endif
 };

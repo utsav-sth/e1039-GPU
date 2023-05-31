@@ -797,7 +797,7 @@ int main(int argn, char * argv[]) {
 	auto gpu_sty = cp6-cp5;
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 
-	gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -839,7 +839,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
 
-	gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackBadHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -1112,8 +1112,13 @@ int main(int argn, char * argv[]) {
 			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 
 			ntkl = host_output_gTracks->NTracks[tklmult_idx];
-			nTracklets+= ntkl;
+			//nTracklets+= ntkl;
+
 			for(int k = 0; k<ntkl; k++ ){
+#ifndef SAVE_ALL_TRACKS
+				if( (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]<7 )continue;
+#endif
+				nTracklets++;
 				nhits_tkl = (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
 				output->fTrackStID.push_back((int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]);
 				output->fTrackNHits.push_back(nhits_tkl);
@@ -1129,19 +1134,23 @@ int main(int argn, char * argv[]) {
 				output->fTrackErrTY.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+11]);
 				output->fTrackErrInvP.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+14]);
 				output->fTrackCharge.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+15]);
+				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16]);
+				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+17]);
+				output->fTrackVz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+18]);
+				output->fTrackPx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+19]);
+				output->fTrackPy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+20]);
+				output->fTrackPz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+21]);
 				for(int l = 0; l<nhits_tkl; l++){
-					output->fTrackHitsDetID.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l]);
-					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l]);
-					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l]);
-					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+70+l]);
-					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l]);
+					output->fTrackHitsDetID.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+22+l]);
+					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+40+l]);
+					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+58+l]);
+					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+76+l]);
+					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+94+l]);
+#ifdef FULLCODE
+					output->fTrackHitsTDC.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+112+l]);
+					output->fTrackHitsResiduals.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+130+l]);
+#endif
 				}
-				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+106]);
-				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+107]);
-				output->fTrackVz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+108]);
-				output->fTrackPx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+109]);
-				output->fTrackPy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+110]);
-				output->fTrackPz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+111]);
 			}
 		}
 		output->fNTracks = nTracklets;
