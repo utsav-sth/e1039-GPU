@@ -1148,7 +1148,7 @@ int main(int argn, char * argv[]) {
 					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+94+l]);
 #ifdef FULLCODE
 					output->fTrackHitsTDC.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+112+l]);
-					output->fTrackHitsResiduals.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+130+l]);
+					output->fTrackHitsResidual.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+130+l]);
 #endif
 				}
 			}

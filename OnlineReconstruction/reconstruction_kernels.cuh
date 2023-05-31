@@ -1249,8 +1249,7 @@ __global__ void gKernel_YZ_tracking(
 	float dpx[12];
 	float dpy[12];
 	float dpz[12];
-	
-	//TODO get Hodo hits stations 2, 3, 4...
+	float residuals[12];
 	
 	//get the tracks...
 	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
@@ -1812,7 +1811,7 @@ __global__ void gKernel_YZ_tracking(
 				
 				
 				//chi2 evaluation of track candidate
-				chi2 = chi2_track(nhits_x+nhits_uv, dd, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
+				chi2 = chi2_track(nhits_x+nhits_uv, residuals, dd, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0, y0, tx, ty);
 				//if(chi2>1000000)continue;
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && elID[0]==13 && elID[1]==13 && elID[2]==30 && elID[3]==30 && elID[4]==36 && elID[5]==36 && elID[6]==40 && elID[7]==41 ){
@@ -1838,7 +1837,9 @@ __global__ void gKernel_YZ_tracking(
 					besttrackYZdata[threadIdx.x][88+n] = sign[nhits_x+n];
 #ifdef FULLCODE
 					besttrackYZdata[threadIdx.x][106+n] = tdc[n];
-					besttrackYZdata[threadIdx.x][124+n] = 0;
+					//fill in the residuals for x hits
+					if(n<nhits_x)besttrackYZdata[threadIdx.x][124+n] = residuals[n];
+					besttrackYZdata[threadIdx.x][128+n] = residuals[nhits_x+n];
 #endif
 					}
 				}
@@ -1865,7 +1866,8 @@ __global__ void gKernel_YZ_tracking(
 				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][88+n]);
 #ifdef FULLCODE
 				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
-				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][124+n]);
+				if(n<nhits_x)tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][124+n]);
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][128+n]);
 #endif
 			}
 		}
@@ -2092,7 +2094,8 @@ __global__ void gKernel_Global_tracking(
 	float dpx[6];
 	float dpy[6];
 	float dpz[6];
-
+	float residuals[6];
+	
 	float chi2min = 10000.1f;
 
 	//get the tracks...
@@ -2492,7 +2495,7 @@ nx1, nu1, nv1);
 #endif
 				
 				//chi2 fit...
-				chi2 = Tracks.chisq(i)+chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
+				chi2 = Tracks.chisq(i)+chi2_track(nhits_x+nhits_uv, residuals, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 				if(chi2>10000.f)continue;
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && Tracks.hits_chan(i, 4)==13 && Tracks.hits_chan(i, 5)==13 && Tracks.hits_chan(i, 6)==30 && Tracks.hits_chan(i, 7)==30 && Tracks.hits_chan(i, 8)==36 && Tracks.hits_chan(i, 9)==36 && Tracks.hits_chan(i, 10)==40 && Tracks.hits_chan(i, 11)==41 ){
@@ -2516,8 +2519,8 @@ nx1, nu1, nv1);
 						besttrackdata[threadIdx.x][70+m] = drift[m];
 						besttrackdata[threadIdx.x][88+m] = sign[m];
 #ifdef FULLCODE
-						besttrackdata[threadIdx.x][105+m] = tdc[m];
-						besttrackdata[threadIdx.x][124+m] = 0;
+						besttrackdata[threadIdx.x][106+m] = tdc[m];
+						besttrackdata[threadIdx.x][124+m] = residuals[m];
 #endif
 					}
 				}

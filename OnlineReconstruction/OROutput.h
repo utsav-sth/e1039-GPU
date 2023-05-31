@@ -45,17 +45,19 @@ public:
   std::vector<float> fTrackErrTY;
   std::vector<float> fTrackErrInvP;
   std::vector<int> fTrackCharge;
-  std::vector<int> fTrackHitsDetID;
-  std::vector<int> fTrackHitsChan;
-  std::vector<float> fTrackHitsPos;
-  std::vector<float> fTrackHitsDrift;
-  std::vector<int> fTrackHitsSign;
   std::vector<float> fTrackVx;
   std::vector<float> fTrackVy;
   std::vector<float> fTrackVz;
   std::vector<float> fTrackPx;
   std::vector<float> fTrackPy;
   std::vector<float> fTrackPz;
+  std::vector<int> fTrackHitsDetID;
+  std::vector<int> fTrackHitsChan;
+  std::vector<float> fTrackHitsPos;
+  std::vector<float> fTrackHitsDrift;
+  std::vector<int> fTrackHitsSign;
+  std::vector<float> fTrackHitsTDC;
+  std::vector<float> fTrackHitsResidual;
 
   ClassDef(ORoutput_tree, 1)
 }; 

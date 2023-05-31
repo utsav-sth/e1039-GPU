@@ -416,7 +416,8 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+94 + ihit ];
 		}
-#ifdef FULLCODE	
+#ifdef FULLCODE
+//additional hit parameters
 	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
 		{
 			assert(index < NTracksTotal);
@@ -427,6 +428,67 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+130 + ihit ];
 		}
+//additional vertex parameters
+	__host__ __device__ inline float tgt_vx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+148];
+		}
+	__host__ __device__ inline float tgt_vy(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+149];
+		}
+	__host__ __device__ inline float tgt_vz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+150];
+		}
+	__host__ __device__ inline float tgt_px(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+151];
+		}
+	__host__ __device__ inline float tgt_py(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+152];
+		}
+	__host__ __device__ inline float tgt_pz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+153];
+		}	
+	__host__ __device__ inline float dump_vx(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+154];
+		}
+	__host__ __device__ inline float dump_vy(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+155];
+		}
+	__host__ __device__ inline float dump_vz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+156];
+		}
+	__host__ __device__ inline float dump_px(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+157];
+		}
+	__host__ __device__ inline float dump_py(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+158];
+		}
+	__host__ __device__ inline float dump_pz(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+159];
+		}	
 #endif
 	
 

@@ -4,6 +4,7 @@
 //#define DEBUG 1
 //#define USE_DET_RESOL 1
 //#define SAVE_ALL_TRACKS 1
+#define FULLCODE 1
 #define REFINED_ER
 #define PROP_Y_MATCH 1
 //#define HODO_Y_MATCH 1
@@ -129,9 +130,10 @@ namespace geometry{
 
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
-	__host__ __device__ constexpr int NTracksParam = 112;
 #ifdef FULLCODE
 	__host__ __device__ constexpr int NTracksParam = 148;
+#else
+	__host__ __device__ constexpr int NTracksParam = 112;
 #endif
   //__host__ __device__ constexpr int NRecTracksParam = 6;
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;
@@ -142,7 +144,7 @@ namespace datasizes{
 		nHodoPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes, 
 		nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes
 	};
-	__host__ __device__ constexpr int TrackSizeMax = 1024;
+	__host__ __device__ constexpr int TrackSizeMax = 960;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 }
 

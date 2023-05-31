@@ -1404,3 +1404,24 @@ __device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays& f
 
 #endif
 
+
+__device__ float chi2_track(size_t const n_points, float* residuals,
+			float* const driftdist, short* const sign, float* const resolutions,
+			float* const p1x, float* const p1y, float* const p1z,
+			float* const deltapx, float* const deltapy, float* const deltapz,
+			const float x0, const float y0, const float tx, const float ty)
+{
+	float dca;
+	float chi2 = 0;
+	float den2;
+	for( size_t i=0; i<n_points; i++ ){
+		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
+		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
+		residuals[i] = driftdist[i]*sign[i] - dca;
+		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
+//		if(print)printf(" p1x %1.4f p1y %1.4f p1z %1.4f dpx %1.4f dpy %1.4f dpz %1.4f dca %1.4f drift dist %1.4f * sign %d res %1.4f chi2 %1.4f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], resolutions[i], chi2);
+	}
+	return chi2;
+}
+
+
