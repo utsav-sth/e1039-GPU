@@ -1866,7 +1866,7 @@ __global__ void gKernel_YZ_tracking(
 				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][88+n]);
 #ifdef FULLCODE
 				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
-				if(n<nhits_x)tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][124+n]);
+				if(n<nhits_x)tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, n, besttrackYZdata[threadIdx.x][124+n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][128+n]);
 #endif
 			}
