@@ -72,19 +72,19 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
 //	__device__ constexpr float X_KMAG_BEND = 144.78;
 //	__device__ constexpr float Y_KMAG_BEND = 101.6;
-//#ifdef E1039
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
 	__device__ constexpr float FMAGSTR = -1.054;
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+#ifdef E1039
 	__device__ constexpr float Z_TARGET = -300.;
-//#else
+#else
 //	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
 //	__device__ constexpr float FMAGSTR = -1.044;
 //	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
 //	__device__ constexpr float Z_KMAG_BEND = 1041.8;
-//	__device__ constexpr float Z_TARGET = -129.54;
-//#endif
+	__device__ constexpr float Z_TARGET = -129.54;
+#endif
 	__device__ constexpr float FMAG_LENGTH = 502.92;
 	__device__ constexpr float FMAG_HOLE_LENGTH = 27.94;
 	__device__ constexpr float FMAG_HOLE_RADIUS = 1.27;

@@ -112,7 +112,7 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 	y = max(y, p1y);
 	y = min(y, p1y+planes->deltapy[ detid ]);
 	
-	err_y = planes->spacing[ detid ]*InvSqrt12 * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
+	err_y = planes->resolution[ detid ] * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
 	return true;
 }
 
