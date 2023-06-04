@@ -1414,12 +1414,17 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 	float dca;
 	float chi2 = 0;
 	float den2;
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" x0 %1.6f tx %1.6f y0 %1.6f ty %1.6f \n", x0, tx, y0, ty);
+#endif
 	for( size_t i=0; i<n_points; i++ ){
 		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
 		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
 		residuals[i] = driftdist[i]*sign[i] - dca;
 		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
-//		if(print)printf(" p1x %1.4f p1y %1.4f p1z %1.4f dpx %1.4f dpy %1.4f dpz %1.4f dca %1.4f drift dist %1.4f * sign %d res %1.4f chi2 %1.4f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], resolutions[i], chi2);
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
+#endif
 	}
 	return chi2;
 }
