@@ -2,7 +2,7 @@
 //#define ROOTSAVE 1
 #define E1039 1
 //#define DEBUG 1
-//#define USE_DET_RESOL 1
+#define USE_DET_RESOL 1
 //#define SAVE_ALL_TRACKS 1
 #define FULLCODE 1
 #define REFINED_ER
@@ -72,17 +72,20 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
 //	__device__ constexpr float X_KMAG_BEND = 144.78;
 //	__device__ constexpr float Y_KMAG_BEND = 101.6;
-#ifdef E1039
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
+	__device__ constexpr float KMAGSTR = -0.951;
 	__device__ constexpr float FMAGSTR = -1.054;
+	__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+	__device__ constexpr float Z_FMAG_BEND = 251.4;
+#ifdef E1039
 	__device__ constexpr float Z_TARGET = -300.;
 #else
-	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
-	__device__ constexpr float FMAGSTR = -1.044;
-	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
-	__device__ constexpr float Z_KMAG_BEND = 1041.8;
+//	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
+//	__device__ constexpr float FMAGSTR = -1.044;
+//	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
+//	__device__ constexpr float Z_KMAG_BEND = 1041.8;
 	__device__ constexpr float Z_TARGET = -129.54;
 #endif
 	__device__ constexpr float FMAG_LENGTH = 502.92;
@@ -131,7 +134,11 @@ namespace geometry{
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
 #ifdef FULLCODE
+#ifdef TESTMOMENTUM
+	__host__ __device__ constexpr int NTracksParam = 150;
+#else
 	__host__ __device__ constexpr int NTracksParam = 148;
+#endif
 #else
 	__host__ __device__ constexpr int NTracksParam = 112;
 #endif
@@ -157,10 +164,11 @@ namespace selection{
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 	__host__ __device__ constexpr float merge_thres = 0.015;
+	__device__ constexpr float rejectwin[4] = {0.5, 1.0, 0.8, 0.8};
 #ifdef E1039
-	__device__ constexpr float rejectwin[4] = {0.12, 0.15, 0.16, 0.14};
+	//__device__ constexpr float rejectwin[4] = {0.12, 0.15, 0.16, 0.14};
 #else
-	__device__ constexpr float rejectwin[4] = {0.13, 0.18, 0.16, 0.16};
+	//__device__ constexpr float rejectwin[4] = {0.13, 0.18, 0.16, 0.16};
 #endif
 }
 
@@ -173,5 +181,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 494;
+  __host__ __device__ constexpr unsigned int EvRef = 414;
 }

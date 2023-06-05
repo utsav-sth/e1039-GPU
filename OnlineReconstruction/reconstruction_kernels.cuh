@@ -186,10 +186,7 @@ __global__ void gKernel_XZ_tracking(
 	gEventHitCollections* hitcolls,
 	gEventTrackCollection* tklcoll,
 	const float* z_array,
-	const float* spacing_array,
-#ifdef USE_DET_RESOL
 	const float* res_array,
-#endif
 	int* nTracklets,
 #ifdef DEBUG
 	   const int* eventID,
@@ -254,22 +251,14 @@ __global__ void gKernel_XZ_tracking(
 	int nhits_st2x;
 	const gHits hits_st2x = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2x);
 	const float z_st2x = z_array[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2x = res_array[detid];
-#else
-	const float res_st2x = spacing_array[detid]*InvSqrt12;
-#endif
 	
 	detid-= 1;
 	detid_list[1] = detid;
 	int nhits_st2xp;
 	const gHits hits_st2xp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2xp);
 	const float z_st2xp = z_array[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2xp = res_array[detid];
-#else
-	const float res_st2xp = spacing_array[detid]*InvSqrt12;
-#endif
 	
 	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
 
@@ -282,11 +271,7 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3x, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3x = z_array[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3x = res_array[detid];
-#else
-	const float res_st3x = spacing_array[detid]*InvSqrt12;
-#endif
 
 	detid-= 1;
 	int nhits_st3xp;
@@ -296,11 +281,7 @@ __global__ void gKernel_XZ_tracking(
 	if(blockIdx.x==debug::EvRef && st3==4)printf("block %d detid %d nhits %d, vs %d \n", blockIdx.x, detid, nhits_st3xp, hitcolls->NHitsChambers[blockIdx.x*nChamberPlanes+detid-1]);
 #endif
 	const float z_st3xp = z_array[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3xp = res_array[detid];
-#else
-	const float res_st3xp = spacing_array[detid]*InvSqrt12;
-#endif
 	
 	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
 
@@ -944,11 +925,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st2u;
 	const gHits hits_st2u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2u);
 	const float z_st2u = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2u = planes->resolution[detid];
-#else
-	const float res_st2u = planes->spacing[detid]*InvSqrt12;
-#endif
 	
 	detid-= 1;
 	detid_list[1] = detid;
@@ -956,11 +933,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st2up;
 	const gHits hits_st2up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2up);
 	const float z_st2up = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2up = planes->resolution[detid];
-#else
-	const float res_st2up = planes->spacing[detid]*InvSqrt12;
-#endif
 	
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
@@ -969,11 +942,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st2v;
 	const gHits hits_st2v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2v);
 	const float z_st2v = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2v = planes->resolution[detid];
-#else
-	const float res_st2v = planes->spacing[detid]*InvSqrt12;
-#endif
 	
 	detid-= 1;
 	detid_list[3] = detid;
@@ -981,11 +950,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st2vp;
 	const gHits hits_st2vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st2vp);
 	const float z_st2vp = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st2vp = planes->resolution[detid];
-#else
-	const float res_st2vp = planes->spacing[detid]*InvSqrt12;
-#endif
 		
 	projid = 1;
 	stid = st3;
@@ -995,11 +960,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st3u;
 	const gHits hits_st3u = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3u);
 	const float z_st3u = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3u = planes->resolution[detid];
-#else
-	const float res_st3u = planes->spacing[detid]*InvSqrt12;
-#endif
 
 	detid-= 1;
 	int nhits_st3up;
@@ -1007,11 +968,7 @@ __global__ void gKernel_YZ_tracking(
 	det_spacing[5] = planes->spacing[detid];
 	const gHits hits_st3up = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3up);
 	const float z_st3up = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3up = planes->resolution[detid];
-#else
-	const float res_st3up = planes->spacing[detid]*InvSqrt12;
-#endif
 	
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
@@ -1020,11 +977,7 @@ __global__ void gKernel_YZ_tracking(
 	int nhits_st3v;
 	const gHits hits_st3v = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3v);
 	const float z_st3v = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3v = planes->resolution[detid];
-#else
-	const float res_st3v = planes->spacing[detid]*InvSqrt12;
-#endif
 	
 	detid-= 1;
 	int nhits_st3vp;
@@ -1032,11 +985,7 @@ __global__ void gKernel_YZ_tracking(
 	det_spacing[7] = planes->spacing[detid];
 	const gHits hits_st3vp = hitcolls->hitschambers(blockIdx.x, detid, nhits_st3vp);
 	const float z_st3vp = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st3vp = planes->resolution[detid];
-#else
-	const float res_st3vp = planes->spacing[detid]*InvSqrt12;
-#endif
 
 #ifdef PROP_Y_MATCH	
 	int nprop;
@@ -1284,9 +1233,8 @@ __global__ void gKernel_YZ_tracking(
 			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 3);
 			continue;
 		}
-		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
-
-		if(blockIdx.x==debug::EvRef)printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+		
+		if(blockIdx.x==debug::EvRef)printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i));
 #endif
 		x0 = Tracks.x0(i);
 		tx = Tracks.tx(i);
@@ -1931,22 +1879,14 @@ __global__ void gKernel_Global_tracking(
 	int nhits_st1x;
 	const gHits hits_st1x = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1x);
 	const float z_st1x = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1x = planes->resolution[detid];
-#else
-	const float res_st1x = planes->spacing[detid]*InvSqrt12;
-#endif	
 	
 	detid-= 1;
 	detid_list[1] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1xp;
 	const gHits hits_st1xp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1xp);
 	const float z_st1xp = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1xp = planes->resolution[detid];
-#else
-	const float res_st1xp = planes->spacing[detid]*InvSqrt12;
-#endif	
 
 	projid = 1;
 	detid = geometry::detsuperid[stid][projid]*2;
@@ -1954,22 +1894,14 @@ __global__ void gKernel_Global_tracking(
 	int nhits_st1u;
 	const gHits hits_st1u = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1u);
 	const float z_st1u = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1u = planes->resolution[detid];
-#else
-	const float res_st1u = planes->spacing[detid]*InvSqrt12;
-#endif	
 	
 	detid-= 1;
 	detid_list[3] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1up;
 	const gHits hits_st1up = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1up);
 	const float z_st1up = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1up = planes->resolution[detid];
-#else
-	const float res_st1up = planes->spacing[detid]*InvSqrt12;
-#endif	
 	
 	projid = 2;
 	detid = geometry::detsuperid[stid][projid]*2;
@@ -1977,22 +1909,14 @@ __global__ void gKernel_Global_tracking(
 	int nhits_st1v;
 	const gHits hits_st1v = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1v);
 	const float z_st1v = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1v = planes->resolution[detid];
-#else
-	const float res_st1v = planes->spacing[detid]*InvSqrt12;
-#endif	
 	
 	detid-= 1;
 	detid_list[5] = geometry::eff_detid_chambers[detid-1];
 	int nhits_st1vp;
 	const gHits hits_st1vp = hitcolls->hitschambers(blockIdx.x, geometry::eff_detid_chambers[detid-1], nhits_st1vp);
 	const float z_st1vp = planes->z[detid];
-#ifdef USE_DET_RESOL
 	const float res_st1vp = planes->resolution[detid];
-#else
-	const float res_st1vp = planes->spacing[detid]*InvSqrt12;
-#endif	
 
 	// TODO: load the hodoscope hits
 	stid = 0;//1-1
@@ -2049,7 +1973,9 @@ __global__ void gKernel_Global_tracking(
 	
 	float invP, errinvP;
 	short charge;
-	
+#ifdef TEST_MOMENTUM
+	float tx_tgt, invp_tgt;
+#endif
 	bool update_track;
 	short nhits_st23, nhits_st1;
 	
@@ -2128,18 +2054,17 @@ __global__ void gKernel_Global_tracking(
 		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.get_lasthitdetid(i), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
 		
 		projid = 0;
-		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.5f, pos_exp[projid]+window[projid]*1.5f);
+		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.0f, pos_exp[projid]+window[projid]*1.0f);
 		
 		projid = 1;
-		nu1 = make_hitpairs_in_station(hits_st1u, nhits_st1u, hits_st1up, nhits_st1up, hitpairs_u1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.5f, pos_exp[projid]+window[projid]*1.5f);
+		nu1 = make_hitpairs_in_station(hits_st1u, nhits_st1u, hits_st1up, nhits_st1up, hitpairs_u1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.0f, pos_exp[projid]+window[projid]*1.0f);
 		
 		projid = 2;
-		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.5f, pos_exp[projid]+window[projid]*1.5f);
+		nv1 = make_hitpairs_in_station(hits_st1v, nhits_st1v, hits_st1vp, nhits_st1vp, hitpairs_v1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.0f, pos_exp[projid]+window[projid]*1.0f);
 
 #ifdef DEBUG
-nx1, nu1, nv1);
 		if(blockIdx.x==debug::EvRef){
-			printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
+			printf("thread %d i_trk %d x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", threadIdx.x, i, x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
 			for(int ll=0; ll<3; ll++)printf(" %d pos %1.4f window %1.4f  =>  %1.4f < %1.4f \n ", ll, pos_exp[ll], window[ll], pos_exp[ll]-window[ll], pos_exp[ll]+window[ll]);
 		}
 #endif
@@ -2177,7 +2102,7 @@ nx1, nu1, nv1);
 				sign[nhits_x] = 0;
 				drift[nhits_x] = hits_st1x.drift(i_hit);
 #ifdef DEBUG
-				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
+				if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) && (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 ) )printf("thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
 #endif
 				res[nhits_x] = planes->resolution[detID[nhits_x]];
 				p1x[nhits_x] = x_bep(detID[nhits_x], elID[nhits_x], planes);
@@ -2203,7 +2128,7 @@ nx1, nu1, nv1);
 				sign[nhits_x] = 0;
 				drift[nhits_x] = hits_st1xp.drift(i_hit);
 #ifdef DEBUG
-				if(blockIdx.x==debug::EvRef)printf("det %d chan %1.0f pos %1.4f drift %1.4f\n", detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
+				if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) &&  (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 ) )printf("thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x], elID[nhits_x], pos[nhits_x], drift[nhits_x]);
 #endif
 				res[nhits_x] = planes->resolution[detID[nhits_x]];
 				p1x[nhits_x] = x_bep(detID[nhits_x], elID[nhits_x], planes);
@@ -2256,12 +2181,18 @@ nx1, nu1, nv1);
 			x0_st1 = Par[0];
 			tx_st1 = Par[1];
 
-			//charge = calculate_charge(tx, x0);
-			invP = calculate_invP_charge(tx, tx_st1, charge);
+			charge = calculate_charge(tx, x0);
+			invP = calculate_invP(tx, tx_st1, charge);
+			//invP = calculate_invP_charge(tx, tx_st1, charge);
 			errinvP = calculate_invP_error(errtx, errtx_st1);
 						
 			if(invP>INVP_MAX+errinvP || invP<INVP_MIN-errinvP)continue;
 			
+#ifdef TEST_MOMENTUM
+			tx_tgt = x_trk(x0_st1, tx_st1, geometry::Z_FMAG_BEND)/(geometry::Z_FMAG_BEND-geometry::Z_TARGET);
+			invp_tgt = calculate_invp_tgt(tx_st1, tx_tgt, charge);
+#endif
+								
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
@@ -2292,9 +2223,9 @@ nx1, nu1, nv1);
 
 					if(calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0_st1, tx_st1, planes, y, err_y)){
 #ifdef DEBUG
-						if(blockIdx.x==debug::EvRef){
-							printf("det %d chan %d pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
-							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.4f \n", y, y_trk(y0, ty, z_st1u), err_y, err_y_trk(erry0, errty, z_st1u), (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u)) / (err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u)) );
+						if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) &&  (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 )){
+							printf("thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+//							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.4f \n", y, y_trk(y0, ty, z_st1u), err_y, err_y_trk(erry0, errty, z_st1u), (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u)) / (err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u)) );
 						}
 #endif
 						//if( (y-y_trk(y0, ty, z_st1u))*(y-y_trk(y0, ty, z_st1u)) / (err_y*err_y+err_y_trk(erry0, errty, z_st1u)*err_y_trk(erry0, errty, z_st1u))<=12.0f ){
@@ -2329,9 +2260,9 @@ nx1, nu1, nv1);
 #endif
 					if(calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0_st1, tx_st1, planes, y, err_y)){
 #ifdef DEBUG
-						if(blockIdx.x==debug::EvRef){
-							printf("det %d chan %d pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
-							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1up), err_y, err_y_trk(erry0, errty, z_st1up), (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up)) );
+						if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) &&  (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 )){
+							printf("thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+//							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1up), err_y, err_y_trk(erry0, errty, z_st1up), (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up)) );
 						}
 #endif
 						//if( (y-y_trk(y0, ty, z_st1up))*(y-y_trk(y0, ty, z_st1up))/(err_y*err_y+err_y_trk(erry0, errty, z_st1up)*err_y_trk(erry0, errty, z_st1up))<=12.0f ){
@@ -2370,9 +2301,9 @@ nx1, nu1, nv1);
 #endif
 					if(calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0_st1, tx_st1, planes, y, err_y)){
 #ifdef DEBUG
-						if(blockIdx.x==debug::EvRef){
-							printf("det %d chan %d pos %1.4f drift %1.4f\n", detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
-							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1v), err_y, err_y_trk(erry0, errty, z_st1v), (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v)) );
+						if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) &&  (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 )){
+							printf("thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+//							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1v), err_y, err_y_trk(erry0, errty, z_st1v), (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v)) );
 						}
 #endif
 						//if( (y-y_trk(y0, ty, z_st1v))*(y-y_trk(y0, ty, z_st1v))/(err_y*err_y+err_y_trk(erry0, errty, z_st1v)*err_y_trk(erry0, errty, z_st1v))<=12.0f ){
@@ -2407,8 +2338,9 @@ nx1, nu1, nv1);
 #endif
 					if(calculate_y_uvhit(detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], drift[nhits_x+nhits_uv], 0, x0_st1, tx_st1, planes, y, err_y)){
 #ifdef DEBUG
-						if(blockIdx.x==debug::EvRef){
-							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1vp), err_y, err_y_trk(erry0, errty, z_st1vp), (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp)) );
+						if(blockIdx.x==debug::EvRef && (threadIdx.x==10 && i==1 || threadIdx.x==9 && i==0) &&  (fabs(x0-29.4960)<1.e-4  || fabs(x0+29.3305)<1.e-4 )){
+							if(blockIdx.x==debug::EvRef)printf(" thread %d i_trk %d det %d chan %d pos %1.4f drift %1.4f\n", threadIdx.x, i, detID[nhits_x+nhits_uv], elID[nhits_x+nhits_uv], pos[nhits_x+nhits_uv], drift[nhits_x+nhits_uv]);
+//							printf(" ( %1.4f - %1.4f )^2 / (%1.4f^2 + %1.4f^2) = %1.f \n", y, y_trk(y0, ty, z_st1vp), err_y, err_y_trk(erry0, errty, z_st1vp), (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp)) );
 						}
 #endif
 						//if( (y-y_trk(y0, ty, z_st1vp))*(y-y_trk(y0, ty, z_st1vp))/(err_y*err_y+err_y_trk(erry0, errty, z_st1vp)*err_y_trk(erry0, errty, z_st1vp))<=12.0f ){
@@ -2511,7 +2443,9 @@ nx1, nu1, nv1);
 					besttrackdata[threadIdx.x][9] = invP;
 					besttrackdata[threadIdx.x][14] = errinvP;
 					besttrackdata[threadIdx.x][15] = charge;
-					
+#ifdef TEST_MOMENTUM
+					besttrackdata[threadIdx.x][148] = invp_tgt;
+#endif
 					for(int m = 0; m<nhits_x+nhits_uv;m++){
 						besttrackdata[threadIdx.x][16+m] = detID[m];
 						besttrackdata[threadIdx.x][34+m] = elID[m];
@@ -2538,7 +2472,7 @@ nx1, nu1, nv1);
 			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][9]);
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
-				
+			
 			for(int n = 0; n<nhits_st1; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
 				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][34+n]);
@@ -2550,6 +2484,9 @@ nx1, nu1, nv1);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
 #endif
 			}
+#ifdef TEST_MOMENTUM
+			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][148]);
+#endif
 		}
 	}//end tracklets loop
 }
@@ -2825,7 +2762,7 @@ __global__ void gKernel_Vertexing(
 // --------------------------------------------- //
 
 
-__global__ void gKernel_TrackBadHitRemoval(
+__global__ void gKernel_TrackOutlierHitRemoval(
 	gEventTrackCollection* tklcoll,
 	const short track_stid_ref,
 	const gPlane* planes,
@@ -2851,7 +2788,9 @@ __global__ void gKernel_TrackBadHitRemoval(
 	float y, err_y;
 	short charge;
 	float invP, errinvP;
-	
+#ifdef TEST_MOMENTUM
+	float tx_tgt, invp_tgt;
+#endif
 	const short ndof = track_stid_ref>5? 5 : 4;
 	
 	bool isupdated;
@@ -2891,10 +2830,10 @@ __global__ void gKernel_TrackBadHitRemoval(
 	short nhits_st23, nhits_st1, nhits_x, nhits_uv, nhits, nhits_x_st23, nhits_x_st1;
 	
 	for(i = 0; i<Ntracks; i++){
+		if(Tracks.stationID(i)<track_stid_ref)continue;
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
 #endif
-		if(Tracks.stationID(i)<track_stid_ref)continue;
 		nhitsi = Tracks.nHits(i);
 		nhits_st23 = 0;
 		nhits_st1 = 0;
@@ -2926,14 +2865,15 @@ __global__ void gKernel_TrackBadHitRemoval(
 			drift[ihit] = Tracks.hits_drift(i, ihit);
 #ifdef FULLCODE
 			tdc[ihit] = Tracks.hits_tdc(i, ihit);
+			resid_[ihit] = Tracks.hits_residual(i, ihit);
 #endif
 
 			if(detid[ihit]>12){
 				nhits_st23++;
-				resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty);
+			//	resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty);
 			}else{
 				nhits_st1++;
-				resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0_st1, y0, tx_st1, ty);
+			//	resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0_st1, y0, tx_st1, ty);
 			}
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("hit %d detid %d drift %1.4f resid %1.4f sign %d \n", ihit, detid[ihit], drift[ihit], resid_[ihit], sign[ihit]);
@@ -2951,7 +2891,7 @@ __global__ void gKernel_TrackBadHitRemoval(
 			stid = (detid[ihit]-1)/6-1;
 			if(stid<0 && detid[ihit]>=0)stid = 0;
 			
-			cut = sign[ihit]==0 ? selection::rejectwin[stid]+fabs(drift[ihit]) : selection::rejectwin[stid]*12;
+			cut = sign[ihit]==0 ? selection::rejectwin[stid]+fabs(drift[ihit]) : selection::rejectwin[stid];
 
 			if( fabs(resid_[ihit]) > cut ){
 				//if the neighbor hit id good, is larger than current hit and has a larger residual, skip because we will do it next 
@@ -2983,7 +2923,7 @@ __global__ void gKernel_TrackBadHitRemoval(
 						// if we have two hits in the same chamber that are not good, then the track cannot be kept 
 						// we don't need to do the follow up either
 #ifdef DEBUG
-						//if(blockIdx.x==debug::EvRef)
+						if(blockIdx.x==debug::EvRef)
 						printf("evt %d track removed \n", blockIdx.x, threadIdx.x);
 #endif
 						tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, Tracks.stationID(i)-2);
@@ -3017,12 +2957,12 @@ __global__ void gKernel_TrackBadHitRemoval(
 					if( detid[ihit]>12 ){
 						Z_23[nhits_x_st23] = planes->z[detid[ihit]];
 						X_[nhits_x_st23] = pos[ihit];
-						errX_[nhits_x_st23] = planes->spacing[detid[ihit]]*InvSqrt12;
+						errX_[nhits_x_st23] = planes->resolution[detid[ihit]];
 						nhits_x_st23++;
 					}else{
 						Z_1[nhits_x_st1] = planes->z[detid[ihit]];
 						X_st1_[nhits_x_st1] = pos[ihit];
-						errX_st1_[nhits_x_st1] = planes->spacing[detid[ihit]]*InvSqrt12;
+						errX_st1_[nhits_x_st1] = planes->resolution[detid[ihit]];
 						nhits_x_st1++;
 					}
 				}
@@ -3034,16 +2974,28 @@ __global__ void gKernel_TrackBadHitRemoval(
 			tx = Par[1];
 			errtx = ParErr[1];
 			
-			Z_1[nhits_x_st1] = geometry::Z_KMAG_BEND;
-			X_st1_[nhits_x_st1] = (x0, tx, Z_1[nhits_x_st1]);
-			errX_st1_[nhits_x_st1] = (errx0, errtx, Z_1[nhits_x_st1]);
-			
-			fit_2D_track(nhits_x_st1+1, X_st1_, Z_1, errX_st1_, A_, Ainv_, B_, Par, ParErr, chi2);
-			x0_st1 = Par[0];
-			tx_st1 = Par[1];
-			
-			invP = calculate_invP_charge(tx, tx_st1, charge);
-			errinvP = calculate_invP_error(errtx, ParErr[1]);
+			if(Tracks.stationID(i)>5){
+				Z_1[nhits_x_st1] = geometry::Z_KMAG_BEND;
+				X_st1_[nhits_x_st1] = x_trk(x0, tx, Z_1[nhits_x_st1]);
+				errX_st1_[nhits_x_st1] = err_x_trk(errx0, errtx, Z_1[nhits_x_st1]);
+				
+				fit_2D_track(nhits_x_st1+1, X_st1_, Z_1, errX_st1_, A_, Ainv_, B_, Par, ParErr, chi2);
+				x0_st1 = Par[0];
+				tx_st1 = Par[1];
+				
+				charge = calculate_charge(tx, x0);
+				invP = calculate_invP(tx, tx_st1, charge);
+				//invP = calculate_invP_charge(tx, tx_st1, charge);
+				errinvP = calculate_invP_error(errtx, ParErr[1]);
+				
+#ifdef TEST_MOMENTUM
+				tx_tgt = x_trk(x0_st1, tx_st1, geometry::Z_FMAG_BEND)/(geometry::Z_FMAG_BEND-geometry::Z_TARGET);
+				invp_tgt = calculate_invp_tgt(tx_st1, tx_tgt, charge);
+#endif
+#ifdef DEBUG
+				if(invP>0.25)printf(" evt %d thread %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f x0_st1 %1.4f tx_st1 %1.4f charge %d \n", blockIdx.x, threadIdx.x, x0, tx, y0, ty, x0_st1, tx_st1, charge);
+#endif
+			}
 			
 			for(ihit = 0; ihit<nhitsi; ihit++){
 				if(detid[ihit]>=0 && (detid[ihit]-1)%6!=2 && (detid[ihit]-1)%6!=3 ){
@@ -3079,13 +3031,15 @@ __global__ void gKernel_TrackBadHitRemoval(
 			tklcoll->setErrY0(tkl_coll_offset+array_thread_offset, i, erry0);
 			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, invP);
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, errinvP);
-			
+#ifdef TEST_MOMENTUM
+			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, invp_tgt);
+#endif			
 			chi2 = 0;
 			nhits = 0;
 			for(ihit = 0; ihit<nhitsi; ihit++){
 				if(detid[ihit]>=0){
-					resid_[nhits] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty)/planes->spacing[detid[ihit]]/InvSqrt12;
-					chi2+= resid_[nhits]*resid_[nhits]/planes->spacing[detid[ihit]]/planes->spacing[detid[ihit]]*InvSqrt12*InvSqrt12;
+					resid_[nhits] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty);
+					chi2+= resid_[nhits]*resid_[nhits]/planes->resolution[detid[ihit]]/planes->resolution[detid[ihit]];
 					tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits, detid[ihit]);
 					tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits, chan[ihit]);
 					tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits, pos[ihit]);
@@ -3246,7 +3200,7 @@ __global__ void gKernel_BackTrackCleaning_crossthreads(
 // 
 // --------------------------------------------- //
 
-__global__ void gKernel_GlobalTrackCleaning(
+__global__ void gKernel_PropSegmentMatching(
 	gEventHitCollections* hitcolls,
 	gEventTrackCollection* tklcoll,
 	const float* z_array,
@@ -3331,35 +3285,16 @@ __global__ void gKernel_GlobalTrackCleaning(
 	float cut = 0.03;
 	
 	for(i = 0; i<Ntracks; i++){
-		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
-		if(Tracks.stationID(i)<6)continue;
-		
-		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax){//  || Tracks.chisq(i)>100.f
-			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
-			continue;
-		}
-		
-		for(j = i+1; j<Ntracks; j++){
-		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
-			if(Tracks.stationID(j)<6)continue;
-			
-				
-			if(Tracks.chisq(i)/(Tracks.nHits(i)-5) < Tracks.chisq(j)/(Tracks.nHits(j)-5)){
-				if( (Tracks.invP(i)-Tracks.invP(j))/Tracks.invP(i) < selection::merge_thres)  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, j, 5);
-			}else{
-				if( (Tracks.invP(i)-Tracks.invP(i))/Tracks.invP(j) < selection::merge_thres)  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
-			} 
-
-		}
-
 		x0 = Tracks.x0(i);
 		y0 = Tracks.y0(i);
 		tx = Tracks.tx(i);
 		ty = Tracks.ty(i);
-		invP = Tracks.invP(i);
-						
-		//cut = max(invP*0.11825f, 0.00643f-0.00009f/invP+0.00000046f/invP/invP);
-		cut = 0.03f;
+		
+		if(Tracks.stationID(i)>=6){	
+			invP = Tracks.invP(i);
+			//cut = max(invP*0.11825f, 0.00643f-0.00009f/invP+0.00000046f/invP/invP);
+			cut = 0.03f;
+		}
 		
 		goodsegmentx = false;
 		// *very rough* tracklet segment
@@ -3619,8 +3554,113 @@ __global__ void gKernel_GlobalTrackCleaning(
 		}
 	
 	}
+}
+
+
+
+// --------------------------------------------- //
+//
+// function to clean the tracks after full processing
+// 
+// --------------------------------------------- //
+
+__global__ void gKernel_GlobalTrackCleaning(
+	gEventTrackCollection* tklcoll,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
 	
+	int i, j;
+
+	float x0, tx;
+	float y0, ty;
 	
+	float invP;
+		
+	//tracks
+	unsigned int Ntracks;
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	float cut = 0.03;
+	
+	for(i = 0; i<Ntracks; i++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+		if(Tracks.stationID(i)<6)continue;
+		
+		if(Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax){//  || Tracks.chisq(i)>100.f
+			tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			continue;
+		}
+		
+		for(j = i+1; j<Ntracks; j++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+			if(Tracks.stationID(j)<6)continue;
+			
+			
+			if(Tracks.chisq(i)/(Tracks.nHits(i)-5) < Tracks.chisq(j)/(Tracks.nHits(j)-5)){
+				//"merging" tracks with similar momentum, but only if their charge is of same sign
+				if( (Tracks.invP(i)-Tracks.invP(j))/Tracks.invP(i) < selection::merge_thres && Tracks.charge(i)*Tracks.charge(j)>0 )  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, j, 5);
+			}else{
+				if( (Tracks.invP(i)-Tracks.invP(i))/Tracks.invP(j) < selection::merge_thres && Tracks.charge(i)*Tracks.charge(j)>0 )  tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 5);
+			} 
+
+		}
+	}
+}
+
+__global__ void gKernel_GlobalTrackCleaning_crossthreads(
+	gEventTrackCollection* tklcoll,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	//tracks
+	unsigned int Ntracks, Ntracks_trd;
+	gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	unsigned int array_thread_offset[THREADS_PER_BLOCK];// = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	int i_trd;
+	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+		//Tracks[i_trd] = tklcoll->tracks(blockIdx.x, i_trd, Ntracks[i_trd]);
+		array_thread_offset[i_trd] = i_trd*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	}
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	
+	int i, j; 
+	short ihit, jhit;
+	short nhitsi, nhitsj;
+	
+	int nhits_common = 0;	
+
+	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+		if(i_trd==threadIdx.x)continue;
+		gTracks Tracks_trd = tklcoll->tracks(blockIdx.x, i_trd, Ntracks_trd);
+	
+		for(i = 0; i<Ntracks; i++){
+		//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+			if(Tracks.stationID(i)<6)continue;
+						
+			nhitsi = Tracks.nHits(i);
+			nhits_common = 0;
+		
+			for(j = 0; j<Ntracks_trd; j++){
+			//printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+				if(Tracks_trd.stationID(j)<6)continue;
+				
+				if(Tracks.chisq(i)/(Tracks.nHits(i)-5) < Tracks_trd.chisq(j)/(Tracks_trd.nHits(j)-5)){
+					//"merging" tracks with similar momentum, but only if their charge is of same sign
+					if( (Tracks.invP(i)-Tracks_trd.invP(j))/Tracks.invP(i) < selection::merge_thres && Tracks.charge(i)*Tracks_trd.charge(j)>0 )  tklcoll->setStationID(tkl_coll_offset+array_thread_offset[i_trd], j, 5);
+				}else{
+					if( (Tracks.invP(i)-Tracks_trd.invP(j))/Tracks_trd.invP(j) < selection::merge_thres && Tracks.charge(i)*Tracks_trd.charge(j)>0 )  tklcoll->setStationID(tkl_coll_offset+array_thread_offset[threadIdx.x], i, 5);
+				}
+
+			}
+		}
+	}
 	
 }
 

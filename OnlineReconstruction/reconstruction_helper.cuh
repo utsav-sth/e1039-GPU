@@ -112,7 +112,7 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 	y = max(y, p1y);
 	y = min(y, p1y+planes->deltapy[ detid ]);
 	
-	err_y = planes->spacing[ detid ]*InvSqrt12 * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
+	err_y = planes->resolution[ detid ] * fabs(planes->deltapy[ detid ]/planes->deltapx[ detid ]);
 	return true;
 }
 
@@ -608,6 +608,11 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
 	return invP;
 }
 
+__device__ float calculate_invP_error(float err_tx, float err_tx_st1)
+{
+	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
+} 
+
 /**
  * This function should be as simple as possible, in order to reduce the
  * computation time.  Therefore the condition of the charge determination
@@ -619,13 +624,28 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
  */
 __device__ short calculate_charge(float tx, float x0)
 {
+#ifdef E1039
 	return -0.0033f * copysign(1.0, geometry::FMAGSTR) * x0 < tx  ?  +1  :  -1;
+#else
+	return x0*geometry::KMAGSTR > tx ? 1 : -1;
+#endif
 }
 
-__device__ float calculate_invP_error(float err_tx, float err_tx_st1)
+#ifdef TEST_MOMENTUM
+/*
+__device__ float calculate_x_fmag(const float tx_st1_tgt, const float tx, const short charge)
 {
-	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
-} 
+	float invP = calculate_invP(tx, tx_st1_tgt, charge);
+	float tx_tgt = tx_st1_tgt + geometry::PT_KICK_FMAG * invP * charge;
+	return (tx_tgt*(geometry::Z_FMAG_BEND-geometry::Z_TARGET));
+}
+*/
+
+__device__ float calculate_invp_tgt(const float tx_st1, const float tx_tgt,  const short charge)
+{
+	return (tx_tgt - tx_st1)*charge / geometry::PT_KICK_FMAG;
+}
+#endif
 
 
 #ifdef OLDCODE
@@ -1414,12 +1434,17 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 	float dca;
 	float chi2 = 0;
 	float den2;
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" x0 %1.6f tx %1.6f y0 %1.6f ty %1.6f \n", x0, tx, y0, ty);
+#endif
 	for( size_t i=0; i<n_points; i++ ){
 		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
 		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
 		residuals[i] = driftdist[i]*sign[i] - dca;
 		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
-//		if(print)printf(" p1x %1.4f p1y %1.4f p1z %1.4f dpx %1.4f dpy %1.4f dpz %1.4f dca %1.4f drift dist %1.4f * sign %d res %1.4f chi2 %1.4f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], resolutions[i], chi2);
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
+#endif
 	}
 	return chi2;
 }

@@ -58,6 +58,7 @@ public:
   std::vector<int> fTrackHitsSign;
   std::vector<float> fTrackHitsTDC;
   std::vector<float> fTrackHitsResidual;
+  std::vector<float> fTrackInvPTgt;
 
   ClassDef(ORoutput_tree, 1)
 }; 
