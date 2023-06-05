@@ -58,6 +58,7 @@ void ORoutput_tree::Init()
   fTree->Branch("track.hitsign", &(fTrackHitsSign));
   fTree->Branch("track.hittdc", &(fTrackHitsTDC));
   fTree->Branch("track.hitresid", &(fTrackHitsResidual));
+  fTree->Branch("track.invp_tgt", &(fTrackInvPTgt));
 }
 
 void ORoutput_tree::Clear()
@@ -96,6 +97,7 @@ void ORoutput_tree::Clear()
   fTrackHitsSign.clear();
   fTrackHitsTDC.clear();
   fTrackHitsResidual.clear();
+  fTrackInvPTgt.clear();
 }
 
 void ORoutput_tree::FillTree()

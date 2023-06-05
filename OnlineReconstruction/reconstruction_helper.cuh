@@ -608,6 +608,11 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
 	return invP;
 }
 
+__device__ float calculate_invP_error(float err_tx, float err_tx_st1)
+{
+	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
+} 
+
 /**
  * This function should be as simple as possible, in order to reduce the
  * computation time.  Therefore the condition of the charge determination
@@ -619,13 +624,28 @@ __device__ float calculate_invP_charge(float tx, float tx_st1, short& charge)
  */
 __device__ short calculate_charge(float tx, float x0)
 {
+#ifdef E1039
 	return -0.0033f * copysign(1.0, geometry::FMAGSTR) * x0 < tx  ?  +1  :  -1;
+#else
+	return x0*geometry::KMAGSTR > tx ? 1 : -1;
+#endif
 }
 
-__device__ float calculate_invP_error(float err_tx, float err_tx_st1)
+#ifdef TEST_MOMENTUM
+/*
+__device__ float calculate_x_fmag(const float tx_st1_tgt, const float tx, const short charge)
 {
-	return ( err_tx - err_tx )/ geometry::PT_KICK_KMAG;
-} 
+	float invP = calculate_invP(tx, tx_st1_tgt, charge);
+	float tx_tgt = tx_st1_tgt + geometry::PT_KICK_FMAG * invP * charge;
+	return (tx_tgt*(geometry::Z_FMAG_BEND-geometry::Z_TARGET));
+}
+*/
+
+__device__ float calculate_invp_tgt(const float tx_st1, const float tx_tgt,  const short charge)
+{
+	return (tx_tgt - tx_st1)*charge / geometry::PT_KICK_FMAG;
+}
+#endif
 
 
 #ifdef OLDCODE

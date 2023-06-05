@@ -73,9 +73,12 @@ namespace geometry{
 //	__device__ constexpr float X_KMAG_BEND = 144.78;
 //	__device__ constexpr float Y_KMAG_BEND = 101.6;
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
+	__device__ constexpr float KMAGSTR = -0.951;
 	__device__ constexpr float FMAGSTR = -1.054;
+	__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
+	__device__ constexpr float Z_FMAG_BEND = 251.4;
 #ifdef E1039
 	__device__ constexpr float Z_TARGET = -300.;
 #else
@@ -131,7 +134,11 @@ namespace geometry{
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
 #ifdef FULLCODE
+#ifdef TESTMOMENTUM
+	__host__ __device__ constexpr int NTracksParam = 150;
+#else
 	__host__ __device__ constexpr int NTracksParam = 148;
+#endif
 #else
 	__host__ __device__ constexpr int NTracksParam = 112;
 #endif
@@ -157,7 +164,7 @@ namespace selection{
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 	__host__ __device__ constexpr float merge_thres = 0.015;
-	__device__ constexpr float rejectwin[4] = {0.75, 0.9, 0.75, 0.75};
+	__device__ constexpr float rejectwin[4] = {0.5, 1.0, 0.8, 0.8};
 #ifdef E1039
 	//__device__ constexpr float rejectwin[4] = {0.12, 0.15, 0.16, 0.14};
 #else

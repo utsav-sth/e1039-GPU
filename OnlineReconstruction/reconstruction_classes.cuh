@@ -428,6 +428,13 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+130 + ihit ];
 		}
+#ifdef TESTMOMENTUM
+	__host__ __device__ inline float invp_tgt(const unsigned index) const
+		{
+			assert(index < NTracksTotal);
+			return m_trackdata[TrackSize*index+148];
+		}
+#endif
 //additional vertex parameters
 	__host__ __device__ inline float tgt_vx(const unsigned index) const
 		{
@@ -621,6 +628,11 @@ struct gEventTrackCollection{
 	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+130+ihit] = resid;
 	}
+#ifdef TEST_MOMENTUM
+	__device__ void setInvPTarget(const unsigned int evt_offset, const unsigned int itrack, const float invp_tgt) {
+		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+148] = invp_tgt;
+	}
+#endif
 	__device__ void setTargetPos(const unsigned int evt_offset, const unsigned int itrack, const float* pos) {
 		for(short i = 0; i<3; i++)TracksRawData[evt_offset+itrack*datasizes::NTracksParam+148+i] = pos[i];
 	}

@@ -1973,7 +1973,9 @@ __global__ void gKernel_Global_tracking(
 	
 	float invP, errinvP;
 	short charge;
-	
+#ifdef TEST_MOMENTUM
+	float tx_tgt, invp_tgt;
+#endif
 	bool update_track;
 	short nhits_st23, nhits_st1;
 	
@@ -2186,6 +2188,11 @@ __global__ void gKernel_Global_tracking(
 						
 			if(invP>INVP_MAX+errinvP || invP<INVP_MIN-errinvP)continue;
 			
+#ifdef TEST_MOMENTUM
+			tx_tgt = x_trk(x0_st1, tx_st1, geometry::Z_FMAG_BEND)/(geometry::Z_FMAG_BEND-geometry::Z_TARGET);
+			invp_tgt = calculate_invp_tgt(tx_st1, tx_tgt, charge);
+#endif
+								
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				printf("thread %d tx_st1 %1.4f tx %1.4f invP %1.4f  %1.4f charge %d \n", threadIdx.x,  tx_st1, tx, (tx_st1 - tx) / geometry::PT_KICK_KMAG, invP, charge);
@@ -2436,7 +2443,9 @@ __global__ void gKernel_Global_tracking(
 					besttrackdata[threadIdx.x][9] = invP;
 					besttrackdata[threadIdx.x][14] = errinvP;
 					besttrackdata[threadIdx.x][15] = charge;
-					
+#ifdef TEST_MOMENTUM
+					besttrackdata[threadIdx.x][148] = invp_tgt;
+#endif
 					for(int m = 0; m<nhits_x+nhits_uv;m++){
 						besttrackdata[threadIdx.x][16+m] = detID[m];
 						besttrackdata[threadIdx.x][34+m] = elID[m];
@@ -2463,7 +2472,7 @@ __global__ void gKernel_Global_tracking(
 			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][9]);
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
-				
+			
 			for(int n = 0; n<nhits_st1; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
 				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][34+n]);
@@ -2475,6 +2484,9 @@ __global__ void gKernel_Global_tracking(
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
 #endif
 			}
+#ifdef TEST_MOMENTUM
+			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][148]);
+#endif
 		}
 	}//end tracklets loop
 }
@@ -2776,7 +2788,9 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 	float y, err_y;
 	short charge;
 	float invP, errinvP;
-	
+#ifdef TEST_MOMENTUM
+	float tx_tgt, invp_tgt;
+#endif
 	const short ndof = track_stid_ref>5? 5 : 4;
 	
 	bool isupdated;
@@ -2973,8 +2987,14 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 				invP = calculate_invP(tx, tx_st1, charge);
 				//invP = calculate_invP_charge(tx, tx_st1, charge);
 				errinvP = calculate_invP_error(errtx, ParErr[1]);
-
+				
+#ifdef TEST_MOMENTUM
+				tx_tgt = x_trk(x0_st1, tx_st1, geometry::Z_FMAG_BEND)/(geometry::Z_FMAG_BEND-geometry::Z_TARGET);
+				invp_tgt = calculate_invp_tgt(tx_st1, tx_tgt, charge);
+#endif
+#ifdef DEBUG
 				if(invP>0.25)printf(" evt %d thread %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f x0_st1 %1.4f tx_st1 %1.4f charge %d \n", blockIdx.x, threadIdx.x, x0, tx, y0, ty, x0_st1, tx_st1, charge);
+#endif
 			}
 			
 			for(ihit = 0; ihit<nhitsi; ihit++){
@@ -3011,7 +3031,9 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 			tklcoll->setErrY0(tkl_coll_offset+array_thread_offset, i, erry0);
 			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, invP);
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, errinvP);
-			
+#ifdef TEST_MOMENTUM
+			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, invp_tgt);
+#endif			
 			chi2 = 0;
 			nhits = 0;
 			for(ihit = 0; ihit<nhitsi; ihit++){

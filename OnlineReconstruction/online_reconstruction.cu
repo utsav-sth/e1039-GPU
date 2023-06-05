@@ -1092,6 +1092,9 @@ int main(int argn, char * argv[]) {
 					output->fTrackHitsResidual.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+130+l]);
 #endif
 				}
+#ifdef TEST_MOMENTUM
+				output->fTrackInvPTgt.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+148]);
+#endif
 			}
 		}
 		output->fNTracks = nTracklets;
