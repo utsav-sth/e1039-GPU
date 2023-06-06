@@ -101,8 +101,8 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 	float p1y = y_bep(detid, elid, planes);
 
 	y = p1y + (x_trk-p1x) *  planes->deltapy[ detid ]/planes->deltapx[ detid ];
-	if(hitsign!=0)y += hitsign*drift*planes->sintheta[detid];
-	
+	if(hitsign!=0)//y += hitsign*drift*planes->sintheta[detid];
+		y+= copysign(1.f, planes->sintheta[detid])*2.f*(drift-0.5f*hitsign);
 #ifdef DEBUG
 	if(blockIdx.x==debug::EvRef)printf("det %d chan %d p1x %1.4f p1y %1.4f p2x %1.4f dpy %1.4f dpx% 1.4f x_trk %1.4f y %1.4f \n", detid, elid, p1x, p1y, p2x, planes->deltapy[ detid ], planes->deltapx[ detid ], x_trk, y );
 #endif
