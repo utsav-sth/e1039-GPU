@@ -1614,7 +1614,8 @@ __global__ void gKernel_YZ_tracking(
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign+nhits_x, planes);
 				
 				for(int ll = 0; ll<nhits_uv; ll++){
-					Y[ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
+					Y[ll]+= //sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
+						copysign(1.f, planes->sintheta[detID[ll]])*2.f*(drift[ll]-0.5f*sign[ll]); 
 				}
 				fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
 				
@@ -2381,7 +2382,8 @@ __global__ void gKernel_Global_tracking(
 				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
 				for(int ll = 0; ll<nhits_uv; ll++){
-					Y[nyhits+ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[nhits_x+nhits_uv]];
+					Y[nyhits+ll]+= //sign[ll]*drift[ll]*planes->sintheta[detID[nhits_x+ll]];
+						copysign(1.f, planes->sintheta[detID[nhits_x+ll]])*2.f*(drift[ll]-0.5f*sign[ll]);
 				}
 				
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
