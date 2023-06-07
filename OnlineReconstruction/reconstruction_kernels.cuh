@@ -2420,7 +2420,7 @@ __global__ void gKernel_Global_tracking(
 					besttrackdata[threadIdx.x][148] = invp_tgt;
 #endif
 					for(short m = 0; m<nhits_st23;m++){
-						besttrackdata[threadIdx.x][124+m] = residuals[m];
+						besttrackdata[threadIdx.x][124+m] = residuals_st23[m];
 					}
 					for(short m = 0; m<nhits_x+nhits_uv;m++){
 						besttrackdata[threadIdx.x][16+m] = detID[m];
@@ -2452,7 +2452,7 @@ __global__ void gKernel_Global_tracking(
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
 
 			for(int n = 0; n<nhits_st23; n++){
-				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, n, besttrackdata[threadIdx.x][124+n]);
 			}
 			for(int n = 0; n<nhits_st1; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
