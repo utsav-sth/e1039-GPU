@@ -1614,8 +1614,7 @@ __global__ void gKernel_YZ_tracking(
 				resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_uv, detID, pos, sign+nhits_x, planes);
 				
 				for(int ll = 0; ll<nhits_uv; ll++){
-					Y[ll]+= //sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
-						copysign(1.f, planes->sintheta[detID[ll]])*2.f*(drift[ll]-0.5f*sign[ll]); 
+					Y[ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
 				}
 				fit_2D_track(nhits_uv, Y, Z, errY, A_, Ainv_, B_, Par, ParErr, chi2);
 				
@@ -2162,13 +2161,6 @@ __global__ void gKernel_Global_tracking(
 			resolve_leftright_xhits(x0_st1, tx_st1, errx0_st1, errtx_st1, nhits_x, detID, X, drift, sign, planes->z, 150.);
 			resolve_single_leftright_xhits(x0_st1, tx_st1, nhits_x, detID, X, sign, planes->z);
 			
-			fit_2D_track_drift(nhits_x, X, drift, sign, Z, errX, A_, Ainv_, B_, Par, ParErr, chi2);
-			x0_st1 = Par[0];
-			tx_st1 = Par[1];
-
-			errx0_st1 = Par[0];
-			errtx_st1 = Par[1];
-			
 			for(short l = 0; l<nhits_x; l++){
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf("l %d hit sign %d drift %1.4f \n", l, sign[l], drift[l]);
@@ -2182,6 +2174,10 @@ __global__ void gKernel_Global_tracking(
 			x0_st1 = Par[0];
 			tx_st1 = Par[1];
 
+			errx0_st1 = Par[0];
+			errtx_st1 = Par[1];
+			
+			
 			charge = calculate_charge(tx, x0);
 			invP = calculate_invP(tx, tx_st1, charge);
 			//invP = calculate_invP_charge(tx, tx_st1, charge);
@@ -2366,7 +2362,7 @@ __global__ void gKernel_Global_tracking(
 				if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f invP %1.4f nhits uv %d first hit det %d chan %d last hit det %d chan %d \n", x0, y0, tx, ty, invP, nhits_uv, detID[nhits_x+nhits_u], elID[nhits_x+nhits_u], detID[nhits_x+nhits_uv-1], elID[nhits_x+nhits_uv-1]);
 #endif
 				if(nhits_v==0)continue;
-				
+
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
 				
 				y0 = Par[0];
@@ -2382,8 +2378,7 @@ __global__ void gKernel_Global_tracking(
 				resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_x+nhits_uv, detID, pos, sign, planes);
 				
 				for(int ll = 0; ll<nhits_uv; ll++){
-					Y[nyhits+ll]+= //sign[ll]*drift[ll]*planes->sintheta[detID[nhits_x+ll]];
-						copysign(1.f, planes->sintheta[detID[nhits_x+ll]])*2.f*(drift[ll]-0.5f*sign[ll]);
+					Y[nyhits+ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[nhits_x+ll]];
 				}
 				
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
@@ -2395,7 +2390,7 @@ __global__ void gKernel_Global_tracking(
 				errty = ParErr[1];
 				
 				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
-	
+				
 				// matching hodoscope here!
 				stid = 0;//1-1
 				maskhodo = 0;
@@ -2442,7 +2437,11 @@ __global__ void gKernel_Global_tracking(
 					update_track = true;
 					besttrackdata[threadIdx.x][2] = nhits_x+nhits_uv;
 					besttrackdata[threadIdx.x][3] = chi2;
+					besttrackdata[threadIdx.x][6] = ty;
+					besttrackdata[threadIdx.x][8] = y0;
 					besttrackdata[threadIdx.x][9] = invP;
+					besttrackdata[threadIdx.x][11] = errty;
+					besttrackdata[threadIdx.x][13] = erry0;
 					besttrackdata[threadIdx.x][14] = errinvP;
 					besttrackdata[threadIdx.x][15] = charge;
 #ifdef TEST_MOMENTUM
@@ -2471,9 +2470,14 @@ __global__ void gKernel_Global_tracking(
 			nhits_st1 = besttrackdata[threadIdx.x][2];
 			tklcoll->setnHits(tkl_coll_offset+array_thread_offset, i, nhits_st23+besttrackdata[threadIdx.x][2]);
 			tklcoll->setChisq(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][3]);
+			tklcoll->setTy(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][6]);
+			tklcoll->setY0(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][8]);
 			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][9]);
+			tklcoll->setErrTy(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][11]);
+			tklcoll->setErrY0(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][13]);
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
+
 			
 			for(int n = 0; n<nhits_st1; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
