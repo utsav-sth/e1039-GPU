@@ -1,10 +1,8 @@
 //#define GLDISPLAY 1
-//#define ROOTSAVE 1
-#define E1039 1
+//#define E1039 1
 //#define DEBUG 1
 #define USE_DET_RESOL 1
 //#define SAVE_ALL_TRACKS 1
-#define FULLCODE 1
 #define REFINED_ER
 #define PROP_Y_MATCH 1
 //#define HODO_Y_MATCH 1
@@ -12,7 +10,6 @@
 #define nHodoPlanes 16
 #define nPropPlanes 8
 #define nDetectors (nChamberPlanes+nHodoPlanes+nPropPlanes+1)
-#define Epsilon 0.00001f
 
 #define triggerBit(n) (1 << (n))
 #define hitFlagBit(n) (1 << (n))
@@ -133,16 +130,11 @@ namespace geometry{
 
 namespace datasizes{
 	__host__ __device__ constexpr int NHitsParam = 5;
-#ifdef FULLCODE
 #ifdef TESTMOMENTUM
 	__host__ __device__ constexpr int NTracksParam = 150;
 #else
 	__host__ __device__ constexpr int NTracksParam = 148;
 #endif
-#else
-	__host__ __device__ constexpr int NTracksParam = 112;
-#endif
-  //__host__ __device__ constexpr int NRecTracksParam = 6;
 	__host__ __device__ constexpr int NMaxHitsChambers = 200;
 	__host__ __device__ constexpr int NMaxHitsHodoscopes = 60;
 	__host__ __device__ constexpr int NMaxHitsPropTubes = 120;
@@ -164,7 +156,7 @@ namespace selection{
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 	__host__ __device__ constexpr float merge_thres = 0.015;
-	__device__ constexpr float rejectwin[4] = {0.5, 1.0, 0.8, 0.8};
+	__device__ constexpr float rejectwin[4] = {1.5, 2.0, 1.8, 1.8};
 #ifdef E1039
 	//__device__ constexpr float rejectwin[4] = {0.12, 0.15, 0.16, 0.14};
 #else

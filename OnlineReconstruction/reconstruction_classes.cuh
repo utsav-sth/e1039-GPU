@@ -220,7 +220,6 @@ struct gTracklet {
 		{
 			return m_trackletdata[88 + ihit ];
 		}
-#ifdef FULLCODE	
 	__host__ __device__ inline float hits_tdc(const unsigned ihit) const
 		{
 			return m_trackletdata[124 + ihit ];
@@ -229,7 +228,6 @@ struct gTracklet {
 		{
 			return m_trackletdata[124 + ihit ];
 		}
-#endif
 	__host__ __device__ inline unsigned int get_lasthitdetid() const
 		{
 			const int nhits = (int)nHits();
@@ -416,7 +414,6 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+94 + ihit ];
 		}
-#ifdef FULLCODE
 //additional hit parameters
 	__host__ __device__ inline float hits_tdc(const unsigned index, const unsigned ihit) const
 		{
@@ -428,6 +425,7 @@ struct gTracks {
 			assert(index < NTracksTotal);
 			return m_trackdata[TrackSize*index+130 + ihit ];
 		}
+#ifdef ALLVTXVARS
 #ifdef TESTMOMENTUM
 	__host__ __device__ inline float invp_tgt(const unsigned index) const
 		{
@@ -621,13 +619,13 @@ struct gEventTrackCollection{
 	__device__ void setHitSign(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float sign) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+94+ihit] = sign;
 	}
-#ifdef FULLCODE
 	__device__ void setHitTDC(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float tdc) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+112+ihit] = tdc;
 	}
 	__device__ void setHitResidual(const unsigned int evt_offset, const unsigned int itrack, const unsigned int ihit, const float resid) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+130+ihit] = resid;
 	}
+#ifdef ALLVTXVARS
 #ifdef TEST_MOMENTUM
 	__device__ void setInvPTarget(const unsigned int evt_offset, const unsigned int itrack, const float invp_tgt) {
 		TracksRawData[evt_offset+itrack*datasizes::NTracksParam+148] = invp_tgt;

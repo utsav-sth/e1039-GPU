@@ -390,10 +390,7 @@ __global__ void gKernel_XZ_tracking(
 	//Arrays for other basic hit info
 	short elID[4];
 	float drift[4];
-#ifdef FULLCODE
 	float tdc[4];
-#endif
-	
 	short sign[4];
 	
 	//small varaibles for prop tube matching
@@ -484,9 +481,7 @@ __global__ void gKernel_XZ_tracking(
 				errX[nhits_x] = res_st2x;
 				Z[nhits_x] = z_st2x;
 				elID[nhits_x] = (short)hits_st2x.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st2x.tdc(i_hit);
-#endif
 				drift[nhits_x] = hits_st2x.drift(i_hit);
 				sign[nhits_x] = 0;
 				nhits_x++;
@@ -498,9 +493,7 @@ __global__ void gKernel_XZ_tracking(
 				errX[nhits_x] = res_st2xp;
 				Z[nhits_x] = z_st2xp;
 				elID[nhits_x] = (short)hits_st2xp.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st2xp.tdc(i_hit);
-#endif
 				drift[nhits_x] = hits_st2xp.drift(i_hit);
 				sign[nhits_x] = 0;
 				nhits_x++;
@@ -520,9 +513,7 @@ __global__ void gKernel_XZ_tracking(
 				errX[nhits_x] = res_st3x;
 				Z[nhits_x] = z_st3x;
 				elID[nhits_x] = (short)hits_st3x.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st3x.tdc(i_hit);
-#endif
 				drift[nhits_x] = hits_st3x.drift(i_hit);
 				sign[nhits_x] = 0;
 				nhits_x++;
@@ -534,9 +525,7 @@ __global__ void gKernel_XZ_tracking(
 				errX[nhits_x] = res_st3xp;
 				Z[nhits_x] = z_st3xp;
 				elID[nhits_x] = (short)hits_st3xp.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st3xp.tdc(i_hit);
-#endif
 				drift[nhits_x] = hits_st3xp.drift(i_hit);
 				sign[nhits_x] = 0;
 				nhits_x++;
@@ -801,10 +790,8 @@ __global__ void gKernel_XZ_tracking(
 				tklcoll->setHitPos(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, X[n]);
 				tklcoll->setHitDrift(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, drift[n]);
 				tklcoll->setHitSign(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, sign[n]);
-#ifdef FULLCODE					
 				tklcoll->setHitTDC(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, tdc[n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_offset, ntkl_per_thread[thread_min[threadIdx.x]], n, 0.0);
-#endif
 			}
 			ntkl_per_thread[thread_min[threadIdx.x]]++;
 			tklcoll->NTracks[blockIdx.x*THREADS_PER_BLOCK+thread_min[threadIdx.x]]++;
@@ -1162,9 +1149,7 @@ __global__ void gKernel_YZ_tracking(
 	short elID[8];
 	float pos[8];
 	float drift[8];
-#ifdef FULLCODE
 	float tdc[8];
-#endif
 	short sign[12];
 
 	short nhits_uv;
@@ -1334,9 +1319,7 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_u3[i_u3].first;
 				Z[nhits_uv] = z_st3u;
 				elID[nhits_uv] = (short)hits_st3u.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_uv] = hits_st3u.tdc(i_hit);
-#endif
 				sign[nhits_x+nhits_uv] = 0;
 				drift[nhits_uv] = hits_st3u.drift(i_hit);
 				pos[nhits_uv] = hits_st3u.pos(i_hit);
@@ -1365,9 +1348,7 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_u3[i_u3].second;
 				Z[nhits_uv] = z_st3up;
 				elID[nhits_uv] = (short)hits_st3up.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_uv] = hits_st3up.tdc(i_hit);
-#endif
 				sign[nhits_x+nhits_uv] = 0;
 				drift[nhits_uv] = hits_st3up.drift(i_hit);
 				pos[nhits_uv] = hits_st3up.pos(i_hit);
@@ -1399,9 +1380,7 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_v3[i_v3].first;
 				Z[nhits_uv] = z_st3v;
 				elID[nhits_uv] = (short)hits_st3v.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_uv] = hits_st3v.tdc(i_hit);
-#endif
 				sign[nhits_x+nhits_uv] = 0;
 				drift[nhits_uv] = hits_st3v.drift(i_hit);
 				pos[nhits_uv] = hits_st3v.pos(i_hit);
@@ -1429,9 +1408,7 @@ __global__ void gKernel_YZ_tracking(
 				i_hit = hitpairs_v3[i_v3].second;
 				Z[nhits_uv] = z_st3vp;
 				elID[nhits_uv] = (short)hits_st3vp.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_uv] = hits_st3vp.tdc(i_hit);
-#endif
 				sign[nhits_x+nhits_uv] = 0;
 				drift[nhits_uv] = hits_st3vp.drift(i_hit);
 				pos[nhits_uv] = hits_st3vp.pos(i_hit);
@@ -1471,9 +1448,7 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_u2[i_u2].first;
 					Z[nhits_uv] = z_st2u;
 					elID[nhits_uv] = (short)hits_st2u.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_uv] = hits_st2u.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_uv] = hits_st2u.drift(i_hit);
 					pos[nhits_uv] = hits_st2u.pos(i_hit);
@@ -1502,9 +1477,7 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_u2[i_u2].second;
 					Z[nhits_uv] = z_st2up;
 					elID[nhits_uv] = (short)hits_st2up.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_uv] = hits_st2up.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_uv] = hits_st2up.drift(i_hit);
 					pos[nhits_uv] = hits_st2up.pos(i_hit);
@@ -1537,9 +1510,7 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_v2[i_v2].first;
 					Z[nhits_uv] = z_st2v;
 					elID[nhits_uv] = (short)hits_st2v.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_uv] = hits_st2v.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_uv] = hits_st2v.drift(i_hit);
 					pos[nhits_uv] = hits_st2v.pos(i_hit);
@@ -1568,9 +1539,7 @@ __global__ void gKernel_YZ_tracking(
 					i_hit = hitpairs_v2[i_v2].second;
 					Z[nhits_uv] = z_st2vp;
 					elID[nhits_uv] = (short)hits_st2vp.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_uv] = hits_st2vp.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_uv] = hits_st2vp.drift(i_hit);
 					pos[nhits_uv] = hits_st2vp.pos(i_hit);
@@ -1783,12 +1752,10 @@ __global__ void gKernel_YZ_tracking(
 					besttrackYZdata[threadIdx.x][52+n] = pos[n];
 					besttrackYZdata[threadIdx.x][70+n] = drift[n];
 					besttrackYZdata[threadIdx.x][88+n] = sign[nhits_x+n];
-#ifdef FULLCODE
 					besttrackYZdata[threadIdx.x][106+n] = tdc[n];
 					//fill in the residuals for x hits
 					if(n<nhits_x)besttrackYZdata[threadIdx.x][124+n] = residuals[n];
 					besttrackYZdata[threadIdx.x][128+n] = residuals[nhits_x+n];
-#endif
 					}
 				}
 				
@@ -1812,11 +1779,9 @@ __global__ void gKernel_YZ_tracking(
 				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][52+n]);
 				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][70+n]);
 				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][88+n]);
-#ifdef FULLCODE
 				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][106+n]);
 				if(n<nhits_x)tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, n, besttrackYZdata[threadIdx.x][124+n]);
 				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_x+n, besttrackYZdata[threadIdx.x][128+n]);
-#endif
 			}
 		}
 		
@@ -1990,9 +1955,7 @@ __global__ void gKernel_Global_tracking(
 	short elID[6];
 	float pos[6];
 	float drift[6];
-#ifdef FULLCODE
 	float tdc[6];
-#endif
 	short sign[6];
 	
 	float Y[12];
@@ -2021,6 +1984,13 @@ __global__ void gKernel_Global_tracking(
 	float dpy[6];
 	float dpz[6];
 	float residuals[6];
+	
+	short detid_st23[12];
+	short chan_st23[12];
+	float drift_st23[12];
+	short sign_st23[12];
+	float residuals_st23[12];
+	float resolution_st23[12];
 	
 	float chi2min = 10000.1f;
 
@@ -2073,6 +2043,12 @@ __global__ void gKernel_Global_tracking(
 		
 		nyhits = 0;
 		for(int k = 0; k<nhits_st23; k++){
+			detid_st23[k] = Tracks.hits_detid(i, k); 
+			chan_st23[k] = Tracks.hits_chan(i, k);
+			drift_st23[k] = Tracks.hits_drift(i, k);
+			sign_st23[k] = Tracks.hits_sign(i, k);
+			resolution_st23[k] = planes->resolution[(short)Tracks.hits_detid(i, k)];
+			
 			if(planes->costheta[(short)Tracks.hits_detid(i, k)]>0.99)continue;
 			
 			if(calculate_y_uvhit(Tracks.hits_detid(i, k), Tracks.hits_chan(i, k), Tracks.hits_drift(i, k), Tracks.hits_sign(i, k), x0, tx, planes, y, err_y)){
@@ -2096,9 +2072,7 @@ __global__ void gKernel_Global_tracking(
 				errX[nhits_x] = res_st1x;
 				Z[nhits_x] = z_st1x;
 				elID[nhits_x] = (short)hits_st1x.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st1x.tdc(i_hit);
-#endif
 				sign[nhits_x] = 0;
 				drift[nhits_x] = hits_st1x.drift(i_hit);
 #ifdef DEBUG
@@ -2122,9 +2096,7 @@ __global__ void gKernel_Global_tracking(
 				errX[nhits_x] = res_st1xp;
 				Z[nhits_x] = z_st1xp;
 				elID[nhits_x] = (short)hits_st1xp.chan(i_hit);
-#ifdef FULLCODE
 				tdc[nhits_x] = hits_st1xp.tdc(i_hit);
-#endif
 				sign[nhits_x] = 0;
 				drift[nhits_x] = hits_st1xp.drift(i_hit);
 #ifdef DEBUG
@@ -2208,9 +2180,7 @@ __global__ void gKernel_Global_tracking(
 					detID[nhits_x+nhits_uv] = detid_list[2];
 					i_hit = hitpairs_u1[i_u].first;
 					elID[nhits_x+nhits_uv] = (short)hits_st1u.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1u.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_x+nhits_uv] = hits_st1u.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1u.pos(i_hit);
@@ -2246,9 +2216,7 @@ __global__ void gKernel_Global_tracking(
 					detID[nhits_x+nhits_uv] = detid_list[3];
 					i_hit = hitpairs_u1[i_u].second;
 					elID[nhits_x+nhits_uv] = (short)hits_st1up.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1up.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_x+nhits_uv] = hits_st1up.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1up.pos(i_hit);
@@ -2287,9 +2255,7 @@ __global__ void gKernel_Global_tracking(
 					detID[nhits_x+nhits_uv] = detid_list[4];
 					i_hit = hitpairs_v1[i_v].first;
 					elID[nhits_x+nhits_uv] = (short)hits_st1v.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1v.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_x+nhits_uv] = hits_st1v.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1v.pos(i_hit);
@@ -2324,9 +2290,7 @@ __global__ void gKernel_Global_tracking(
 					detID[nhits_x+nhits_uv] = detid_list[5];
 					i_hit = hitpairs_v1[i_v].second;
 					elID[nhits_x+nhits_uv] = (short)hits_st1vp.chan(i_hit);
-#ifdef FULLCODE
 					tdc[nhits_x+nhits_uv] = hits_st1vp.tdc(i_hit);
-#endif
 					sign[nhits_x+nhits_uv] = 0;
 					drift[nhits_x+nhits_uv] = hits_st1vp.drift(i_hit);
 					pos[nhits_x+nhits_uv] = hits_st1vp.pos(i_hit);
@@ -2422,9 +2386,17 @@ __global__ void gKernel_Global_tracking(
 				if(blockIdx.x==debug::EvRef)printf(" x0_st1 %1.4f tx_st1 %1.4f y0 %1.4f ty %1.4f \n", x0_st1, tx_st1, y0, ty);
 				
 #endif
+				//TODO: rematch hodo, prop tubes!
+				
+				//update residuals, chi2
+				chi2 = 0;
+				for(short mm = 0; mm<nhits_st23; mm++){
+					residuals_st23[mm] = residual(detid_st23[mm], chan_st23[mm], drift_st23[mm], sign_st23[mm], planes, x0, y0, tx, ty);
+					chi2+= residuals_st23[mm]*residuals_st23[mm]/(resolution_st23[mm]*resolution_st23[mm]);
+				}
 				
 				//chi2 fit...
-				chi2 = Tracks.chisq(i)+chi2_track(nhits_x+nhits_uv, residuals, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
+				chi2+= chi2_track(nhits_x+nhits_uv, residuals, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 				if(chi2>10000.f)continue;
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && Tracks.hits_chan(i, 4)==13 && Tracks.hits_chan(i, 5)==13 && Tracks.hits_chan(i, 6)==30 && Tracks.hits_chan(i, 7)==30 && Tracks.hits_chan(i, 8)==36 && Tracks.hits_chan(i, 9)==36 && Tracks.hits_chan(i, 10)==40 && Tracks.hits_chan(i, 11)==41 ){
@@ -2447,16 +2419,17 @@ __global__ void gKernel_Global_tracking(
 #ifdef TEST_MOMENTUM
 					besttrackdata[threadIdx.x][148] = invp_tgt;
 #endif
-					for(int m = 0; m<nhits_x+nhits_uv;m++){
+					for(short m = 0; m<nhits_st23;m++){
+						besttrackdata[threadIdx.x][124+m] = residuals[m];
+					}
+					for(short m = 0; m<nhits_x+nhits_uv;m++){
 						besttrackdata[threadIdx.x][16+m] = detID[m];
 						besttrackdata[threadIdx.x][34+m] = elID[m];
 						besttrackdata[threadIdx.x][52+m] = pos[m];
 						besttrackdata[threadIdx.x][70+m] = drift[m];
 						besttrackdata[threadIdx.x][88+m] = sign[m];
-#ifdef FULLCODE
 						besttrackdata[threadIdx.x][106+m] = tdc[m];
-						besttrackdata[threadIdx.x][124+m] = residuals[m];
-#endif
+						besttrackdata[threadIdx.x][124+nhits_st23+m] = residuals[m];
 					}
 				}
 
@@ -2478,17 +2451,17 @@ __global__ void gKernel_Global_tracking(
 			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][14]);
 			tklcoll->setCharge(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][15]);
 
-			
+			for(int n = 0; n<nhits_st23; n++){
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
+			}
 			for(int n = 0; n<nhits_st1; n++){
 				tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][16+n]);
 				tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][34+n]);
 				tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][52+n]);
 				tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][70+n]);
 				tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][88+n]);
-#ifdef FULLCODE
 				tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][106+n]);
-				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+n]);
-#endif
+				tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits_st23+n, besttrackdata[threadIdx.x][124+nhits_st23+n]);
 			}
 #ifdef TEST_MOMENTUM
 			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, besttrackdata[threadIdx.x][148]);
@@ -2830,9 +2803,7 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 	float ParErr[2];
 	float chi2;
 	
-#ifdef FULLCODE
 	float tdc[18];
-#endif
 	short nhits_st23, nhits_st1, nhits_x, nhits_uv, nhits, nhits_x_st23, nhits_x_st1;
 	
 	for(i = 0; i<Ntracks; i++){
@@ -2869,10 +2840,8 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 			sign[ihit] = Tracks.hits_sign(i, ihit);
 			pos[ihit] = Tracks.hits_pos(i, ihit);
 			drift[ihit] = Tracks.hits_drift(i, ihit);
-#ifdef FULLCODE
 			tdc[ihit] = Tracks.hits_tdc(i, ihit);
 			resid_[ihit] = Tracks.hits_residual(i, ihit);
-#endif
 
 			if(detid[ihit]>12){
 				nhits_st23++;
@@ -3051,10 +3020,8 @@ __global__ void gKernel_TrackOutlierHitRemoval(
 					tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits, pos[ihit]);
 					tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits, drift[ihit]);
 					tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits, sign[ihit]);
-#ifdef FULLCODE
 					tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits, tdc[ihit]);
 					tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits, resid_[ihit]);
-#endif
 					nhits++;
 				}
 			}
@@ -3765,7 +3732,7 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 }
 
 
-#ifdef OLDCODE
+#ifdef KALMAN_TRACKING
 
 
 // ------------------------------

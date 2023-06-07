@@ -42,24 +42,6 @@ __device__ float position(const float pos, const float drift, const short sign)
 }
 
 
-__device__ float residual(const short detid, const short elid, const float drift, const short sign, const gPlane* planes, const float x0, const float y0, const float tx, const float ty)
-{
-	float p1x = x_bep(detid, elid, planes);
-	float p1y = y_bep(detid, elid, planes);
-	float p1z = z_bep(detid, elid, planes);
-	float deltapx = planes->deltapx[detid];
-	float deltapy = planes->deltapy[detid];
-	float deltapz = planes->deltapz[detid];
-		
-	float den2 = deltapy*deltapy*(1+tx*tx) + deltapx*deltapx*(1+ty*ty) - 2*( ty*deltapx*deltapz + ty*deltapy*deltapz + tx*ty*deltapx*deltapy);
-	float dca = ( (ty*deltapz-deltapy)*(p1x-x0) + (deltapx-tx*deltapz)*(p1y-y0) + p1z*(tx*deltapy-ty*deltapx) ) / sqrtf(den2);
-
-#ifdef DEBUG
-	if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f p1x %1.4f p1y %1.4f p1z %1.4f deltapx %1.4f deltapy %1.4f deltapz %1.4f den2 %1.4f dca %1.4f drift %1.4f sign %d \n", x0, y0, tx, ty, p1x, p1y, p1z, deltapx, deltapy, deltapz, den2, dca, drift, sign);
-#endif	
-	return drift*sign - dca;
-}
-
 // ---------------------------------------------------------------- //
 // functions to return track state at a certain z
 // ---------------------------------------------------------------- //
@@ -648,71 +630,6 @@ __device__ float calculate_invp_tgt(const float tx_st1, const float tx_tgt,  con
 #endif
 
 
-#ifdef OLDCODE
-
-// ------------------------------------ //
-// function to refit the track after    //
-// left right ambiguity resolution      //
-// ------------------------------------ //
-
-
-__device__ float refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitArrays* fitarray, const gPlane* planes){
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int idxoff_array = index*MaxHitsPerTrack;
-	
-	float A_[4];
-	float Ainv_[4];
-	float B_[2];
-	float Par[4];
-	float ParErr[4];
-	float chi2;
-	
-	//X hits are stored first, so we fit them first;
-	for(int i = 0; i<tkl.nXHits; i++){
-		FillFitArrays_X(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
-		FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
-	}
-	fit_2D_track(tkl.nXHits, fitarray->x_array+idxoff_array, fitarray->z_array+idxoff_array, fitarray->dx_array+idxoff_array, A_, Ainv_, B_, Par, ParErr, chi2);
-
-	tkl.x0 = Par[0];
-	tkl.err_x0 = ParErr[0];
-	
-	tkl.tx = Par[1];
-	tkl.err_tx = ParErr[1];
-	
-	float y, err_y;
-	
-	for(int i = tkl.nXHits; i<tkl.nXHits+tkl.nUHits+tkl.nVHits; i++){
-		if( calculate_y_uvhit(y, err_y, tkl.hits[i], tkl.hitsign[i], tkl, planes) ){
-			FillFitArrays_UV(i-tkl.nXHits, tkl.hits[i], fitarray, planes, y, err_y);
-			FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
-		}
-	}
-	fit_2D_track(tkl.nXHits, fitarray->x_array+idxoff_array, fitarray->z_array+idxoff_array, fitarray->dx_array+idxoff_array, A_, Ainv_, B_, Par, ParErr, chi2);
-	
-	tkl.y0 = Par[0];
-	tkl.err_y0 = ParErr[0];
-	
-	tkl.ty = Par[1];
-	tkl.err_ty = ParErr[1];
-	
-	Par[0] = tkl.x0;
-	Par[1] = tkl.y0;
-	Par[2] = tkl.tx;
-	Par[3] = tkl.ty;
-
-	chi2_straight(tkl.nXHits+tkl.nUHits+tkl.nVHits, fitarray->drift_dist+idxoff_array, fitarray->resolution+idxoff_array,
-			fitarray->p1x+idxoff_array, fitarray->p1y+idxoff_array, fitarray->p1z+idxoff_array,
-			fitarray->deltapx+idxoff_array, fitarray->deltapy+idxoff_array, fitarray->deltapz+idxoff_array,
-			Par, chi2);
-	
-	tkl.chisq = chi2;
-	return chi2;
-}
-
-#endif
-
-
 // ----------------------------------------------------------- //
 // function to resolve the left right ambiguities in the track //
 // ----------------------------------------------------------- //
@@ -1150,90 +1067,60 @@ __device__ bool match_track_XZ_to_hodo(int stid, const int detid, const int nhit
 }
 
 
+//Functions to calculate residuals and chi2
 
-#ifdef OLDCODE
-
-
-// ------------------------------------------------------------- //
-// functions to evaluate the hit selection window for a 2D track //
-// and to calculate y from u, v hits given x                     //
-// ------------------------------------------------------------- //
-
-
-__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack2D track2d, const short stID, const short projID, const gPlane* planes)
+__device__ float residual(const short detid, const short elid, const float drift, const short sign, const gPlane* planes, const float x0, const float y0, const float tx, const float ty)
 {
-	const int detid1 = geometry::detsuperid[stID][projID]*2;
-	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
-	
-	xmin = min(planes->z[detid1]*(track2d.tx_-track2d.err_tx_), planes->z[detid2]*(track2d.tx_-track2d.err_tx_));
-	xmax = max(planes->z[detid1]*(track2d.tx_+track2d.err_tx_), planes->z[detid2]*(track2d.tx_+track2d.err_tx_));
-	
-	xmin = xmin + track2d.x_0-track2d.err_x_0-planes->spacing[detid1];
-	xmax = xmax + track2d.x_0+track2d.err_x_0+planes->spacing[detid1];
+	float p1x = x_bep(detid, elid, planes);
+	float p1y = y_bep(detid, elid, planes);
+	float p1z = z_bep(detid, elid, planes);
+	float deltapx = planes->deltapx[detid];
+	float deltapy = planes->deltapy[detid];
+	float deltapz = planes->deltapz[detid];
+		
+	float den2 = deltapy*deltapy*(1+tx*tx) + deltapx*deltapx*(1+ty*ty) - 2*( ty*deltapx*deltapz + ty*deltapy*deltapz + tx*ty*deltapx*deltapy);
+	float dca = ( (ty*deltapz-deltapy)*(p1x-x0) + (deltapx-tx*deltapz)*(p1y-y0) + p1z*(tx*deltapy-ty*deltapx) ) / sqrtf(den2);
+
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f p1x %1.4f p1y %1.4f p1z %1.4f deltapx %1.4f deltapy %1.4f deltapz %1.4f den2 %1.4f dca %1.4f drift %1.4f sign %d \n", x0, y0, tx, ty, p1x, p1y, p1z, deltapx, deltapy, deltapz, den2, dca, drift, sign);
+#endif	
+	return drift*sign - dca;
 }
 
-__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTracklet tkl, const short stID, const short projID, const gPlane* planes)
+
+__device__ float chi2_track(size_t const n_points, float* residuals,
+			float* const driftdist, short* const sign, float* const resolutions,
+			float* const p1x, float* const p1y, float* const p1z,
+			float* const deltapx, float* const deltapy, float* const deltapz,
+			const float x0, const float y0, const float tx, const float ty)
 {
-	const int detid1 = geometry::detsuperid[stID][projID]*2;
-	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
-	
-	xmin = min(planes->z[detid1]*(tkl.tx-tkl.err_tx), planes->z[detid2]*(tkl.tx-tkl.err_tx));
-	xmax = max(planes->z[detid1]*(tkl.tx+tkl.err_tx), planes->z[detid2]*(tkl.tx+tkl.err_tx));
-	
-	xmin = xmin + tkl.x0-tkl.err_x0-planes->spacing[detid1];
-	xmax = xmax + tkl.x0+tkl.err_x0+planes->spacing[detid1];
+	float dca;
+	float chi2 = 0;
+	float den2;
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf(" x0 %1.6f tx %1.6f y0 %1.6f ty %1.6f \n", x0, tx, y0, ty);
+#endif
+	for( size_t i=0; i<n_points; i++ ){
+		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
+		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
+		residuals[i] = driftdist[i]*sign[i] - dca;
+		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
+#endif
+	}
+	return chi2;
 }
 
 
 
 
-__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays *fitarray, const gPlane* planes){
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int idxoff_global = index*MaxHitsPerTrack;	
-	
-	fitarray->drift_dist[n] = hit.driftDistance*hitsign;
-	fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
-	if(hitsign==0){
-		fitarray->resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
-	}else{
-		fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
-	}	       
-	fitarray->p1x[n] = x_bep( hit, planes);
-	fitarray->p1y[n] = y_bep( hit, planes);
-	fitarray->p1z[n] = z_bep( hit, planes);
-	
-	fitarray->deltapx[n] = planes->deltapx[ hit.detectorID ];
-	fitarray->deltapy[n] = planes->deltapy[ hit.detectorID ];
-	fitarray->deltapz[n] = planes->deltapz[ hit.detectorID ];
-}
-
-__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, float* drift_dist, float* resolution, float* p1x, float* p1y, float* p1z, float* deltapx, float* deltapy, float* deltapz, const gPlane* planes){
-	const int index = threadIdx.x + blockIdx.x * blockDim.x;
-	const int idxoff_global = index*MaxHitsPerTrack;	
-	
-	drift_dist[n] = hit.driftDistance*hitsign;
-	resolution[n] = planes->resolution[ hit.detectorID ];
-	if(hitsign==0){
-		resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
-	}else{
-		resolution[n] = planes->resolution[ hit.detectorID ];
-	}	       
-	p1x[n] = x_bep( hit, planes);
-	p1y[n] = y_bep( hit, planes);
-	p1z[n] = z_bep( hit, planes);
-	
-	deltapx[n] = planes->deltapx[ hit.detectorID ];
-	deltapy[n] = planes->deltapy[ hit.detectorID ];
-	deltapz[n] = planes->deltapz[ hit.detectorID ];
-}
-
+#ifdef KALMAN_TRACKING
 
 // --------------------------------------------- //
 // functions to calculate x0 and tx in station 1 //
 // and function to calculate inverse momentum    //
 // --------------------------------------------- //
-
-
 
 
 __device__ void extrapolate_track_position_st1(gTracklet& tkl, float* x_st1_mean, float* x_st1_width, const gPlane* planes, const short hyp)
@@ -1425,28 +1312,178 @@ __device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays& f
 #endif
 
 
-__device__ float chi2_track(size_t const n_points, float* residuals,
-			float* const driftdist, short* const sign, float* const resolutions,
-			float* const p1x, float* const p1y, float* const p1z,
-			float* const deltapx, float* const deltapy, float* const deltapz,
-			const float x0, const float y0, const float tx, const float ty)
-{
-	float dca;
-	float chi2 = 0;
-	float den2;
-#ifdef DEBUG
-	if(blockIdx.x==debug::EvRef)printf(" x0 %1.6f tx %1.6f y0 %1.6f ty %1.6f \n", x0, tx, y0, ty);
-#endif
-	for( size_t i=0; i<n_points; i++ ){
-		den2 = deltapy[i]*deltapy[i]*(1+tx*tx) + deltapx[i]*deltapx[i]*(1+ty*ty) - 2*( ty*deltapx[i]*deltapz[i] + ty*deltapy[i]*deltapz[i] + tx*ty*deltapx[i]*deltapy[i]);
-		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
-		residuals[i] = driftdist[i]*sign[i] - dca;
-		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
-#ifdef DEBUG
-		if(blockIdx.x==debug::EvRef)printf(" p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
-#endif
+#ifdef LEGACYCODE
+
+
+// Hit comparison
+struct lessthan {
+	__host__ __device__ bool operator()(const gHit& lhs, const gHit& rhs)
+	{
+	//returns true if :
+	// hit1.detID<hit2.detID;  
+		if(lhs.detectorID < rhs.detectorID)
+		{
+			return true;
+		}
+		else if(lhs.detectorID > rhs.detectorID)
+		{
+			return false;
+		}
+	//hit1.detID=hit2.detID & hit1.elID<hit2.elID;
+		if(lhs.elementID < rhs.elementID)
+		{
+			return true;
+		}
+		else if(lhs.elementID > rhs.elementID)
+		{
+			return false;
+		}
+	//hit1.detID=hit2.detID & hit1.elID=hit2.elID & hit1.time>hit2.time;
+		if(lhs.tdcTime > rhs.tdcTime)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
+};
+
+
+// ------------------------------------------------------------- //
+// functions to evaluate the hit selection window for a 2D track //
+// and to calculate y from u, v hits given x                     //
+// ------------------------------------------------------------- //
+
+
+__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTrack2D track2d, const short stID, const short projID, const gPlane* planes)
+{
+	const int detid1 = geometry::detsuperid[stID][projID]*2;
+	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	
+	xmin = min(planes->z[detid1]*(track2d.tx_-track2d.err_tx_), planes->z[detid2]*(track2d.tx_-track2d.err_tx_));
+	xmax = max(planes->z[detid1]*(track2d.tx_+track2d.err_tx_), planes->z[detid2]*(track2d.tx_+track2d.err_tx_));
+	
+	xmin = xmin + track2d.x_0-track2d.err_x_0-planes->spacing[detid1];
+	xmax = xmax + track2d.x_0+track2d.err_x_0+planes->spacing[detid1];
+}
+
+__device__ void find_xmin_xmax_in_chamber(float &xmin, float &xmax, const gTracklet tkl, const short stID, const short projID, const gPlane* planes)
+{
+	const int detid1 = geometry::detsuperid[stID][projID]*2;
+	const int detid2 = geometry::detsuperid[stID][projID]*2-1;
+	
+	xmin = min(planes->z[detid1]*(tkl.tx-tkl.err_tx), planes->z[detid2]*(tkl.tx-tkl.err_tx));
+	xmax = max(planes->z[detid1]*(tkl.tx+tkl.err_tx), planes->z[detid2]*(tkl.tx+tkl.err_tx));
+	
+	xmin = xmin + tkl.x0-tkl.err_x0-planes->spacing[detid1];
+	xmax = xmax + tkl.x0+tkl.err_x0+planes->spacing[detid1];
+}
+
+
+
+
+__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, gStraightFitArrays *fitarray, const gPlane* planes){
+	const int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const int idxoff_global = index*MaxHitsPerTrack;	
+	
+	fitarray->drift_dist[n] = hit.driftDistance*hitsign;
+	fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
+	if(hitsign==0){
+		fitarray->resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
+	}else{
+		fitarray->resolution[n] = planes->resolution[ hit.detectorID ];
+	}	       
+	fitarray->p1x[n] = x_bep( hit, planes);
+	fitarray->p1y[n] = y_bep( hit, planes);
+	fitarray->p1z[n] = z_bep( hit, planes);
+	
+	fitarray->deltapx[n] = planes->deltapx[ hit.detectorID ];
+	fitarray->deltapy[n] = planes->deltapy[ hit.detectorID ];
+	fitarray->deltapz[n] = planes->deltapz[ hit.detectorID ];
+}
+
+__device__ void FillChi2Arrays(const int n, const gHit hit, const short hitsign, float* drift_dist, float* resolution, float* p1x, float* p1y, float* p1z, float* deltapx, float* deltapy, float* deltapz, const gPlane* planes){
+	const int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const int idxoff_global = index*MaxHitsPerTrack;	
+	
+	drift_dist[n] = hit.driftDistance*hitsign;
+	resolution[n] = planes->resolution[ hit.detectorID ];
+	if(hitsign==0){
+		resolution[n] = planes->spacing[ hit.detectorID ]*3.4641f;
+	}else{
+		resolution[n] = planes->resolution[ hit.detectorID ];
+	}	       
+	p1x[n] = x_bep( hit, planes);
+	p1y[n] = y_bep( hit, planes);
+	p1z[n] = z_bep( hit, planes);
+	
+	deltapx[n] = planes->deltapx[ hit.detectorID ];
+	deltapy[n] = planes->deltapy[ hit.detectorID ];
+	deltapz[n] = planes->deltapz[ hit.detectorID ];
+}
+
+
+// ------------------------------------ //
+// function to refit the track after    //
+// left right ambiguity resolution      //
+// ------------------------------------ //
+
+
+__device__ float refit_backpartialtrack_with_drift(gTracklet& tkl, gStraightFitArrays* fitarray, const gPlane* planes){
+	const int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const int idxoff_array = index*MaxHitsPerTrack;
+	
+	float A_[4];
+	float Ainv_[4];
+	float B_[2];
+	float Par[4];
+	float ParErr[4];
+	float chi2;
+	
+	//X hits are stored first, so we fit them first;
+	for(int i = 0; i<tkl.nXHits; i++){
+		FillFitArrays_X(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
+		FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
+	}
+	fit_2D_track(tkl.nXHits, fitarray->x_array+idxoff_array, fitarray->z_array+idxoff_array, fitarray->dx_array+idxoff_array, A_, Ainv_, B_, Par, ParErr, chi2);
+
+	tkl.x0 = Par[0];
+	tkl.err_x0 = ParErr[0];
+	
+	tkl.tx = Par[1];
+	tkl.err_tx = ParErr[1];
+	
+	float y, err_y;
+	
+	for(int i = tkl.nXHits; i<tkl.nXHits+tkl.nUHits+tkl.nVHits; i++){
+		if( calculate_y_uvhit(y, err_y, tkl.hits[i], tkl.hitsign[i], tkl, planes) ){
+			FillFitArrays_UV(i-tkl.nXHits, tkl.hits[i], fitarray, planes, y, err_y);
+			FillChi2Arrays(i, tkl.hits[i], tkl.hitsign[i], fitarray, planes);
+		}
+	}
+	fit_2D_track(tkl.nXHits, fitarray->x_array+idxoff_array, fitarray->z_array+idxoff_array, fitarray->dx_array+idxoff_array, A_, Ainv_, B_, Par, ParErr, chi2);
+	
+	tkl.y0 = Par[0];
+	tkl.err_y0 = ParErr[0];
+	
+	tkl.ty = Par[1];
+	tkl.err_ty = ParErr[1];
+	
+	Par[0] = tkl.x0;
+	Par[1] = tkl.y0;
+	Par[2] = tkl.tx;
+	Par[3] = tkl.ty;
+
+	chi2_straight(tkl.nXHits+tkl.nUHits+tkl.nVHits, fitarray->drift_dist+idxoff_array, fitarray->resolution+idxoff_array,
+			fitarray->p1x+idxoff_array, fitarray->p1y+idxoff_array, fitarray->p1z+idxoff_array,
+			fitarray->deltapx+idxoff_array, fitarray->deltapy+idxoff_array, fitarray->deltapz+idxoff_array,
+			Par, chi2);
+	
+	tkl.chisq = chi2;
 	return chi2;
 }
 
+#endif
 
