@@ -1,5 +1,5 @@
 //#define GLDISPLAY 1
-#define E1039 1
+//#define E1039 1
 //#define DEBUG 1
 #define USE_DET_RESOL 1
 //#define SAVE_ALL_TRACKS 1

@@ -672,7 +672,7 @@ struct gPlane {
       float y2[nDetectors];
       float sintheta[nDetectors];
       float resolution[nDetectors];
-      float deltaW_[nDetectors*9];
+      //float deltaW_[nDetectors*9];
       float p1x_w1[nDetectors];
       float p1y_w1[nDetectors];
       float p1z_w1[nDetectors];

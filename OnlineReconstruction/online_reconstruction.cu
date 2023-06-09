@@ -122,6 +122,8 @@ int main(int argn, char * argv[]) {
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane;
 	
+	float deltaW_det[nDetectors][9];
+	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
 	int ipl, nelem;
@@ -166,11 +168,13 @@ int main(int argn, char * argv[]) {
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
-			plane.deltaW_[ipl*9+k] = deltaW_;
+			deltaW_det[ipl][k] = deltaW_;
+			//plane.deltaW_[ipl*9+k] = deltaW_;
 		}
 	      }else{
 		iss >> deltaW_;
-		plane.deltaW_[ipl*9] = deltaW_;
+		deltaW_det[ipl][0] = deltaW_;
+		//plane.deltaW_[ipl*9] = deltaW_;
 	      }
 	      plane.slope_max[ipl] = costheta*TX_MAX+sintheta*TY_MAX;
 	      plane.inter_max[ipl] = costheta*X0_MAX+sintheta*Y0_MAX;
@@ -188,25 +192,28 @@ int main(int argn, char * argv[]) {
 	
 	double wire_position[55][400];//Let's keep this: simpler, more robust
 	for(int i = 1; i <= nChamberPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
       		for(int j = 1; j <= plane.nelem[i]; ++j){
-          		double pos = (j - (plane.nelem[i]+1.)/2.)*plane.spacing[i] + plane.xoffset[i] + plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.deltaW_[i*9];
+          		double pos = (j - (plane.nelem[i]+1.)/2.)*plane.spacing[i] + plane.xoffset[i] + plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + deltaW_det[i][0];
+          		//plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
-          		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9];
+          		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + deltaW_det[i][0];
+          		//plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes+1; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
-             		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9+moduleID];
+             		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + deltaW_det[i][moduleID];
+             		//plane.deltaW_[i*9+moduleID];
 			wire_position[i][j] = pos;
 		}
 		
