@@ -1,5 +1,5 @@
 //#define GLDISPLAY 1
-//#define E1039 1
+#define E1039 1
 //#define DEBUG 1
 #define USE_DET_RESOL 1
 //#define SAVE_ALL_TRACKS 1
@@ -173,5 +173,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 414;
+  __host__ __device__ constexpr unsigned int EvRef = 13;
 }
