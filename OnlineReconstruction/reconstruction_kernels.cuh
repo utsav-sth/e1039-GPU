@@ -2347,6 +2347,8 @@ __global__ void gKernel_Global_tracking(
 				
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
 				
+				
+				
 				y0 = Par[0];
 				ty = Par[1];
 
@@ -2356,7 +2358,7 @@ __global__ void gKernel_Global_tracking(
 				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
 				
 				//check for 
-				if(!check_target_pointing_quick(x0, tx, y0, ty, invP, charge))continue;
+				//if(!check_target_pointing_quick(x0, tx, y0, ty, invP, charge))continue;
 				
 				// matching hodoscope here!
 				stid = 0;//1-1
@@ -2403,6 +2405,7 @@ __global__ void gKernel_Global_tracking(
 				if(chi2>10000.f)continue;
 				
 				//adjust parameters here?
+				
 				
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && Tracks.hits_chan(i, 4)==13 && Tracks.hits_chan(i, 5)==13 && Tracks.hits_chan(i, 6)==30 && Tracks.hits_chan(i, 7)==30 && Tracks.hits_chan(i, 8)==36 && Tracks.hits_chan(i, 9)==36 && Tracks.hits_chan(i, 10)==40 && Tracks.hits_chan(i, 11)==41 ){
