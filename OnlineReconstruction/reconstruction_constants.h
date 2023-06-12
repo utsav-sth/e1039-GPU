@@ -72,7 +72,7 @@ namespace geometry{
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
 	__device__ constexpr float KMAGSTR = -0.951;
 	__device__ constexpr float FMAGSTR = -1.054;
-	__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
+	__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054 = -3.066086
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr float Z_FMAG_BEND = 251.4;
@@ -156,7 +156,11 @@ namespace selection{
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 	__host__ __device__ constexpr float merge_thres = 0.015;
-	__device__ constexpr float rejectwin[4] = {1.5, 2.0, 1.8, 1.8};
+	__host__ __device__ constexpr float rejectwin[4] = {1.5, 2.0, 1.8, 1.8};
+	__host__ __device__ constexpr float x_vtx_cut = 15.0;
+	__host__ __device__ constexpr float y_vtx_cut = 25.0;
+	__host__ __device__ constexpr float tx_vtx_cut = 0.15;
+	__host__ __device__ constexpr float ty_vtx_cut = 0.1;
 #ifdef E1039
 	//__device__ constexpr float rejectwin[4] = {0.12, 0.15, 0.16, 0.14};
 #else

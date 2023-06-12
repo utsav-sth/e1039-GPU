@@ -1594,7 +1594,7 @@ __global__ void gKernel_YZ_tracking(
 				err_ty = ParErr[1];
 				
 				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
-				
+								
 #ifdef PROP_Y_MATCH
 				//prop matching
 				nprop = 0;
@@ -2355,6 +2355,9 @@ __global__ void gKernel_Global_tracking(
 				
 				if(fabs(y0)>Y0_MAX || fabs(ty)>TY_MAX)continue;
 				
+				//check for 
+				if(!check_target_pointing_quick(x0, tx, y0, ty, invP, charge))continue;
+				
 				// matching hodoscope here!
 				stid = 0;//1-1
 				maskhodo = 0;
@@ -2398,6 +2401,9 @@ __global__ void gKernel_Global_tracking(
 				//chi2 fit...
 				chi2+= chi2_track(nhits_x+nhits_uv, residuals, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 				if(chi2>10000.f)continue;
+				
+				//adjust parameters here?
+				
 #ifdef DEBUG
 //				if(blockIdx.x==debug::EvRef && Tracks.hits_chan(i, 0)==29 && Tracks.hits_chan(i, 1)==30 && Tracks.hits_chan(i, 2)==11 && Tracks.hits_chan(i, 3)==11 && Tracks.hits_chan(i, 4)==13 && Tracks.hits_chan(i, 5)==13 && Tracks.hits_chan(i, 6)==30 && Tracks.hits_chan(i, 7)==30 && Tracks.hits_chan(i, 8)==36 && Tracks.hits_chan(i, 9)==36 && Tracks.hits_chan(i, 10)==40 && Tracks.hits_chan(i, 11)==41 ){
 //					chi2 = chi2_track(nhits_x+nhits_uv, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty, true);

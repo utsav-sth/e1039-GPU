@@ -1113,6 +1113,42 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 }
 
 
+// -------------------------------------- //
+// functions to check the track at target //
+// -------------------------------------- //
+
+__device__ float tx_tgt_(const float tx, const float invp, const short charge)
+{
+	return -charge*(0.0178446+2.56307*invp)+tx;
+}
+
+__device__ float x0_tgt_(const float x0, const float invp, const short charge)
+{
+	return charge*(3.78335+1010.71*invp)+x0;
+}
+
+__device__ float z_min_(const float x0_tgt, const float tx_tgt, const float y0, const float ty)
+{	
+	return -(x0_tgt*tx_tgt + y0*ty)/(tx_tgt*tx_tgt + ty*ty);
+}
+
+
+__device__ bool check_target_pointing_quick(const float x0, const float tx, const float y0, const float ty, const float invp, const short charge)
+{
+	float tx_tgt = tx_tgt_(tx, invp, charge);
+	float x0_tgt = tx_tgt_(x0, invp, charge);
+	
+	float z_min = z_min_(x0_tgt, tx_tgt, y0, ty);
+	float x_tgt = x_trk(x0_tgt, tx_tgt, z_min);
+	float y_tgt = y_trk(y0, ty, z_min);
+	
+	if(fabs(x_tgt)<=selection::x_vtx_cut && fabs(y_tgt)<=selection::y_vtx_cut && fabs(tx_tgt)<=selection::tx_vtx_cut && fabs(ty)<=selection::ty_vtx_cut){
+		return true;
+	}
+	return false;
+}
+
+
 
 
 #ifdef KALMAN_TRACKING
