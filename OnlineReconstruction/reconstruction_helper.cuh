@@ -1127,6 +1127,7 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 }
 
 
+#ifdef EXTRASTUFF
 
 __device__ float delta_tx(const float delta_x0)
 {
@@ -1264,7 +1265,7 @@ __device__ bool check_target_pointing_quick(const float x0, const float tx, cons
 	return false;
 }
 
-
+#endif
 
 
 #ifdef KALMAN_TRACKING

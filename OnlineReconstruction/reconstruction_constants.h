@@ -2,6 +2,7 @@
 //#define E1039 1
 //#define DEBUG 1
 #define USE_DET_RESOL 1
+#define KMAG_ON 1
 //#define SAVE_ALL_TRACKS 1
 #define REFINED_ER
 #define PROP_Y_MATCH 1
@@ -42,13 +43,14 @@ const float PZ_MAX = 150.0;//GeV
 
 const float InvSqrt12 = 0.288675135;
 
+#ifdef EXTRASTUFF
 __device__ constexpr float gauss_quantiles[101] = {-3.003f, -2.32567f, -2.05594f, -1.88212f, -1.75025f, -1.64236f, -1.55245f, -1.47453f, -1.4026f, -1.34266f, -1.28272f, -1.22877f, -1.17483f, -1.12687f, -1.07892f, -1.03696f, -0.995005f, -0.953047f, -0.917083f, -0.881119f, -0.839161f, -0.809191f, -0.773227f, -0.737263f, -0.707293f, -0.677323f, -0.641359f, -0.611389f, -0.581419f, -0.551449f, -0.527473f, -0.497502f, -0.467532f, -0.437562f, -0.413586f, -0.383616f, -0.35964f, -0.32967f, -0.305694f, -0.281718f, -0.251748f, -0.227772f, -0.203796f, -0.173826f, -0.14985f, -0.125874f, -0.101898f, -0.0719281f, -0.047952f, -0.023976f, 0.0f, 0.023976f, 0.047952f, 0.0779221f, 0.101898f, 0.125874f, 0.14985f, 0.173826f, 0.203796f, 0.227772f, 0.251748f, 0.281718f, 0.305694f, 0.32967f, 0.35964f, 0.383616f, 0.413586f, 0.437562f, 0.467532f, 0.497502f, 0.527473f, 0.551449f, 0.581419f, 0.611389f, 0.641359f, 0.677323f, 0.707293f, 0.737263f, 0.773227f, 0.809191f, 0.839161f, 0.881119f, 0.917083f, 0.953047f, 0.995005f, 1.03696f, 1.07892f, 1.12687f, 1.17483f, 1.22877f, 1.28272f, 1.34266f, 1.4026f, 1.47453f, 1.55245f, 1.64236f, 1.75025f, 1.88212f, 2.04995f, 2.32567f, 3.003};
 
 const float deltax0_ = 0.221572;
 const float deltax0_sigma = 0.472572;
 const float deltay0_ = 0.0387412;
 const float deltay0_sigma = 0.770639;
-
+#endif
 
 namespace geometry{
 #ifdef E1039
@@ -76,20 +78,30 @@ namespace geometry{
 	__device__ constexpr float SAGITTA_DUMP_WIDTH = 0.3;
 //	__device__ constexpr float X_KMAG_BEND = 144.78;
 //	__device__ constexpr float Y_KMAG_BEND = 101.6;
+#ifdef E1039
 	__device__ constexpr float PT_KICK_KMAG = -0.3819216;//PT_KICK_MAG*KMAGSTR = 0.4016* -0.951;
+#ifdef KMAG_ON
 	__device__ constexpr float KMAGSTR = -0.951;
+#else
+	__device__ constexpr float KMAGSTR = 0.0;
+#endif
 	__device__ constexpr float FMAGSTR = -1.054;
-	__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054 = -3.066086
+	//__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054 = -3.066086
 	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr float Z_FMAG_BEND = 251.4;
-#ifdef E1039
 	__device__ constexpr float Z_TARGET = -300.;
 #else
-//	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
-//	__device__ constexpr float FMAGSTR = -1.044;
-//	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
-//	__device__ constexpr float Z_KMAG_BEND = 1041.8;
+	__device__ constexpr float PT_KICK_KMAG = -0.4141;//PT_KICK_MAG*KMAGSTR = 0.404* -1.025;
+#ifdef KMAG_ON
+	__device__ constexpr float KMAGSTR = -1.025;
+#else
+	__device__ constexpr float KMAGSTR = 0.0;
+#endif
+	__device__ constexpr float FMAGSTR = -1.044;
+	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
+	__device__ constexpr float Z_KMAG_BEND = 1041.8;
+	__device__ constexpr float Z_FMAG_BEND = 251.4;
 	__device__ constexpr float Z_TARGET = -129.54;
 #endif
 	__device__ constexpr float FMAG_LENGTH = 502.92;
@@ -132,7 +144,7 @@ namespace geometry{
 		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 96, 100, 104, 108, 112, 116, 120, 124, 128, 134, -1, -1, -1, -1}}, // d3pu
         	 {{1, 4, 8, 12, 16, 20, 24, 28, 31, 35, 39, 43, 47, 51, 55, 59, 62, 66, 70, 74, 78, 82, 86, 90, 94, 97, 101, 105, -1, -1, -1, -1}, 
 		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 97, 100, 104, 108, 112, 116, 120, 124, 128, 134, -1, -1, -1, -1}}} // d3pv
-        	};
+        	};//TODO: reduce this monster to just what is needed/used
 }
 
 namespace datasizes{
@@ -155,9 +167,9 @@ namespace datasizes{
 }
 
 namespace selection{
-	__host__ __device__ constexpr short MaxD0Multiplicity = 350;
-	__host__ __device__ constexpr short MaxD2Multiplicity = 200;
-	__host__ __device__ constexpr short MaxD3Multiplicity = 150;
+	__host__ __device__ constexpr short MaxD0Multiplicity = 140;
+	__host__ __device__ constexpr short MaxD2Multiplicity = 80;
+	__host__ __device__ constexpr short MaxD3Multiplicity = 60;
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
 	__host__ __device__ constexpr float chi2dofmax = 250;
@@ -184,5 +196,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 414;
+  __host__ __device__ constexpr unsigned int EvRef = 11;
 }
