@@ -1087,6 +1087,20 @@ __device__ float residual(const short detid, const short elid, const float drift
 	return drift*sign - dca;
 }
 
+__device__ float residual(float const p1x, float const p1y, float const p1z,
+			float const deltapx, float const deltapy, float const deltapz,
+			const float drift, const short sign, 
+			const float x0, const float y0, const float tx, const float ty)
+{
+	float den2 = deltapy*deltapy*(1+tx*tx) + deltapx*deltapx*(1+ty*ty) - 2*( ty*deltapx*deltapz + ty*deltapy*deltapz + tx*ty*deltapx*deltapy);
+	float dca = ( (ty*deltapz-deltapy)*(p1x-x0) + (deltapx-tx*deltapz)*(p1y-y0) + p1z*(tx*deltapy-ty*deltapx) ) / sqrtf(den2);
+
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf("x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f p1x %1.4f p1y %1.4f p1z %1.4f deltapx %1.4f deltapy %1.4f deltapz %1.4f den2 %1.4f dca %1.4f drift %1.4f sign %d \n", x0, y0, tx, ty, p1x, p1y, p1z, deltapx, deltapy, deltapz, den2, dca, drift, sign);
+#endif	
+	return drift*sign - dca;
+}
+
 
 __device__ float chi2_track(size_t const n_points, float* residuals,
 			float* const driftdist, short* const sign, float* const resolutions,
@@ -1105,14 +1119,153 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
 		residuals[i] = driftdist[i]*sign[i] - dca;
 		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
-#ifdef DEBUG
-		if(blockIdx.x==debug::EvRef)printf(" p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
-#endif
+//#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf(" thread %d p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", threadIdx.x, p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
+//#endif
 	}
 	return chi2;
 }
 
 
+#ifdef EXTRASTUFF
+
+__device__ float delta_tx(const float delta_x0)
+{
+  return -1.41477e-05-0.00054203*delta_x0;
+}
+__device__ float delta_ty(const float delta_y0)
+{
+  return -1.71247e-05-0.00071988*delta_y0;
+}
+// float delta_ty(const float delta_y0)
+// {
+//   return -0.001*delta_y0;
+// }
+__device__ float invp_ratio(const float delta_x0, const short charge)
+{
+  if(charge>0){
+    return 1.00317-0.1043*delta_x0;
+  }else{
+    return 0.996416+0.1032*delta_x0;
+  }
+}
+
+__device__ void adjust_track_parameters(size_t const n_points, float* residuals,
+				short* const detid, float* const drift, short* const sign, float* const resolutions,
+				float* const p1x, float* const p1y, float* const p1z,
+				float* const deltapx, float* const deltapy, float* const deltapz,
+				const float x0, const float y0, const float tx, const float ty, const float invp, const short charge,
+				float &x0_new, float &y0_new, float &tx_new, float &ty_new, float &invp_new)
+{
+	short nn, mm, l;
+	float x0_mod, tx_mod, y0_mod, ty_mod, invp_mod, x0_st1_mod, tx_st1_mod;
+ 	float dx0, dy0;
+	float chi2, chi2_min;
+		
+	for(nn = 0; nn<=100; nn++){
+		dx0 = deltax0_+deltax0_sigma*(gauss_quantiles[nn]);
+		x0_mod = x0+dx0;
+		tx_mod = tx+delta_tx(dx0);
+		invp_mod = invp/invp_ratio(dx0, charge);
+		calculate_x0_tx_st1(x0_mod, tx_mod, invp_mod, charge, x0_st1_mod, tx_st1_mod);
+		
+		chi2 = 0;
+		
+		for(l = 0; l<n_points; l++){
+		  if(detid[l]<12){
+		    residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_st1_mod, y0, tx_st1_mod, ty);
+		     //if(fabs(residuals[l])>fabs(residuals[l]-2*sign[l]*drift[l]))residuals[l] = resid_mod[l]-2*sign[l]*drift[l];
+		  }else{
+		    residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_mod, y0, tx_mod, ty);
+		    //if(fabs(residuals[l])>fabs(residuals[l]-2*sign[l]*drift[l]))residuals[l] = resid_mod[l]-2*sign[l]*drift[l];
+		  }
+		  chi2+= residuals[l]*residuals[l]/resolutions[l]/resolutions[l];
+		}
+		
+		if(chi2<chi2_min){
+			chi2_min = chi2;
+		    	x0_new = x0_mod;
+			tx_new = tx_mod;
+			invp_new = invp_mod;
+		}
+	}
+
+	calculate_x0_tx_st1(x0_new, tx_new, invp_new, charge, x0_st1_mod, tx_st1_mod);
+	
+	for(nn = 0; nn<=100; nn++){
+		dy0 = deltay0_+deltay0_sigma*(gauss_quantiles[nn]);
+		y0_mod = x0+dy0;
+		
+		for(int mm = 0; mm<=10; mm++){
+	    		ty_mod = ty+delta_ty(dy0)+gauss_quantiles[mm*10]*0.0005f;
+			chi2 = 0;
+			
+			for(l = 0; l<n_points; l++){
+				if(detid[l]<12){
+					residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_st1_mod, y0_mod, tx_st1_mod, ty_mod);
+					//if(fabs(residuals[l])>fabs(residuals[l]-2*sign[l]*drift[l]))residuals[l] = resid_mod[l]-2*sign[l]*drift[l];
+				}else{
+		    			residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_mod, y0_new, tx_new, ty_mod);
+					//if(fabs(residuals[l])>fabs(residuals[l]-2*sign[l]*drift[l]))residuals[l] = resid_mod[l]-2*sign[l]*drift[l];
+				}
+				chi2+= residuals[l]*residuals[l]/resolutions[l]/resolutions[l];
+			}
+		
+			if(chi2<chi2_min){
+				chi2_min = chi2;
+			    	y0_new = y0_mod;
+				ty_new = ty_mod;
+			}
+		}
+	}
+
+	
+	for(l = 0; l<n_points; l++){
+		if(detid[l]<12){
+			residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_st1_mod, y0_new, tx_st1_mod, ty_mod);
+		}else{
+			residuals[l] = residual(p1x[l], p1y[l], p1z[l], deltapx[l], deltapy[l], deltapz[l], drift[l], sign[l], x0_new, y0_new, tx_new, ty_mod);
+		}
+	}
+}
+
+
+// -------------------------------------- //
+// functions to check the track at target //
+// -------------------------------------- //
+
+__device__ float tx_tgt_(const float tx, const float invp, const short charge)
+{
+	return -charge*(0.0178446+2.56307*invp)+tx;
+}
+
+__device__ float x0_tgt_(const float x0, const float invp, const short charge)
+{
+	return charge*(3.78335+1010.71*invp)+x0;
+}
+
+__device__ float z_min_(const float x0_tgt, const float tx_tgt, const float y0, const float ty)
+{	
+	return -(x0_tgt*tx_tgt + y0*ty)/(tx_tgt*tx_tgt + ty*ty);
+}
+
+
+__device__ bool check_target_pointing_quick(const float x0, const float tx, const float y0, const float ty, const float invp, const short charge)
+{
+	float tx_tgt = tx_tgt_(tx, invp, charge);
+	float x0_tgt = x0_tgt_(x0, invp, charge);
+	
+	float z_min = z_min_(x0_tgt, tx_tgt, y0, ty);
+	float x_tgt = x_trk(x0_tgt, tx_tgt, z_min);
+	float y_tgt = y_trk(y0, ty, z_min);
+	
+	if(fabs(x_tgt)<=selection::x_vtx_cut && fabs(y_tgt)<=selection::y_vtx_cut && fabs(tx_tgt)<=selection::tx_vtx_cut && fabs(ty)<=selection::ty_vtx_cut){
+		return true;
+	}
+	return false;
+}
+
+#endif
 
 
 #ifdef KALMAN_TRACKING
