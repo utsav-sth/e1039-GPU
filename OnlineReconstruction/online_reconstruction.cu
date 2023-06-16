@@ -28,6 +28,7 @@
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TSpline.h>
 #ifdef ROOTSAVE
 #include <TRandom.h>
 #include <TMatrixD.h>
@@ -102,6 +103,7 @@ int main(int argn, char * argv[]) {
 
 	TString inputFile;
 	TString inputGeom;
+	TString inputCali;
 	TString outputFile;
 	inputFile = argv[1];
 	inputGeom = argv[2];	
@@ -116,13 +118,16 @@ int main(int argn, char * argv[]) {
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
 	cout<<"with geometry: "<<argv[2]<<endl;
-	cout<<"Writing "<<argv[3]<<endl;
+	cout<<"with calibration: "<<argv[3]<<endl;
+	cout<<"Writing "<<argv[4]<<endl;
 	
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane;
 	
 	float deltaW_det[nDetectors][9];
+	TSpline3* rtProfile[nDetectors];
+	float tmin[nDetectors], tmax[nDetectors];
 	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
@@ -219,6 +224,32 @@ int main(int argn, char * argv[]) {
 		
 	}
 
+	ifstream in_cali(inputCali.Data());
+	bool calibration_loaded = false;
+	char buf[300];
+	int iBin, nBin, detectorID;
+	double tmin_temp, tmax_temp;
+	string det_name;
+	double R[500], T[500];
+	if(in_cali){
+		calibration_loaded = true;
+		while(in_cali.getline(buf, 100)){
+			istringstream detector_info(buf);
+			detector_info >> detectorID >> nBin >> tmin_temp >> tmax_temp >> det_name;
+			tmax[detectorID] = tmax_temp;
+			tmin[detectorID] = tmin_temp;
+			
+			for(int i = 0; i < nBin; i++){
+				in_cali.getline(buf, 100);
+				istringstream cali_line(buf);
+				cali_line >> iBin >> T[i] >> R[i];
+			}
+			if(nBin > 0)rtProfile[detectorID] = new TSpline3(det_name.c_str(), T, R, nBin, "b1e1");
+		}
+	}
+	
+	
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
