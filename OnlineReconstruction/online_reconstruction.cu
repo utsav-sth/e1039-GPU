@@ -106,13 +106,14 @@ int main(int argn, char * argv[]) {
 	TString inputCali;
 	TString outputFile;
 	inputFile = argv[1];
-	inputGeom = argv[2];	
-	outputFile = argv[3];
+	inputGeom = argv[2];
+	inputCali = argv[3];
+	outputFile = argv[4];
 
 	//by default we should use e1039 
 	bool e906data = true;
 #ifdef E1039
-	if(argn>4)e906data = atoi(argv[4]);
+	if(argn>5)e906data = atoi(argv[5]);
 #endif
 	
 	cout<<"Running "<<argv[0]<<endl;
@@ -329,7 +330,6 @@ int main(int argn, char * argv[]) {
 	}
 #endif
 	
-	
 	short detid;
 	
 	int nhits;
@@ -337,6 +337,7 @@ int main(int argn, char * argv[]) {
 	int hit_ctr[nDetectors];
 	int firstevent;
 	bool isFPGAtriggered;
+	float drift_distance;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -392,6 +393,16 @@ int main(int argn, char * argv[]) {
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
 				detid = (rawEvent->fAllHits[m]).detectorID;
 				nhits = rawEvent->fNHits[detid];
+				drift_distance = (rawEvent->fAllHits[m]).driftDistance;
+				if( (detid<31 || detid>46) && calibration_loaded){
+					if((rawEvent->fAllHits[m]).tdcTime<tmin[detid]){
+						drift_distance = plane.cellwidth[detid]*0.5;
+					}else if((rawEvent->fAllHits[m]).tdcTime>tmax[detid]){
+						drift_distance = 0;
+					}else{
+						rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+					}
+				}
 #ifdef DEBUG
 				if(rawEvent->fEventID==debug::EvRef+firstevent){
 					cout << detid << " " << (rawEvent->fAllHits[m]).elementID << " " 
