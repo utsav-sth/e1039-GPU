@@ -408,7 +408,7 @@ int main(int argn, char * argv[]) {
 					}else if((rawEvent->fAllHits[m]).tdcTime>tmax[detid]){
 						drift_distance = 0;
 					}else{
-						rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+						drift_distance = rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
 					}
 				}
 #ifdef DEBUG
@@ -430,7 +430,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float)wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float)(rawEvent->fAllHits[m]).driftDistance;
 					hit_ctr[detid]++;
 				}
 
@@ -451,7 +452,7 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = 0.0f;
 					hit_ctr[detid]++;
 				}
 				
@@ -466,7 +467,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float) (rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float) (rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float) (rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float) (rawEvent->fAllHits[m]).driftDistance;
 #ifdef DEBUG					
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])] << " " << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] << endl;
 #endif
