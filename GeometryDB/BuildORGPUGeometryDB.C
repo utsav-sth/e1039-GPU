@@ -2,8 +2,9 @@
 #define nHodoPlanes 16
 #define nPropPlanes 8
 #define nDetectors (nChamberPlanes+nHodoPlanes+nPropPlanes+1)
+#define RESOLUTION_DC 1.6
 
-void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const char* outgeomfile)
+void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const char* alignhodo, const char* alignprop, const char* outgeomfile)
 {
   //"Member" Arrays declaration:
   // as defined at l.64-119 of GeomSvc.h
@@ -156,7 +157,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
   double resolution_;
   
   char buf[500];
-  for(int k = 1; k <= nChamberPlanes+nHodoPlanes; k++){
+  for(int k = 0; k <= nChamberPlanes+nHodoPlanes; k++){
     _geom_schema.getline(buf, 500);
     if (buf[0] == '#') continue;
     istringstream stringBuf(buf);
@@ -197,6 +198,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
 
     //update
     
+    bool isprime = false;
     if(detectorName[detectorID_].find("X") != string::npos || detectorName[detectorID_].find("T") != string::npos || detectorName[detectorID_].find("B") != string::npos)
       {
 	planeType[detectorID_] = 1;
@@ -213,19 +215,22 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
       {
 	planeType[detectorID_] = 4;
       }
+    if(detectorName[detectorID_].find("p") != string::npos)isprime = true;
+    
+    cout << "detector " << detectorID[detectorID_] << " type " << planeType[detectorID_] << " isprime " << isprime << endl;
   }
 
   cout << "loaded survey parameters" << endl;
   
   fstream _align_mille;
-  _align_mille.open(alignfile, ios::in);
+  _align_mille.open(aligncham, ios::in);
   
   for(int k = 1; k <= nChamberPlanes; k++){
     _align_mille.getline(buf, 100);
     istringstream stringBuf(buf);
     
     stringBuf >> deltaZ[k] >> rotZ[k] >> deltaW[k] >> resolution[k];
-    
+    resolution[k] = 0.04;
     deltaX[k] = deltaW[k]*costheta[k];
     deltaY[k] = deltaW[k]*sintheta[k];
 
@@ -242,6 +247,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
     tantheta[k] = tan(angleFromVert[k] + rZ[k]);
 
     wc[k] = xc[k]*costheta[k] + yc[k]*sintheta[k];
+
     /*
     rotM[k][0][0] = cos(rZ[k])*cos(rY[k]);
     rotM[k][0][1] = cos(rZ[k])*sin(rX[k])*sin(rY[k]) - cos(rX[k])*sin(rZ[k]);
@@ -279,6 +285,43 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
     */
   }
 
+  for(int k = 1; k <= nChamberPlanes; k+=2){
+    resolution[k] = RESOLUTION_DC*0.5*(resolution[k]+resolution[k+1]);
+    resolution[k+1] = resolution[k];
+  }
+
+  fstream _align_hodo;
+  _align_hodo.open(alignhodo, ios::in);
+  for(int k = nChamberPlanes+1; k <= nChamberPlanes+nHodoPlanes; k++){
+    _align_mille.getline(buf, 100);
+    istringstream stringBuf(buf);
+    
+    stringBuf >> deltaW[k];
+    
+    deltaX[k] = deltaW[k]*costheta[k];
+    deltaY[k] = deltaW[k]*sintheta[k];
+
+    xc[k] = x0[k]+deltaX[k];
+    yc[k] = y0[k]+deltaY[k];
+    zc[k] = z0[k]+deltaZ[k];
+
+    rX[k] = thetaX[k] + rotX[k];
+    rY[k] = thetaY[k] + rotY[k];
+    rZ[k] = thetaZ[k] + rotZ[k];
+
+    sintheta[k] = sin(angleFromVert[k] + rZ[k]);
+    costheta[k] = cos(angleFromVert[k] + rZ[k]);
+    tantheta[k] = tan(angleFromVert[k] + rZ[k]);
+
+    wc[k] = xc[k]*costheta[k] + yc[k]*sintheta[k];
+ }
+  
+  
+  fstream _align_prop;
+  _align_prop.open(alignprop, ios::in);
+
+  
+  
   cout << "loaded alignment" << endl;
 
   float p1x[nDetectors];
@@ -339,7 +382,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
     nVec[1] = uVec[2]*vVec[0] - vVec[2]*uVec[0];
     nVec[2] = uVec[0]*vVec[1] - vVec[0]*uVec[1];
 
-    cout << nElements[k] << endl;
+    // cout << nElements[k] << endl;
     // for(int l = 1; l<=nElements[k]; l++){
     //   TVectorD ep1(3), ep2(3);
     //   if(planeType[k] != 4) //special treatment for Y planes
@@ -360,6 +403,11 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
     double cellLength = fabs(y2[k] - y1[k])/cos(angleFromVert[k]);
     double hspacing = spacing[k]/cos(angleFromVert[k]);
     double hoffset = xoffset[k]/cos(angleFromVert[k]);
+    if(planeType[k]==4){
+      cellLength = fabs(x2[k] - x1[k])/sin(angleFromVert[k]);
+      hspacing = spacing[k]/sin(angleFromVert[k]);
+      hoffset = xoffset[k]/sin(angleFromVert[k]);
+   }
     sign = -1;
     ep1_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
     sign = +1;
@@ -381,8 +429,8 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
     dp1z[k] = (ep1_wN[2]-ep1_w1[2])/nElements[k];
 
     deltapx[k] = ep2_w1[0]-ep1_w1[0];
-    deltapx[k] = ep2_w1[1]-ep1_w1[1];
-    deltapx[k] = ep2_w1[2]-ep1_w1[2];
+    deltapy[k] = ep2_w1[1]-ep1_w1[1];
+    deltapz[k] = ep2_w1[2]-ep1_w1[2];
     
     // deltapx[k] = (  (ep1_wN[0]-ep1_w1[0])  )/nElements[k];
     // deltapy[k] = (  (ep1_wN[1]-ep1_w1[1])  )/nElements[k];
@@ -394,7 +442,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
   out << " ##  z_plane   N_elem  CellWidth   Spacing xoffset scalex  x_0   x1       x2        costheta        scaley      y_0        y1     y2          sintheta     resolution    p1x     p1y     p1z      deltapx deltapy deltapz  dp1x      dp1y        dp1z           deltaW " << endl;
   out << "## chambers" << endl;
   for(int k = 1; k<=nChamberPlanes; k++){
-    out << k << "\t" << z0[k] << "\t" << nElements[k] << "\t"
+    out << std::setprecision(8) << k << "\t" << zc[k] << "\t" << nElements[k] << "\t"
 	 << cellWidth[k] << "\t" << spacing[k]  << "\t"
 	 << xoffset[k] << "\t" << planeWidth[k] << "\t"
 	 << x0[k] << "\t" << x1[k] << "\t" << x2[k] << "\t"
@@ -407,7 +455,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
   }
   out << "## hodoscopes" << endl;
   for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++){
-    out << k << "\t" << z0[k] << "\t" << nElements[k] << "\t"
+    out << std::setprecision(8) << k << "\t" << zc[k] << "\t" << nElements[k] << "\t"
 	<< cellWidth[k] << "\t" << spacing[k]  << "\t"
 	<< xoffset[k] << "\t" << planeWidth[k] << "\t"
 	<< x0[k] << "\t" << x1[k] << "\t" << x2[k] << "\t"
@@ -420,7 +468,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* alignfile, const c
   }  
   // out << "## prop tubes" << endl;
   // for(int k = nChamberPlanes+nHodoPlanes+1; k<=nChamberPlanes+nHodoPlanes+nPropPlanes; k++){
-  //   out << k << "\t" << z0[k] << "\t" << nElements[k] << "\t"
+  //   out << std::setprecision(8) << k << "\t" << zc[k] << "\t" << nElements[k] << "\t"
   // 	 << cellWidth[k] << "\t" << spacing[k]  << "\t"
   // 	 << xoffset[k] << "\t" << planeWidth[k] << "\t"
   // 	 << x0[k] << "\t" << x1[k] << "\t" << x2[k] << "\t"

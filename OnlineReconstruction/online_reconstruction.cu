@@ -140,8 +140,14 @@ int main(int argn, char * argv[]) {
 	      std::istringstream iss;
 	      iss.str(buffer);
 	      //TODO: solve the mixing of x1, x2 / y1, y2
-	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      
+	//if(ipl<=30){
+	      //cout << ipl << " " << nelem << " " << cellwidth << " " << spacing << " " << xoffset << " " << scalex << " " << scaley << endl;
+	      //cout << z << " " << x0 << " " << x1 << " " << x2 << " " << costheta << " " << y0 << " " << y1 << " " << y2 << " " << sintheta << " " << resolution << endl; 
+	      //cout << p1x << " " << p1y << " " << p1z << " " << deltapx << " " << deltapy << " " << deltapz << " " << dp1x << " " << dp1y << " " << dp1z << endl; 
+	//}
 	      plane.z[ipl] = z;
 	      plane.nelem[ipl] = nelem;
 	      plane.cellwidth[ipl] = cellwidth;
@@ -176,10 +182,12 @@ int main(int argn, char * argv[]) {
 			iss >> deltaW_;
 			deltaW_det[ipl][k] = deltaW_;
 			//plane.deltaW_[ipl*9+k] = deltaW_;
-		}
+			//cout << deltaW_ << " ";
+		}//cout << endl;
 	      }else{
 		iss >> deltaW_;
 		deltaW_det[ipl][0] = deltaW_;
+		//cout << deltaW_ << endl;
 		//plane.deltaW_[ipl*9] = deltaW_;
 	      }
 	      plane.slope_max[ipl] = costheta*TX_MAX+sintheta*TY_MAX;
@@ -224,7 +232,7 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-
+	
 	ifstream in_cali(inputCali.Data());
 	bool calibration_loaded = false;
 	char buf[300];
@@ -809,7 +817,7 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 
 
-	gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -826,12 +834,12 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_BackTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_BackTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -863,29 +871,29 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
 
-	gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
-		device_gHits,
-		device_gTracks,
-		device_gPlane->z,
+	//gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+	//	device_gHits,
+	//	device_gTracks,
+	//	device_gPlane->z,
 #ifdef DEBUG
-		device_gEvent->EventID,
+	//	device_gEvent->EventID,
 #endif
-		device_gEvent->HasTooManyHits);
+	//	device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
