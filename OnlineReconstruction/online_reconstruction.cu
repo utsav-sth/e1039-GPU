@@ -28,6 +28,7 @@
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TSpline.h>
 #ifdef ROOTSAVE
 #include <TRandom.h>
 #include <TMatrixD.h>
@@ -102,27 +103,32 @@ int main(int argn, char * argv[]) {
 
 	TString inputFile;
 	TString inputGeom;
+	TString inputCali;
 	TString outputFile;
 	inputFile = argv[1];
-	inputGeom = argv[2];	
-	outputFile = argv[3];
+	inputGeom = argv[2];
+	inputCali = argv[3];
+	outputFile = argv[4];
 
 	//by default we should use e1039 
 	bool e906data = true;
 #ifdef E1039
-	if(argn>4)e906data = atoi(argv[4]);
+	if(argn>5)e906data = atoi(argv[5]);
 #endif
 	
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
 	cout<<"with geometry: "<<argv[2]<<endl;
-	cout<<"Writing "<<argv[3]<<endl;
+	cout<<"with calibration: "<<argv[3]<<endl;
+	cout<<"Writing "<<argv[4]<<endl;
 	
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane;
 	
 	float deltaW_det[nDetectors][9];
+	TSpline3* rtProfile[nDetectors];
+	float tmin[nDetectors], tmax[nDetectors];
 	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
@@ -134,8 +140,8 @@ int main(int argn, char * argv[]) {
 	      std::istringstream iss;
 	      iss.str(buffer);
 	      //TODO: solve the mixing of x1, x2 / y1, y2
-	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      
 	      plane.z[ipl] = z;
 	      plane.nelem[ipl] = nelem;
 	      plane.cellwidth[ipl] = cellwidth;
@@ -170,10 +176,12 @@ int main(int argn, char * argv[]) {
 			iss >> deltaW_;
 			deltaW_det[ipl][k] = deltaW_;
 			//plane.deltaW_[ipl*9+k] = deltaW_;
-		}
+			//cout << deltaW_ << " ";
+		}//cout << endl;
 	      }else{
 		iss >> deltaW_;
 		deltaW_det[ipl][0] = deltaW_;
+		//cout << deltaW_ << endl;
 		//plane.deltaW_[ipl*9] = deltaW_;
 	      }
 	      plane.slope_max[ipl] = costheta*TX_MAX+sintheta*TY_MAX;
@@ -218,7 +226,33 @@ int main(int argn, char * argv[]) {
 		}
 		
 	}
-
+	
+	ifstream in_cali(inputCali.Data());
+	bool calibration_loaded = false;
+	char buf[300];
+	int iBin, nBin, detectorID;
+	double tmin_temp, tmax_temp;
+	string det_name;
+	double R[500], T[500];
+	if(in_cali){
+		calibration_loaded = true;
+		while(in_cali.getline(buf, 100)){
+			istringstream detector_info(buf);
+			detector_info >> detectorID >> nBin >> tmin_temp >> tmax_temp >> det_name;
+			tmax[detectorID] = tmax_temp;
+			tmin[detectorID] = tmin_temp;
+			
+			for(int i = 0; i < nBin; i++){
+				in_cali.getline(buf, 100);
+				istringstream cali_line(buf);
+				cali_line >> iBin >> T[i] >> R[i];
+			}
+			if(nBin > 0)rtProfile[detectorID] = new TSpline3(det_name.c_str(), T, R, nBin, "b1e1");
+		}
+	}
+	
+	
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
@@ -298,7 +332,6 @@ int main(int argn, char * argv[]) {
 	}
 #endif
 	
-	
 	short detid;
 	
 	int nhits;
@@ -306,6 +339,7 @@ int main(int argn, char * argv[]) {
 	int hit_ctr[nDetectors];
 	int firstevent;
 	bool isFPGAtriggered;
+	float drift_distance;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -361,6 +395,16 @@ int main(int argn, char * argv[]) {
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
 				detid = (rawEvent->fAllHits[m]).detectorID;
 				nhits = rawEvent->fNHits[detid];
+				drift_distance = (rawEvent->fAllHits[m]).driftDistance;
+				if( (detid<31 || detid>46) && calibration_loaded){
+					if((rawEvent->fAllHits[m]).tdcTime<tmin[detid]){
+						drift_distance = plane.cellwidth[detid]*0.5;
+					}else if((rawEvent->fAllHits[m]).tdcTime>tmax[detid]){
+						drift_distance = 0;
+					}else{
+						drift_distance = rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+					}
+				}
 #ifdef DEBUG
 				if(rawEvent->fEventID==debug::EvRef+firstevent){
 					cout << detid << " " << (rawEvent->fAllHits[m]).elementID << " " 
@@ -380,7 +424,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float)wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float)(rawEvent->fAllHits[m]).driftDistance;
 					hit_ctr[detid]++;
 				}
 
@@ -401,7 +446,7 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = 0.0f;
 					hit_ctr[detid]++;
 				}
 				
@@ -416,7 +461,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float) (rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float) (rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float) (rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float) (rawEvent->fAllHits[m]).driftDistance;
 #ifdef DEBUG					
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])] << " " << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] << endl;
 #endif
@@ -767,7 +813,7 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
 
 
-	gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -821,7 +867,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
 
-	gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -838,12 +884,12 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	//gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
