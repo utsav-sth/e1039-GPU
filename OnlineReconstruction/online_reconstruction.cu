@@ -884,12 +884,12 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	//gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	//gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
