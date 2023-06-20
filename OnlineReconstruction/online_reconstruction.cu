@@ -141,13 +141,7 @@ int main(int argn, char * argv[]) {
 	      iss.str(buffer);
 	      //TODO: solve the mixing of x1, x2 / y1, y2
 	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
 	      
-	//if(ipl<=30){
-	      //cout << ipl << " " << nelem << " " << cellwidth << " " << spacing << " " << xoffset << " " << scalex << " " << scaley << endl;
-	      //cout << z << " " << x0 << " " << x1 << " " << x2 << " " << costheta << " " << y0 << " " << y1 << " " << y2 << " " << sintheta << " " << resolution << endl; 
-	      //cout << p1x << " " << p1y << " " << p1z << " " << deltapx << " " << deltapy << " " << deltapz << " " << dp1x << " " << dp1y << " " << dp1z << endl; 
-	//}
 	      plane.z[ipl] = z;
 	      plane.nelem[ipl] = nelem;
 	      plane.cellwidth[ipl] = cellwidth;

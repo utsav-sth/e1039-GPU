@@ -231,7 +231,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
       }
     if(detectorName[detectorID_].find("p") != string::npos)isprime = true;
     
-    cout << "detector " << detectorID[detectorID_] << " type " << planeType[detectorID_] << " isprime " << isprime << endl;
+    //cout << "detector " << detectorID[detectorID_] << " type " << planeType[detectorID_] << " isprime " << isprime << endl;
   }
 
   cout << "loaded survey parameters" << endl;
@@ -262,7 +262,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
 
     wc[k] = xc[k]*costheta[k] + yc[k]*sintheta[k];
     
-    if(k<10)cout << x0[k] << " "<< y0[k] << " "<< z0[k] << " " << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << endl;
+    //if(k<10)cout << x0[k] << " "<< y0[k] << " "<< z0[k] << " " << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << endl;
     /*
     rotM[k][0][0] = cos(rZ[k])*cos(rY[k]);
     rotM[k][0][1] = cos(rZ[k])*sin(rX[k])*sin(rY[k]) - cos(rX[k])*sin(rZ[k]);
@@ -431,8 +431,8 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     sign = +1;
     ep2_wN = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
 
-    if(detectorID[k]<3)
-      cout << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << cellLength << " " << hspacing << " " << hoffset << endl;
+    //if(detectorID[k]<3)
+      //cout << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << cellLength << " " << hspacing << " " << hoffset << endl;
       
     if(planeType[k]==4){
       cellLength = fabs(x2[k] - x1[k])/sin(angleFromVert[k]);
@@ -462,6 +462,8 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     // deltapy[k] = ep2_w1[1]-ep1_w1[1];
     // deltapz[k] = ep2_w1[2]-ep1_w1[2];
 
+    if(k<=6)cout << ep2_w1[0]-ep1_w1[0] << " " << ep2_w1[1]-ep1_w1[1] << " " << ep2_w1[2]-ep1_w1[2] << " " << sqrt( (ep2_w1[0]-ep1_w1[0])*(ep2_w1[0]-ep1_w1[0]) + (ep2_w1[1]-ep1_w1[1])*(ep2_w1[1]-ep1_w1[1]) + (ep2_w1[2]-ep1_w1[2])*(ep2_w1[2]-ep1_w1[2]) ) << endl;
+    
     deltapx[k] = 0;
     deltapy[k] = 0;
     deltapz[k] = 0;
@@ -480,15 +482,17 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
 	sign = +1;
 	ep2_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
       }
-      deltapx[k]+= ep2_w1[0]-ep1_w1[0];
-      deltapy[k]+= ep2_w1[1]-ep1_w1[1];
-      deltapz[k]+= ep2_w1[2]-ep1_w1[2];
+      deltapx[k]+= ep2[0]-ep1[0];
+      deltapy[k]+= ep2[1]-ep1[1];
+      deltapz[k]+= ep2[2]-ep1[2];
 
     }
     
     deltapx[k]/= nElements[k];
     deltapy[k]/= nElements[k];
     deltapz[k]/= nElements[k];
+
+    if(k<=6)cout << deltapx[k] << " " << deltapy[k] << " " << deltapz[k] << " " << sqrt( deltapx[k]*deltapx[k] + deltapy[k]*deltapy[k] + deltapz[k]*deltapz[k] ) << endl; 
   }
 
   ofstream out(outgeomfile);
