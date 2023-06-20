@@ -1587,6 +1587,7 @@ __global__ void gKernel_YZ_tracking(
 				
 				if(blockIdx.x==debug::EvRef)printf("YZ: thread %d combi %d-%d-%d-%d \n", threadIdx.x, i_u3, i_v3, i_u2, i_v2);				
 				for(int ll = 0; ll<nhits_uv; ll++){
+					hs[nhits_x+ll] = sign[ll];
 					if(blockIdx.x==debug::EvRef)printf(" thread %d  hit %d det %d chan %d Z %1.4f Y %1.4f ;\n", threadIdx.x, ll, detID[ll], elID[ll], Z[ll], Y[ll]);
 					//Y[ll]+= sign[ll]*drift[ll]*planes->sintheta[detID[ll]];
 				}

@@ -836,12 +836,12 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 	
-	//gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	//gKernel_BackTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	gKernel_BackTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
@@ -878,14 +878,14 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	//gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
-	//	device_gHits,
-	//	device_gTracks,
-	//	device_gPlane->z,
+	gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+		device_gHits,
+		device_gTracks,
+		device_gPlane->z,
 #ifdef DEBUG
-	//	device_gEvent->EventID,
+		device_gEvent->EventID,
 #endif
-	//	device_gEvent->HasTooManyHits);
+		device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );

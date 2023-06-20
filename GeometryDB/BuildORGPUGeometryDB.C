@@ -167,7 +167,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
 	      >> nElements_ >> lowElementID_ >> angleFromVert_ >> xoffset_
 	      >> planeWidth_ >> planeHeight_ >> x0_ >> y0_ >> z0_
 	      >> thetaX_ >> thetaY_ >> thetaZ_ >> resolution_;
-    
+
     detectorID[detectorID_] = detectorID_;
     //stationID[detectorID_] = stationID_;
     //componentID[detectorID_] = componentID_;
@@ -195,9 +195,23 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     x2[detectorID_] = x0[detectorID_]+planeWidth[detectorID_]*0.5;
     y1[detectorID_] = y0[detectorID_]-planeHeight[detectorID_]*0.5;
     y2[detectorID_] = y0[detectorID_]+planeHeight[detectorID_]*0.5;
-
-    //update
     
+    //update
+
+    xc[detectorID_] = x0[detectorID_]+deltaX[detectorID_];
+    yc[detectorID_] = y0[detectorID_]+deltaY[detectorID_];
+    zc[detectorID_] = z0[detectorID_]+deltaZ[detectorID_];
+
+    rX[detectorID_] = thetaX[detectorID_] + rotX[detectorID_];
+    rY[detectorID_] = thetaY[detectorID_] + rotY[detectorID_];
+    rZ[detectorID_] = thetaZ[detectorID_] + rotZ[detectorID_];
+
+    sintheta[detectorID_] = sin(angleFromVert[detectorID_] + rZ[detectorID_]);
+    costheta[detectorID_] = cos(angleFromVert[detectorID_] + rZ[detectorID_]);
+    tantheta[detectorID_] = tan(angleFromVert[detectorID_] + rZ[detectorID_]);
+
+    wc[detectorID_] = xc[detectorID_]*costheta[detectorID_] + yc[detectorID_]*sintheta[detectorID_];
+
     bool isprime = false;
     if(detectorName[detectorID_].find("X") != string::npos || detectorName[detectorID_].find("T") != string::npos || detectorName[detectorID_].find("B") != string::npos)
       {
@@ -247,7 +261,8 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     tantheta[k] = tan(angleFromVert[k] + rZ[k]);
 
     wc[k] = xc[k]*costheta[k] + yc[k]*sintheta[k];
-
+    
+    if(k<10)cout << x0[k] << " "<< y0[k] << " "<< z0[k] << " " << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << endl;
     /*
     rotM[k][0][0] = cos(rZ[k])*cos(rY[k]);
     rotM[k][0][1] = cos(rZ[k])*sin(rX[k])*sin(rY[k]) - cos(rX[k])*sin(rZ[k]);
@@ -399,15 +414,11 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
 
     int i_element = 1;
     short sign = -1;
-    TVectorD ep1_w1(3), ep2_w1(3);
     double cellLength = fabs(y2[k] - y1[k])/cos(angleFromVert[k]);
     double hspacing = spacing[k]/cos(angleFromVert[k]);
     double hoffset = xoffset[k]/cos(angleFromVert[k]);
-    if(planeType[k]==4){
-      cellLength = fabs(x2[k] - x1[k])/sin(angleFromVert[k]);
-      hspacing = spacing[k]/sin(angleFromVert[k]);
-      hoffset = xoffset[k]/sin(angleFromVert[k]);
-   }
+
+    TVectorD ep1_w1(3), ep2_w1(3);
     sign = -1;
     ep1_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
     sign = +1;
@@ -420,6 +431,25 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     sign = +1;
     ep2_wN = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
 
+    if(detectorID[k]<3)
+      cout << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << cellLength << " " << hspacing << " " << hoffset << endl;
+      
+    if(planeType[k]==4){
+      cellLength = fabs(x2[k] - x1[k])/sin(angleFromVert[k]);
+      hspacing = spacing[k]/sin(angleFromVert[k]);
+      hoffset = xoffset[k]/sin(angleFromVert[k]);
+
+      sign = -1;
+      ep1_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+      sign = +1;
+      ep2_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+      
+      i_element = nElements[k];
+      sign = -1;
+      ep1_wN = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+      sign = +1;
+      ep2_wN = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+    }
     p1x[k] = ep1_w1[0];
     p1y[k] = ep1_w1[1];
     p1z[k] = ep1_w1[2];
@@ -428,13 +458,37 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     dp1y[k] = (ep1_wN[1]-ep1_w1[1])/nElements[k];
     dp1z[k] = (ep1_wN[2]-ep1_w1[2])/nElements[k];
 
-    deltapx[k] = ep2_w1[0]-ep1_w1[0];
-    deltapy[k] = ep2_w1[1]-ep1_w1[1];
-    deltapz[k] = ep2_w1[2]-ep1_w1[2];
+    // deltapx[k] = ep2_w1[0]-ep1_w1[0];
+    // deltapy[k] = ep2_w1[1]-ep1_w1[1];
+    // deltapz[k] = ep2_w1[2]-ep1_w1[2];
+
+    deltapx[k] = 0;
+    deltapy[k] = 0;
+    deltapz[k] = 0;
+
+    for(i_element = 1; i_element<=nElements[k]; i_element++){
+      TVectorD ep1(3), ep2(3);
+      if(planeType[k] != 4){ //special treatment for Y planes
+      	
+	sign = -1;
+	ep1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
+	sign = +1;
+	ep2 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*xVec + 0.5*sign*cellLength*vVec;
+      }else{
+	sign = -1;
+	ep1_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+	sign = +1;
+	ep2_w1 = detCenter + ((i_element - (nElements[k]+1.)/2.)*hspacing + hoffset)*yVec + 0.5*sign*cellLength*vVec;
+      }
+      deltapx[k]+= ep2_w1[0]-ep1_w1[0];
+      deltapy[k]+= ep2_w1[1]-ep1_w1[1];
+      deltapz[k]+= ep2_w1[2]-ep1_w1[2];
+
+    }
     
-    // deltapx[k] = (  (ep1_wN[0]-ep1_w1[0])  )/nElements[k];
-    // deltapy[k] = (  (ep1_wN[1]-ep1_w1[1])  )/nElements[k];
-    // deltapz[k] = (  (ep1_wN[2]-ep1_w1[2])  )/nElements[k];
+    deltapx[k]/= nElements[k];
+    deltapy[k]/= nElements[k];
+    deltapz[k]/= nElements[k];
   }
 
   ofstream out(outgeomfile);
