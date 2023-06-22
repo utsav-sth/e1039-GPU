@@ -44,7 +44,7 @@ __device__ void fit_2D_track(size_t const n_points, const float *x_points, const
 	}
 
 	for( int i=0; i<n_points; i++ ){
-	if(blockIdx.x==11)printf("thread %d i %d x %1.4f z %1.4f \n", threadIdx.x, i, x_points[i], z_points[i]);
+	//if(blockIdx.x==11)printf("thread %d i %d x %1.4f z %1.4f \n", threadIdx.x, i, x_points[i], z_points[i]);
 	//if(isnan(x_points[i]) || isnan(z_points[i]) || isnan(x_weights[i]))printf("%1.4f %1.4f %1.4f \n", x_points[i], z_points[i], x_weights[i]);
 		B[0] += x_weights[i]*x_points[i];
 		B[1] += x_weights[i]*x_points[i]*z_points[i];

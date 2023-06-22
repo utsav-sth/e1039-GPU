@@ -190,6 +190,11 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     thetaY[detectorID_] = thetaY_;
     thetaZ[detectorID_] = thetaZ_;
     resolution[detectorID_] = resolution_;
+
+    if(detectorID_<=30)
+      cout << detectorName_ << "\t" << nElements_ << "\t" << spacing_ << "\t" << cellWidth_ << "\t"
+	   << angleFromVert_ << "\t" << xoffset_ << "\t" << planeWidth_ << "\t" << planeHeight_ << "\t"
+	   << x0_ << "\t" << y0_ << "\t" << z0_ << "\t" << thetaX_ << "\t" << thetaY_ << "\t" << thetaZ_ << endl;
     
     x1[detectorID_] = x0[detectorID_]-planeWidth[detectorID_]*0.5;
     x2[detectorID_] = x0[detectorID_]+planeWidth[detectorID_]*0.5;

@@ -198,6 +198,16 @@ int main(int argn, char * argv[]) {
 	}
 	cout << "Geometry file read out" << endl;
 	
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.p1x_w1[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.p1y_w1[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.p1z_w1[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.deltapx[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.deltapy[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.deltapz[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.dp1x[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.dp1y[i] << ", ";cout << endl;
+	for(int i = 1; i <= nChamberPlanes; ++i)cout << plane.dp1z[i] << ", ";cout << endl;
+	
 	double wire_position[55][400];//Let's keep this: simpler, more robust
 	for(int i = 1; i <= nChamberPlanes; ++i){
 		//cout << plane.nelem[i] << endl;
