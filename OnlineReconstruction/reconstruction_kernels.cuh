@@ -1996,6 +1996,7 @@ __global__ void gKernel_Global_tracking(
 	float Z[3];
 	
 	float y, err_y;
+	float y0_prev, ty_prev;
 			
 	float A_[4];
 	float Ainv_[4];
@@ -2351,6 +2352,9 @@ __global__ void gKernel_Global_tracking(
 				if(nhits_v==0)continue;
 
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
+
+				y0_prev = y0;
+				ty_prev = ty;
 				
 				y0 = Par[0];
 				ty = Par[1];
@@ -2380,8 +2384,9 @@ __global__ void gKernel_Global_tracking(
 				fit_2D_track(nyhits+nhits_uv, Y, Z_, errY, A_, Ainv_, B_, Par, ParErr, chi2);
 				
 #ifdef DEBUG				
-				if(blockIdx.x==debug::EvRef)printf("thread %d GT: y0 %1.4f ty %1.4f, invP %1.4f \n", threadIdx.x, Par[0], Par[1], invP);				
+				if(blockIdx.x==debug::EvRef)printf("thread %d GT: y0 %1.4f ty %1.4f, invP %1.4f \n", threadIdx.x, Par[0], Par[1], invP);	
 #endif				
+				
 				y0 = Par[0];
 				ty = Par[1];
 
@@ -2440,6 +2445,10 @@ __global__ void gKernel_Global_tracking(
 				//chi2 fit...
 				chi2+= chi2_track(nhits_x+nhits_uv, residuals, drift, sign, res, p1x, p1y, p1z, dpx, dpy, dpz, x0_st1, y0, tx_st1, ty);
 				if(chi2>10000.f)continue;
+				
+#ifdef DEBUG
+				printf(" %d %d %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f \n", blockIdx.x, threadIdx.x, x0, tx, invP, y0, ty, y0_prev, ty_prev, chi2);
+#endif
 				
 #ifdef DEBUG
 				if(blockIdx.x==debug::EvRef)printf("GT: thread %d combi %d-%d-%d, chi2 %1.4f \n", threadIdx.x, i_x, i_u, i_v, chi2);
