@@ -98,6 +98,35 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 	return true;
 }
 
+// --------------------------------------------------------------- //
+// general calculation of x, z for y 
+// --------------------------------------------------------------- //
+
+__device__ bool calculate_xz_fy(const int detid, const int elid, const float drift, const short hitsign, const float y0, const float ty, const gPlane* planes, float &x, float &z){
+	float p1x = x_bep(detid, elid, planes);
+	float p1y = x_bep(detid, elid, planes);
+	float p1z = x_bep(detid, elid, planes);
+
+	float dpy =  planes->deltapy[ detid ];
+	
+	float y_trk = y0+planes->z[ detid ]*ty;
+	x = p1x + (y_trk - p1y) * planes->deltapx[ detid ]/dpy;
+	z = p1z + (y_trk - p1y) * planes->deltapz[ detid ]/dpy;
+	
+	if(hitsign!=0)x+= hitsign*drift;
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef)printf("det %d chan %d p1x %1.4f p1y %1.4f p1z %1.4f dpy %1.4f dpz %1.4f dpx %1.4f y_trk %1.4f x %1.4f z %1.4f \n", detid, elid, p1x, p1y, p1z, dpy, planes->deltapz[ detid ], planes->deltapx[ detid ], y_trk, x, z );
+#endif
+	return true;
+}
+
+
+
+
+
+// ---------------------------//
+// event reducer
+// -------------------------- //
 
 __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int detid, const int nhits) {
 	float w_max; // max drift distance of the hit furthest from the cluster avg position // current average position of cluster * 0.9
@@ -1119,9 +1148,9 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 		dca = ( (ty*deltapz[i]-deltapy[i])*(p1x[i]-x0) + (deltapx[i]-tx*deltapz[i])*(p1y[i]-y0) + p1z[i]*(tx*deltapy[i]-ty*deltapx[i]) ) / sqrtf(den2);
 		residuals[i] = driftdist[i]*sign[i] - dca;
 		chi2+= residuals[i] * residuals[i] / resolutions[i] / resolutions[i];
-//#ifdef DEBUG
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf(" thread %d p1x %1.6f p1y %1.6f p1z %1.6f dpx %1.6f dpy %1.6f dpz %1.6f dca %1.6f drift dist %1.6f * sign %d resid %1.6f resol %1.6f chi2 %1.6f \n", threadIdx.x, p1x[i], p1y[i], p1z[i], deltapx[i], deltapy[i], deltapz[i], dca, driftdist[i], sign[i], residuals[i], resolutions[i], chi2);
-//#endif
+#endif
 	}
 	return chi2;
 }

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <ctime>
 #include <chrono>
@@ -197,7 +198,7 @@ int main(int argn, char * argv[]) {
 	      ipl++;
 	}
 	cout << "Geometry file read out" << endl;
-	
+		
 	double wire_position[55][400];//Let's keep this: simpler, more robust
 	for(int i = 1; i <= nChamberPlanes; ++i){
 		//cout << plane.nelem[i] << endl;
@@ -552,6 +553,17 @@ int main(int argn, char * argv[]) {
 				}
 				detid = hit_vec[m]->get_detector_id();
 				nhits = host_gEvent.NHits[i*nDetectors+detid-1];
+				
+				drift_distance = (float)fabs(hit_vec[m]->get_drift_distance());
+				if( (detid<31 || detid>46) && calibration_loaded){
+					if(hit_vec[m]->get_tdc_time()<tmin[detid]){
+						drift_distance = plane.cellwidth[detid]*0.5;
+					}else if(hit_vec[m]->get_tdc_time()>tmax[detid]){
+						drift_distance = 0;
+					}else{
+						drift_distance = rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+					}
+				}
 #ifdef DEBUG
 				if(_event_id==debug::EvRef+firstevent){
 					cout << detid << " " << hit_vec[m]->get_element_id() << " " 
