@@ -45,17 +45,20 @@ void ORoutput_tree::Init()
   fTree->Branch("track.err_ty", &(fTrackErrTY));
   fTree->Branch("track.err_invp", &(fTrackErrInvP));
   fTree->Branch("track.charge", &(fTrackCharge));
-  fTree->Branch("track.hitdetid", &(fTrackHitsDetID));
-  fTree->Branch("track.hitchan", &(fTrackHitsChan));
-  fTree->Branch("track.hitpos", &(fTrackHitsPos));
-  fTree->Branch("track.hitdrift", &(fTrackHitsDrift));
-  fTree->Branch("track.hitsign", &(fTrackHitsSign));
   fTree->Branch("track.vx", &(fTrackVx));
   fTree->Branch("track.vy", &(fTrackVy));
   fTree->Branch("track.vz", &(fTrackVz));
   fTree->Branch("track.px", &(fTrackPx));
   fTree->Branch("track.py", &(fTrackPy));
   fTree->Branch("track.pz", &(fTrackPz));
+  fTree->Branch("track.hitdetid", &(fTrackHitsDetID));
+  fTree->Branch("track.hitchan", &(fTrackHitsChan));
+  fTree->Branch("track.hitpos", &(fTrackHitsPos));
+  fTree->Branch("track.hitdrift", &(fTrackHitsDrift));
+  fTree->Branch("track.hitsign", &(fTrackHitsSign));
+  fTree->Branch("track.hittdc", &(fTrackHitsTDC));
+  fTree->Branch("track.hitresid", &(fTrackHitsResidual));
+  fTree->Branch("track.invp_tgt", &(fTrackInvPTgt));
 }
 
 void ORoutput_tree::Clear()
@@ -81,17 +84,20 @@ void ORoutput_tree::Clear()
   fTrackErrTY.clear();
   fTrackErrInvP.clear();
   fTrackCharge.clear();
-  fTrackHitsDetID.clear();
-  fTrackHitsChan.clear();
-  fTrackHitsPos.clear();
-  fTrackHitsDrift.clear();
-  fTrackHitsSign.clear();
   fTrackVx.clear();
   fTrackVy.clear();
   fTrackVz.clear();
   fTrackPx.clear();
   fTrackPy.clear();
   fTrackPz.clear();
+  fTrackHitsDetID.clear();
+  fTrackHitsChan.clear();
+  fTrackHitsPos.clear();
+  fTrackHitsDrift.clear();
+  fTrackHitsSign.clear();
+  fTrackHitsTDC.clear();
+  fTrackHitsResidual.clear();
+  fTrackInvPTgt.clear();
 }
 
 void ORoutput_tree::FillTree()

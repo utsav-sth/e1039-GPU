@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <ctime>
 #include <chrono>
@@ -28,6 +29,7 @@
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TSpline.h>
 #ifdef ROOTSAVE
 #include <TRandom.h>
 #include <TMatrixD.h>
@@ -92,45 +94,6 @@ void printDeviceStatus() {
 	}
 }
 
-#ifdef OLDCODE
-
-// Hit comparison
-struct lessthan {
-	__host__ __device__ bool operator()(const gHit& lhs, const gHit& rhs)
-	{
-	//returns true if :
-	// hit1.detID<hit2.detID;  
-		if(lhs.detectorID < rhs.detectorID)
-		{
-			return true;
-		}
-		else if(lhs.detectorID > rhs.detectorID)
-		{
-			return false;
-		}
-	//hit1.detID=hit2.detID & hit1.elID<hit2.elID;
-		if(lhs.elementID < rhs.elementID)
-		{
-			return true;
-		}
-		else if(lhs.elementID > rhs.elementID)
-		{
-			return false;
-		}
-	//hit1.detID=hit2.detID & hit1.elID=hit2.elID & hit1.time>hit2.time;
-		if(lhs.tdcTime > rhs.tdcTime)
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-};
-
-#endif
-
 
 int main(int argn, char * argv[]) {
 	
@@ -141,25 +104,32 @@ int main(int argn, char * argv[]) {
 
 	TString inputFile;
 	TString inputGeom;
+	TString inputCali;
 	TString outputFile;
 	inputFile = argv[1];
-	inputGeom = argv[2];	
-	outputFile = argv[3];
+	inputGeom = argv[2];
+	inputCali = argv[3];
+	outputFile = argv[4];
 
 	//by default we should use e1039 
 	bool e906data = true;
 #ifdef E1039
-	if(argn>4)e906data = atoi(argv[4]);
+	if(argn>5)e906data = atoi(argv[5]);
 #endif
 	
 	cout<<"Running "<<argv[0]<<endl;
 	cout<<"Loading "<<argv[1]<<endl;
 	cout<<"with geometry: "<<argv[2]<<endl;
-	cout<<"Writing "<<argv[3]<<endl;
+	cout<<"with calibration: "<<argv[3]<<endl;
+	cout<<"Writing "<<argv[4]<<endl;
 	
 	//Get basic geometry here:
 	double u_factor[5] = {5., 5., 5., 15., 15.};
 	gPlane plane;
+	
+	float deltaW_det[nDetectors][9];
+	TSpline3* rtProfile[nDetectors];
+	float tmin[nDetectors], tmax[nDetectors];
 	
 	ifstream in_geom(inputGeom.Data());
   	string buffer;
@@ -171,8 +141,8 @@ int main(int argn, char * argv[]) {
 	      std::istringstream iss;
 	      iss.str(buffer);
 	      //TODO: solve the mixing of x1, x2 / y1, y2
-	      //iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
-	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> y1 >> y2 >> costheta >> scaley >> y0 >> x1 >> x2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      iss >> ipl >> z >> nelem >> cellwidth >> spacing >> xoffset >> scalex >> x0 >> x1 >> x2 >> costheta >> scaley >> y0 >> y1 >> y2 >> sintheta >> resolution >> p1x >> p1y >> p1z >> deltapx >> deltapy >> deltapz >> dp1x >> dp1y >> dp1z;
+	      
 	      plane.z[ipl] = z;
 	      plane.nelem[ipl] = nelem;
 	      plane.cellwidth[ipl] = cellwidth;
@@ -188,7 +158,11 @@ int main(int argn, char * argv[]) {
 	      plane.y1[ipl] = y1;
 	      plane.y2[ipl] = y2;
 	      plane.sintheta[ipl] = sintheta;
+#ifdef USE_DET_RESOL
 	      plane.resolution[ipl] = resolution;
+#else
+	      plane.resolution[ipl] = spacing*InvSqrt12;
+#endif
 	      plane.p1x_w1[ipl] = p1x;
 	      plane.p1y_w1[ipl] = p1y;
 	      plane.p1z_w1[ipl] = p1z;
@@ -201,11 +175,15 @@ int main(int argn, char * argv[]) {
 	      if(ipl>nChamberPlanes+nHodoPlanes){
 		for(int k = 0; k<9; k++){
 			iss >> deltaW_;
-			plane.deltaW_[ipl*9+k] = deltaW_;
-		}
+			deltaW_det[ipl][k] = deltaW_;
+			//plane.deltaW_[ipl*9+k] = deltaW_;
+			//cout << deltaW_ << " ";
+		}//cout << endl;
 	      }else{
 		iss >> deltaW_;
-		plane.deltaW_[ipl*9] = deltaW_;
+		deltaW_det[ipl][0] = deltaW_;
+		//cout << deltaW_ << endl;
+		//plane.deltaW_[ipl*9] = deltaW_;
 	      }
 	      plane.slope_max[ipl] = costheta*TX_MAX+sintheta*TY_MAX;
 	      plane.inter_max[ipl] = costheta*X0_MAX+sintheta*Y0_MAX;
@@ -220,33 +198,62 @@ int main(int argn, char * argv[]) {
 	      ipl++;
 	}
 	cout << "Geometry file read out" << endl;
-	
+		
 	double wire_position[55][400];//Let's keep this: simpler, more robust
 	for(int i = 1; i <= nChamberPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
       		for(int j = 1; j <= plane.nelem[i]; ++j){
-          		double pos = (j - (plane.nelem[i]+1.)/2.)*plane.spacing[i] + plane.xoffset[i] + plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.deltaW_[i*9];
+          		double pos = (j - (plane.nelem[i]+1.)/2.)*plane.spacing[i] + plane.xoffset[i] + plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + deltaW_det[i][0];
+          		//plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+1; i<=nChamberPlanes+nHodoPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
-          		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9];
+          		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + deltaW_det[i][0];
+          		//plane.deltaW_[i*9];
 			wire_position[i][j] = pos;
 		}
 	}
 	for(int i = nChamberPlanes+nHodoPlanes+1; i<=nChamberPlanes+nHodoPlanes+nPropPlanes; ++i){
-		//cout << plane[i].nelem << endl;
+		//cout << plane.nelem[i] << endl;
 	      	for(int j = 1; j <= plane.nelem[i]; ++j){
           		int moduleID = 8 - int((j - 1)/8);
 			//cout << moduleID << endl;
-             		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + plane.deltaW_[i*9+moduleID];
+             		double pos = plane.x0[i]*plane.costheta[i] + plane.y0[i]*plane.sintheta[i] + plane.xoffset[i] + (j - (plane.nelem[i]+1)/2.)*plane.spacing[i] + deltaW_det[i][moduleID];
+             		//plane.deltaW_[i*9+moduleID];
 			wire_position[i][j] = pos;
 		}
 		
 	}
-
+	
+	ifstream in_cali(inputCali.Data());
+	bool calibration_loaded = false;
+	char buf[300];
+	int iBin, nBin, detectorID;
+	double tmin_temp, tmax_temp;
+	string det_name;
+	double R[500], T[500];
+	if(in_cali){
+		calibration_loaded = true;
+		while(in_cali.getline(buf, 100)){
+			istringstream detector_info(buf);
+			detector_info >> detectorID >> nBin >> tmin_temp >> tmax_temp >> det_name;
+			tmax[detectorID] = tmax_temp;
+			tmin[detectorID] = tmin_temp;
+			
+			for(int i = 0; i < nBin; i++){
+				in_cali.getline(buf, 100);
+				istringstream cali_line(buf);
+				cali_line >> iBin >> T[i] >> R[i];
+			}
+			if(nBin > 0)rtProfile[detectorID] = new TSpline3(det_name.c_str(), T, R, nBin, "b1e1");
+		}
+	}
+	
+	
+	
 	TFile* dataFile = new TFile(inputFile.Data(), "READ");
 	TTree* dataTree = 0;// = (TTree *)dataFile->Get("save");
 	SRawEvent* rawEvent = new SRawEvent();
@@ -326,7 +333,6 @@ int main(int argn, char * argv[]) {
 	}
 #endif
 	
-	
 	short detid;
 	
 	int nhits;
@@ -334,6 +340,7 @@ int main(int argn, char * argv[]) {
 	int hit_ctr[nDetectors];
 	int firstevent;
 	bool isFPGAtriggered;
+	float drift_distance;
 	cout << "unfolding " << nEvtMax <<" events" << endl;
 	// loop on event: get RawEvent information and load it into gEvent
 	for(int i = 0; i < nEvtMax; ++i) {
@@ -389,6 +396,16 @@ int main(int argn, char * argv[]) {
 			for(int m=0; m<rawEvent->fAllHits.size(); m++) {
 				detid = (rawEvent->fAllHits[m]).detectorID;
 				nhits = rawEvent->fNHits[detid];
+				drift_distance = (rawEvent->fAllHits[m]).driftDistance;
+				if( (detid<31 || detid>46) && calibration_loaded){
+					if((rawEvent->fAllHits[m]).tdcTime<tmin[detid]){
+						drift_distance = plane.cellwidth[detid]*0.5;
+					}else if((rawEvent->fAllHits[m]).tdcTime>tmax[detid]){
+						drift_distance = 0;
+					}else{
+						drift_distance = rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+					}
+				}
 #ifdef DEBUG
 				if(rawEvent->fEventID==debug::EvRef+firstevent){
 					cout << detid << " " << (rawEvent->fAllHits[m]).elementID << " " 
@@ -408,7 +425,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float)wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsChambersRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[0]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float)(rawEvent->fAllHits[m]).driftDistance;
 					hit_ctr[detid]++;
 				}
 
@@ -429,7 +447,7 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float)(rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float)(rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = (float)(rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsHodoRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[1]+evhitarrayoffset[detid]+(hit_ctr[detid])*4*nhits] = 0.0f;
 					hit_ctr[detid]++;
 				}
 				
@@ -444,7 +462,8 @@ int main(int argn, char * argv[]) {
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] = (float) wire_position[detid][(rawEvent->fAllHits[m]).elementID];
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+2*nhits] = (float) (rawEvent->fAllHits[m]).tdcTime;
 					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+3*nhits] = (float) (rawEvent->fAllHits[m]).flag;
-					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float) (rawEvent->fAllHits[m]).driftDistance;
+					host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+4*nhits] = (float)drift_distance;
+					//(float) (rawEvent->fAllHits[m]).driftDistance;
 #ifdef DEBUG					
 					if(rawEvent->fEventID==debug::EvRef+firstevent)cout << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])] << " " << host_gEventHits.HitsPropTubesRawData[(rawEvent->fEventID-firstevent)*datasizes::eventhitsize[2]+evhitarrayoffset[detid]+(hit_ctr[detid])+nhits] << endl;
 #endif
@@ -534,6 +553,17 @@ int main(int argn, char * argv[]) {
 				}
 				detid = hit_vec[m]->get_detector_id();
 				nhits = host_gEvent.NHits[i*nDetectors+detid-1];
+				
+				drift_distance = (float)fabs(hit_vec[m]->get_drift_distance());
+				if( (detid<31 || detid>46) && calibration_loaded){
+					if(hit_vec[m]->get_tdc_time()<tmin[detid]){
+						drift_distance = plane.cellwidth[detid]*0.5;
+					}else if(hit_vec[m]->get_tdc_time()>tmax[detid]){
+						drift_distance = 0;
+					}else{
+						drift_distance = rtProfile[detid]->Eval((rawEvent->fAllHits[m]).tdcTime);
+					}
+				}
 #ifdef DEBUG
 				if(_event_id==debug::EvRef+firstevent){
 					cout << detid << " " << hit_vec[m]->get_element_id() << " " 
@@ -750,10 +780,7 @@ int main(int argn, char * argv[]) {
 		device_gHits,
 		device_gTracks,
 		device_gPlane->z,
-		device_gPlane->spacing,
-#ifdef USE_DET_RESOL
 		device_gPlane->resolution,
-#endif
 #ifdef DEBUG
 		device_gEvent->EventID,
 #endif
@@ -792,15 +819,42 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
+
+	auto cp6 = std::chrono::system_clock::now();
+	auto gpu_sty = cp6-cp5;
+	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
+
+
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 5, device_gPlane, device_gEvent->HasTooManyHits);
+		
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	//gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+	//	device_gHits,
+	//	device_gTracks,
+	//	device_gPlane->z,
+#ifdef DEBUG
+	//	device_gEvent->EventID,
+#endif
+	//	device_gEvent->HasTooManyHits);
+		
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
 	
 	gKernel_BackTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 		
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
+
+	gKernel_BackTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
 	
-	auto cp6 = std::chrono::system_clock::now();
-	auto gpu_sty = cp6-cp5;
-	cout<<"GPU: YZ straight tracking: "<<gpu_sty.count()/1000000000.<<endl;
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	auto cp7 = std::chrono::system_clock::now();
+	auto gpu_bpt_clean = cp7-cp6;
+	cout<<"GPU: straight track cleaning: "<<gpu_bpt_clean.count()/1000000000.<<endl;	
 	
 	gKernel_Global_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
@@ -814,6 +868,10 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
+	auto cp8 = std::chrono::system_clock::now();
+	auto gpu_gt = cp8-cp7;
+	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+	
 #ifdef DEBUG
 	gKernel_check_tracks<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits, debug::EvRef);
 
@@ -821,7 +879,12 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaDeviceSynchronize() );
 #endif
 
-	gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
+	//gKernel_TrackOutlierHitRemoval<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, 6, device_gPlane, device_gEvent->HasTooManyHits);
+	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	gKernel_PropSegmentMatching<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
 		device_gTracks,
 		device_gPlane->z,
@@ -829,13 +892,23 @@ int main(int argn, char * argv[]) {
 		device_gEvent->EventID,
 #endif
 		device_gEvent->HasTooManyHits);
-
+	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	
+	gKernel_GlobalTrackCleaning<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+	
+	gKernel_GlobalTrackCleaning_crossthreads<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gEvent->HasTooManyHits);
+	
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	auto cp7 = std::chrono::system_clock::now();
-	auto gpu_gt = cp7-cp6;
-	cout<<"GPU: global tracking: "<<gpu_gt.count()/1000000000.<<endl;
+	auto cp9 = std::chrono::system_clock::now();
+	auto gpu_gt_clean = cp9-cp8;
+	cout<<"GPU: global track cleaning: "<<gpu_gt_clean.count()/1000000000.<<endl;
 
 
 	gKernel_Vertexing<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
@@ -857,8 +930,8 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaDeviceSynchronize() );
 
-	auto cp8 = std::chrono::system_clock::now();
-	auto gpu_vtx = cp8-cp7;
+	auto cp10 = std::chrono::system_clock::now();
+	auto gpu_vtx = cp10-cp9;
 	cout<<"GPU: Vertexing: "<<gpu_vtx.count()/1000000000.<<endl;
 
 	
@@ -900,8 +973,8 @@ int main(int argn, char * argv[]) {
 #endif		
 	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
-	auto cp9 = std::chrono::system_clock::now();
-	auto gpu_dis = cp9-cp8;
+	auto cp11 = std::chrono::system_clock::now();
+	auto gpu_dis = cp11-cp10;
 	cout<<"GPU: Histograming and displaying: "<<gpu_dis.count()/1000000000.<<endl;
 
 	// data transfer from device to host
@@ -919,8 +992,8 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gHistsArrays);
 #endif
 	
-	auto cp10 = std::chrono::system_clock::now();
-	auto cp_to_cpu = cp10-cp9;
+	auto cp12 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp12-cp11;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 	
 	int nGood = EstnEvtMax;
@@ -934,90 +1007,9 @@ int main(int argn, char * argv[]) {
 	int ntkl;
 	int nTracklets;
 	int nhits_tkl;
-	//ofstream out("OutputFile.txt");
-	//Write in a file, 
 	long tklctr = 0;
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
-	/*
-	for(int n = 0; n<nEvtMax; n++){
-		if(host_output_eR->nAH[n]==0)continue;
-		nEvtsTotal++;
-		if(host_output_eR->HasTooManyHits[n])continue;
-		nEvtsPass++;
-
-		nhits_total = 0;
-		for(int k = 1; k<=nChamberPlanes; k++ )nhits_total+= host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
-		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )nhits_total+= host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
-		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )nhits_total+= host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
-
-		tkl_coll_offset = n*datasizes::TrackSizeMax*datasizes::NTracksParam;
-		nTracklets = 0;
-		for(int m = 0; m<THREADS_PER_BLOCK; m++){
-			tklmult_idx = n*THREADS_PER_BLOCK+m;
-			nTracklets+= host_output_gTracks->NTracks[tklmult_idx];
-		}
-		out<<n<<" "<< nhits_total <<" "<<nTracklets <<endl;
-#ifdef DEBUG
-		if(n==debug::EvRef)cout << n<<" "<< host_output_eR->nAH[n] <<" "<< nTracklets <<endl;
-#endif
-		tklctr+= nTracklets;
-		
-		for(int k = 1; k<=nChamberPlanes; k++ )out << host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1] << " ";
-		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ )out << host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1] << " ";
-		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ )out << host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1] << " ";
-		out << endl;
-		for(int k = 1; k<=nChamberPlanes; k++ ){
-			nhits = host_output_gHits->NHitsChambers[n*nChamberPlanes+k-1];
-			for(int l = 0; l<nhits; l++){
-				out << k << " " << host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l] << " " 
-				    << host_output_gHits->HitsChambersRawData[n*datasizes::eventhitsize[0]+evhitarrayoffset[k]+l+4*nhits] << endl;
-			}
-		}
-		for(int k = nChamberPlanes+1; k<=nChamberPlanes+nHodoPlanes; k++ ){
-			nhits = host_output_gHits->NHitsHodo[n*nHodoPlanes+k-nChamberPlanes-1];
-			for(int l = 0; l<nhits; l++){
-				out << k << " " << host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l] << " " 
-				    << host_output_gHits->HitsHodoRawData[n*datasizes::eventhitsize[1]+evhitarrayoffset[k]+l+4*nhits] << endl;
-			}
-		}
-		for(int k = nChamberPlanes+nHodoPlanes+1; k<nDetectors; k++ ){
-			nhits = host_output_gHits->NHitsPropTubes[n*nPropPlanes+k-nChamberPlanes-nHodoPlanes-1];
-			for(int l = 0; l<nhits; l++){
-				out << k << " " << host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l] << " " 
-				    << host_output_gHits->HitsPropTubesRawData[n*datasizes::eventhitsize[2]+evhitarrayoffset[k]+l+4*nhits] << endl;
-			}
-		}
-		
-		for(int m = 0; m<THREADS_PER_BLOCK; m++){
-			tklmult_idx = n*THREADS_PER_BLOCK+m;
-			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
-			nTracklets = host_output_gTracks->NTracks[tklmult_idx];
-			for(int k = 0; k<nTracklets; k++ ){
-				out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam] << " " //stid
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+7] << " " //x0
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+8] << " " //y0
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+5] << " " //tx
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+6] << " " //ty
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+9] << " " //invP
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2] << endl; //Nhits
-				nhits_tkl = host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
-				for(int l = 0; l<nhits_tkl; l++){
-					out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l] << " " //detid
-					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l] << " " //elid (chan)
-					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+70+l] << " " //drift
-					    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l] << endl; //pos
-				}
-				out << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+106] << " " 
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+107] << " " 
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+108] << " " 
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+109] << " " 
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+110] << " " 
-				    << host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+111] << endl;
-			}
-		}
-	}
-	*/
 	//TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
 	ORoutput_tree* output = new ORoutput_tree(outputFile.Data());
 	for(int n = 0; n < nEvtMax; ++n) {
@@ -1088,8 +1080,13 @@ int main(int argn, char * argv[]) {
 			array_thread_offset = m*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
 
 			ntkl = host_output_gTracks->NTracks[tklmult_idx];
-			nTracklets+= ntkl;
+			//nTracklets+= ntkl;
+
 			for(int k = 0; k<ntkl; k++ ){
+#ifndef SAVE_ALL_TRACKS
+				if( (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]<7 )continue;
+#endif
+				nTracklets++;
 				nhits_tkl = (int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+2];
 				output->fTrackStID.push_back((int)host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam]);
 				output->fTrackNHits.push_back(nhits_tkl);
@@ -1105,19 +1102,24 @@ int main(int argn, char * argv[]) {
 				output->fTrackErrTY.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+11]);
 				output->fTrackErrInvP.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+14]);
 				output->fTrackCharge.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+15]);
+				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16]);
+				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+17]);
+				output->fTrackVz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+18]);
+				output->fTrackPx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+19]);
+				output->fTrackPy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+20]);
+				output->fTrackPz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+21]);
 				for(int l = 0; l<nhits_tkl; l++){
-					output->fTrackHitsDetID.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+16+l]);
-					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+34+l]);
-					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+52+l]);
-					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+70+l]);
-					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+88+l]);
+					output->fTrackHitsDetID.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+22+l]);
+					output->fTrackHitsChan.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+40+l]);
+					output->fTrackHitsPos.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+58+l]);
+					output->fTrackHitsDrift.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+76+l]);
+					output->fTrackHitsSign.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+94+l]);
+					output->fTrackHitsTDC.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+112+l]);
+					output->fTrackHitsResidual.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+130+l]);
 				}
-				output->fTrackVx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+106]);
-				output->fTrackVy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+107]);
-				output->fTrackVz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+108]);
-				output->fTrackPx.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+109]);
-				output->fTrackPy.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+110]);
-				output->fTrackPz.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+111]);
+#ifdef TEST_MOMENTUM
+				output->fTrackInvPTgt.push_back(host_output_gTracks->TracksRawData[tkl_coll_offset+array_thread_offset+k*datasizes::NTracksParam+148]);
+#endif
 			}
 		}
 		output->fNTracks = nTracklets;
@@ -1132,8 +1134,8 @@ int main(int argn, char * argv[]) {
 
 	delete rawEvent;
 
-	auto cp11 = std::chrono::system_clock::now();
-	auto write_output = cp11-cp10;
+	auto cp13 = std::chrono::system_clock::now();
+	auto write_output = cp13-cp12;
 	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
 
 	// printing the time required for all operations
