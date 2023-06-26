@@ -459,15 +459,17 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     p1y[k] = ep1_w1[1];
     p1z[k] = ep1_w1[2];
     
-    dp1x[k] = (ep1_wN[0]-ep1_w1[0])/nElements[k];
-    dp1y[k] = (ep1_wN[1]-ep1_w1[1])/nElements[k];
-    dp1z[k] = (ep1_wN[2]-ep1_w1[2])/nElements[k];
+    dp1x[k] = (ep1_wN[0]-ep1_w1[0])/(nElements[k]-1);
+    dp1y[k] = (ep1_wN[1]-ep1_w1[1])/(nElements[k]-1);
+    dp1z[k] = (ep1_wN[2]-ep1_w1[2])/(nElements[k]-1);
 
+    if(k<=30)cout <<std::setprecision(10) << ep1_w1[0] << " " << ep1_w1[1] << " " << ep1_w1[2] << "; " << ep1_wN[0] << " " << ep1_wN[1] << " " << ep1_wN[2] << "; " << dp1x[k] << " "<< dp1y[k] << " "<< dp1z[k] << endl;
+    
     // deltapx[k] = ep2_w1[0]-ep1_w1[0];
     // deltapy[k] = ep2_w1[1]-ep1_w1[1];
     // deltapz[k] = ep2_w1[2]-ep1_w1[2];
 
-    if(k<=6)cout << ep2_w1[0]-ep1_w1[0] << " " << ep2_w1[1]-ep1_w1[1] << " " << ep2_w1[2]-ep1_w1[2] << " " << sqrt( (ep2_w1[0]-ep1_w1[0])*(ep2_w1[0]-ep1_w1[0]) + (ep2_w1[1]-ep1_w1[1])*(ep2_w1[1]-ep1_w1[1]) + (ep2_w1[2]-ep1_w1[2])*(ep2_w1[2]-ep1_w1[2]) ) << endl;
+    //if(k<=6)cout << ep2_w1[0]-ep1_w1[0] << " " << ep2_w1[1]-ep1_w1[1] << " " << ep2_w1[2]-ep1_w1[2] << " " << sqrt( (ep2_w1[0]-ep1_w1[0])*(ep2_w1[0]-ep1_w1[0]) + (ep2_w1[1]-ep1_w1[1])*(ep2_w1[1]-ep1_w1[1]) + (ep2_w1[2]-ep1_w1[2])*(ep2_w1[2]-ep1_w1[2]) ) << endl;
     
     deltapx[k] = 0;
     deltapy[k] = 0;
@@ -497,7 +499,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     deltapy[k]/= nElements[k];
     deltapz[k]/= nElements[k];
 
-    if(k<=6)cout << deltapx[k] << " " << deltapy[k] << " " << deltapz[k] << " " << sqrt( deltapx[k]*deltapx[k] + deltapy[k]*deltapy[k] + deltapz[k]*deltapz[k] ) << endl; 
+    //if(k<=6)cout << deltapx[k] << " " << deltapy[k] << " " << deltapz[k] << " " << sqrt( deltapx[k]*deltapx[k] + deltapy[k]*deltapy[k] + deltapz[k]*deltapz[k] ) << endl; 
   }
 
   ofstream out(outgeomfile);
