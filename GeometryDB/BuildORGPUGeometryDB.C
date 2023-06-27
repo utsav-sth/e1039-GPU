@@ -22,7 +22,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
   double spacing[nDetectors];
   double cellWidth[nDetectors];
   double xoffset[nDetectors];
-  double overlap[nDetectors];
+  //double overlap[nDetectors];
   double angleFromVert[nDetectors];
   double sintheta[nDetectors];
   double costheta[nDetectors];
@@ -32,7 +32,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
   memset(spacing, 0, sizeof(double)*nDetectors);
   memset(cellWidth, 0, sizeof(double)*nDetectors);
   memset(xoffset, 0, sizeof(double)*nDetectors);
-  memset(overlap, 0, sizeof(double)*nDetectors);
+  //memset(overlap, 0, sizeof(double)*nDetectors);
   memset(angleFromVert, 0, sizeof(double)*nDetectors);
   memset(sintheta, 0, sizeof(double)*nDetectors);
   memset(costheta, 0, sizeof(double)*nDetectors);
@@ -168,6 +168,9 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
 	      >> planeWidth_ >> planeHeight_ >> x0_ >> y0_ >> z0_
 	      >> thetaX_ >> thetaY_ >> thetaZ_ >> resolution_;
 
+    //stringBuf >> detectorName_ >> nElements_ >> spacing_ >> cellWidth_ >> angleFromVert_ >> xoffset_ >> planeWidth_ >> planeHeight_ >> x0_ >> y0_ >> z0_ >> thetaX_ >> thetaY_ >> thetaZ_ >> resolution_;
+    
+    
     detectorID[detectorID_] = detectorID_;
     //stationID[detectorID_] = stationID_;
     //componentID[detectorID_] = componentID_;
@@ -176,7 +179,7 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     //geantName[detectorID_] = geantName_;
     spacing[detectorID_] = spacing_;
     cellWidth[detectorID_] = cellWidth_;
-    overlap[detectorID_] = overlap_;
+    //overlap[detectorID_] = overlap_;
     nElements[detectorID_] = nElements_;
     //lowElementID[detectorID_] = lowElementID_;
     angleFromVert[detectorID_] = angleFromVert_;
@@ -191,10 +194,10 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     thetaZ[detectorID_] = thetaZ_;
     resolution[detectorID_] = resolution_;
 
-    if(detectorID_<=30)
-      cout << detectorName_ << "\t" << nElements_ << "\t" << spacing_ << "\t" << cellWidth_ << "\t"
-	   << angleFromVert_ << "\t" << xoffset_ << "\t" << planeWidth_ << "\t" << planeHeight_ << "\t"
-	   << x0_ << "\t" << y0_ << "\t" << z0_ << "\t" << thetaX_ << "\t" << thetaY_ << "\t" << thetaZ_ << endl;
+    // if(detectorID_<=30)
+    //   cout << detectorName_ << "\t" << nElements_ << "\t" << spacing_ << "\t" << cellWidth_ << "\t"
+    // 	   << angleFromVert_ << "\t" << xoffset_ << "\t" << planeWidth_ << "\t" << planeHeight_ << "\t"
+    // 	   << x0_ << "\t" << y0_ << "\t" << z0_ << "\t" << thetaX_ << "\t" << thetaY_ << "\t" << thetaZ_ << endl;
     
     x1[detectorID_] = x0[detectorID_]-planeWidth[detectorID_]*0.5;
     x2[detectorID_] = x0[detectorID_]+planeWidth[detectorID_]*0.5;
@@ -266,43 +269,6 @@ void BuildORGPUGeometryDB(const char* surveyfile, const char* aligncham, const c
     tantheta[k] = tan(angleFromVert[k] + rZ[k]);
 
     wc[k] = xc[k]*costheta[k] + yc[k]*sintheta[k];
-    
-    //if(k<10)cout << x0[k] << " "<< y0[k] << " "<< z0[k] << " " << xc[k] << " "<< yc[k] << " "<< zc[k] << " " << endl;
-    /*
-    rotM[k][0][0] = cos(rZ[k])*cos(rY[k]);
-    rotM[k][0][1] = cos(rZ[k])*sin(rX[k])*sin(rY[k]) - cos(rX[k])*sin(rZ[k]);
-    rotM[k][0][2] = cos(rX[k])*cos(rZ[k])*sin(rY[k]) + sin(rX[k])*sin(rZ[k]);
-    rotM[k][1][0] = sin(rZ[k])*cos(rY[k]);
-    rotM[k][1][1] = sin(rZ[k])*sin(rX[k])*sin(rY[k]) + cos(rZ[k])*cos(rX[k]);
-    rotM[k][1][2] = sin(rZ[k])*sin(rY[k])*cos(rX[k]) - cos(rZ[k])*sin(rX[k]);
-    rotM[k][2][0] = -sin(rY[k]);
-    rotM[k][2][1] = cos(rY[k])*sin(rX[k]);
-    rotM[k][2][2] = cos(rY[k])*cos(rX[k]);
-    
-    uVec[k][0] = cos(angleFromVert[k]);
-    uVec[k][1] = sin(angleFromVert[k]);
-    uVec[k][2] = 0.;
-    uVec[k] = rotM[k]*uVec[k];
-
-    vVec[k][0] = -sin(angleFromVert[k]);
-    vVec[k][1] = cos(angleFromVert[k]);
-    vVec[k][2] = 0.;
-    vVec[k] = rotM[k]*vVec[k];
-
-    xVec[k][0] = 1.;
-    xVec[k][1] = 0.;
-    xVec[k][2] = 0.;
-    xVec[k] = rotM[k]*xVec[k];
-
-    yVec[k][0] = 0.;
-    yVec[k][1] = 1.;
-    yVec[k][2] = 0.;
-    yVec[k] = rotM[k]*yVec[k];
-
-    nVec[k][0] = uVec[k][1]*vVec[k][2] - vVec[k][1]*uVec[k][2];
-    nVec[k][1] = uVec[k][2]*vVec[k][0] - vVec[k][2]*uVec[k][0];
-    nVec[k][2] = uVec[k][0]*vVec[k][1] - vVec[k][0]*uVec[k][1];
-    */
   }
 
   for(int k = 1; k <= nChamberPlanes; k+=2){
