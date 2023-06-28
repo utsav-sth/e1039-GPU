@@ -104,14 +104,16 @@ __device__ bool calculate_y_uvhit(const int detid, const int elid, const float d
 
 __device__ bool calculate_xz_fy(const int detid, const int elid, const float drift, const short hitsign, const float y0, const float ty, const gPlane* planes, float &x, float &z){
 	float p1x = x_bep(detid, elid, planes);
-	float p1y = x_bep(detid, elid, planes);
-	float p1z = x_bep(detid, elid, planes);
+	float p1y = y_bep(detid, elid, planes);
+	float p1z = z_bep(detid, elid, planes);
 
 	float dpy =  planes->deltapy[ detid ];
+	float dpz =  planes->deltapz[ detid ];
 	
-	float y_trk = y0+planes->z[ detid ]*ty;
+	z = p1z - p1y * dpz/dpy;//first we assume y = 0
+	float y_trk = y0+z*ty;
 	x = p1x + (y_trk - p1y) * planes->deltapx[ detid ]/dpy;
-	z = p1z + (y_trk - p1y) * planes->deltapz[ detid ]/dpy;
+	z = p1z + (y_trk - p1y) * dpz/dpy;
 	
 	if(hitsign!=0)x+= hitsign*drift;
 #ifdef DEBUG

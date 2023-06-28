@@ -779,8 +779,9 @@ int main(int argn, char * argv[]) {
 	gKernel_XZ_tracking<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(
 		device_gHits,
 		device_gTracks,
-		device_gPlane->z,
-		device_gPlane->resolution,
+		device_gPlane,
+		//device_gPlane->z,
+		//device_gPlane->resolution,
 #ifdef DEBUG
 		device_gEvent->EventID,
 #endif
