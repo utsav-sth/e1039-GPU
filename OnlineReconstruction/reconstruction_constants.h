@@ -52,7 +52,7 @@ const float deltay0_ = 0.0387412;
 const float deltay0_sigma = 0.770639;
 #endif
 
-namespace geometry{
+namespace globalconsts{
 #ifdef E1039
 	__device__ constexpr short eff_detid_chambers[24] = { 1,  2,  3,  4,  5,  6, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
 #else
@@ -145,6 +145,18 @@ namespace geometry{
         	 {{1, 4, 8, 12, 16, 20, 24, 28, 31, 35, 39, 43, 47, 51, 55, 59, 62, 66, 70, 74, 78, 82, 86, 90, 94, 97, 101, 105, -1, -1, -1, -1}, 
 		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 97, 100, 104, 108, 112, 116, 120, 124, 128, 134, -1, -1, -1, -1}}} // d3pv
         	};//TODO: reduce this monster to just what is needed/used
+
+	__device__ constexpr short N_WCHitsBins_X = 28;
+	__device__ constexpr short MaxHitsProj_X = 20;
+	__device__ constexpr short WCHitsBins_X[3][2][28] = {
+		{ {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112} }, // d2x
+		{ {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 116} }, // d3px
+		{ {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109}, 
+		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 116} }, // d3px
+      	};
+	
 }
 
 namespace datasizes{
@@ -164,6 +176,8 @@ namespace datasizes{
 	};
 	__host__ __device__ constexpr int TrackSizeMax = 960;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
+	__host__ __device__ constexpr int NDimuonParam = 36;
+	__host__ __device__ constexpr int DimuonSizeMax = 10;
 }
 
 namespace selection{

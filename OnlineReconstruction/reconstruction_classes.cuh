@@ -646,6 +646,288 @@ struct gEventTrackCollection{
 #endif
 };
 
+
+struct gDimuons{
+	public:
+	const unsigned int NDimuonsTotal;
+	const unsigned int DimuonSize;
+	float* m_dimuondata;
+	
+	__host__ __device__ gDimuons(float* basedata, const unsigned total_number_of_dimuons, const unsigned offset = 0) :
+		m_dimuondata(reinterpret_cast<float*>(basedata) + offset), NDimuonsTotal(total_number_of_dimuons), DimuonSize(datasizes::NDimuonParam)
+		{
+			static_assert(sizeof(float) == sizeof(unsigned));
+			assert((((size_t) basedata) & sizeof(float)) == 0);
+		}
+		
+	__host__ __device__ inline float mass(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index ];
+		}
+	__host__ __device__ inline float pT(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+1 ];
+		}
+	__host__ __device__ inline float xF(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+2 ];
+		}
+	__host__ __device__ inline float x1(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+3 ];
+		}
+	__host__ __device__ inline float x2(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+4 ];
+		}
+	__host__ __device__ inline float costheta(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+5 ];
+		}
+	__host__ __device__ inline float phi(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+6 ];
+		}
+	__host__ __device__ inline float mass_single(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+7 ];
+		}
+	__host__ __device__ inline float chi2_single(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+8 ];
+		}	
+	
+	__host__ __device__ inline float dim_vx(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+9 ];
+		}
+	__host__ __device__ inline float dim_vy(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+10 ];
+		}
+	__host__ __device__ inline float dim_vz(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+11 ];
+		}
+
+	__host__ __device__ inline float pos_vx(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+12 ];
+		}
+	__host__ __device__ inline float pos_vy(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+13 ];
+		}
+	__host__ __device__ inline float pos_vz(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+14 ];
+		}
+	__host__ __device__ inline float neg_vx(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+15 ];
+		}
+	__host__ __device__ inline float neg_vy(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+16 ];
+		}
+	__host__ __device__ inline float neg_vz(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+17 ];
+		}
+	
+	
+	__host__ __device__ inline float p_pos_E(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+18 ];
+		}
+	__host__ __device__ inline float p_pos_x(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+19 ];
+		}
+	__host__ __device__ inline float p_pos_y(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+20 ];
+		}
+	__host__ __device__ inline float p_pos_z(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+21 ];
+		}
+	
+	__host__ __device__ inline float p_neg_E(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+22 ];
+		}
+	__host__ __device__ inline float p_neg_x(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+23 ];
+		}
+	__host__ __device__ inline float p_neg_y(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+24 ];
+		}
+	__host__ __device__ inline float p_neg_z(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+25 ];
+		}
+
+	__host__ __device__ inline float p_pos_single_E(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+26 ];
+		}
+	__host__ __device__ inline float p_pos_single_x(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+27 ];
+		}
+	__host__ __device__ inline float p_pos_single_y(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+28 ];
+		}
+	__host__ __device__ inline float p_pos_single_z(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+29 ];
+		}
+	
+	__host__ __device__ inline float p_neg_single_E(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+30 ];
+		}
+	__host__ __device__ inline float p_neg_single_x(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+31 ];
+		}
+	__host__ __device__ inline float p_neg_single_y(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+32 ];
+		}
+	__host__ __device__ inline float p_neg_single_z(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+33 ];
+		}
+	
+	__host__ __device__ inline float chi2_vtx(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+34 ];
+		}
+	__host__ __device__ inline float chi2_kf(const unsigned index) const
+		{
+			assert(index < NDimuonsTotal);
+			return m_dimuondata[DimuonSize*index+35 ];
+		}
+//    //Track projections at different location
+//    TVector3 proj_target_pos;
+//    TVector3 proj_dump_pos;
+//    TVector3 proj_target_neg;
+//    TVector3 proj_dump_neg;
+
+//    //Chisq of three test position
+//    Double_t chisq_target;
+//    Double_t chisq_dump;
+//    Double_t chisq_upstream;
+};
+
+struct gEventDimuonCollection{
+	unsigned short NDimuons[EstnEvtMax];
+	float DimuonsRawData[EstnEvtMax*datasizes::DimuonSizeMax*datasizes::NDimuonParam];
+
+	__device__ const gDimuons Dimuons(const unsigned int event, unsigned int& ndimuons) {
+		ndimuons = NDimuons[event];
+		return gDimuons(DimuonsRawData, ndimuons, event*datasizes::DimuonSizeMax*datasizes::NDimuonParam);
+	}
+	
+	__device__ void setMass(const unsigned int evt_offset, const unsigned int idim, const float mass) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam] = mass;
+	}
+	__device__ void setpT(const unsigned int evt_offset, const unsigned int idim, const float pT) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+1] = pT;
+	}
+	__device__ void setxF(const unsigned int evt_offset, const unsigned int idim, const float xF) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+2] = xF;
+	}
+	__device__ void setx1(const unsigned int evt_offset, const unsigned int idim, const float x1) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+3] = x1;
+	}
+	__device__ void setx2(const unsigned int evt_offset, const unsigned int idim, const float x2) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+4] = x2;
+	}
+	__device__ void setcostheta(const unsigned int evt_offset, const unsigned int idim, const float costheta) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+5] = costheta;
+	}
+	__device__ void setphi(const unsigned int evt_offset, const unsigned int idim, const float phi) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+6] = phi;
+	}
+	__device__ void setMassSingle(const unsigned int evt_offset, const unsigned int idim, const float mass_single) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+7] = mass_single;
+	}
+	__device__ void setChi2Single(const unsigned int evt_offset, const unsigned int idim, const float chi2_single) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+8] = chi2_single;
+	}
+	
+	__device__ void setDimVtx(const unsigned int evt_offset, const unsigned int idim, const float* pos) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+9+i] = pos[i];
+	}
+	__device__ void setPosVtx(const unsigned int evt_offset, const unsigned int idim, const float* pos) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+12+i] = pos[i];
+	}
+	__device__ void setNegVtx(const unsigned int evt_offset, const unsigned int idim, const float* pos) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+15+i] = pos[i];
+	}
+	
+	__device__ void setPos4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+18+i] = fourvec[i];
+	}
+	__device__ void setNeg4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+22+i] = fourvec[i];
+	}
+	__device__ void setPosSingle4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+26+i] = fourvec[i];
+	}
+	__device__ void setNegSingl4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
+		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+30+i] = fourvec[i];
+	}
+	
+	__device__ void setChi2Vtx(const unsigned int evt_offset, const unsigned int idim, const float chi2_vtx) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+34] = chi2_vtx;
+	}
+	__device__ void setChi2KF(const unsigned int evt_offset, const unsigned int idim, const float chi2_KF) {
+		DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+35] = chi2_KF;
+	}
+};
+
 struct gHistsArrays{
 	public:
 	float pts_hw[NVars];
