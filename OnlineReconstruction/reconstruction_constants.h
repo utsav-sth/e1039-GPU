@@ -174,16 +174,16 @@ namespace datasizes{
 		nHodoPlanes*datasizes::NHitsParam*datasizes::NMaxHitsHodoscopes, 
 		nPropPlanes*datasizes::NHitsParam*datasizes::NMaxHitsPropTubes
 	};
-	__host__ __device__ constexpr int TrackSizeMax = 960;
+	__host__ __device__ constexpr int TrackSizeMax = 512;
 	__host__ __device__ constexpr int MaxHitsPerTrack = 18;
 	__host__ __device__ constexpr int NDimuonParam = 36;
-	__host__ __device__ constexpr int DimuonSizeMax = 10;
+	__host__ __device__ constexpr int DimuonSizeMax = 16;
 }
 
 namespace selection{
-	__host__ __device__ constexpr short MaxD0Multiplicity = 140;
-	__host__ __device__ constexpr short MaxD2Multiplicity = 80;
-	__host__ __device__ constexpr short MaxD3Multiplicity = 60;
+	__host__ __device__ constexpr short MaxD0Multiplicity = 210;
+	__host__ __device__ constexpr short MaxD2Multiplicity = 120;
+	__host__ __device__ constexpr short MaxD3Multiplicity = 90;
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
 	__host__ __device__ constexpr float chi2dofmax = 250;
@@ -199,6 +199,10 @@ namespace selection{
 #else
 	//__device__ constexpr float rejectwin[4] = {0.13, 0.18, 0.16, 0.16};
 #endif
+}
+
+namespace histogramtools{
+	
 }
 
 namespace extrapolation_tools{

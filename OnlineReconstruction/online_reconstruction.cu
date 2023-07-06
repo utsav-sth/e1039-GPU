@@ -663,17 +663,19 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllEvent = sizeof(gEvent);
 	size_t NBytesAllHits = sizeof(gEventHitCollections);
 	size_t NBytesAllTracks = sizeof(gEventTrackCollection);
+	size_t NBytesAllDimuons = sizeof(gEventDimuonCollection);
 	size_t NBytesHistsArrays = sizeof(gHistsArrays);
 	size_t NBytesPlanes = sizeof(gPlane);
 	
-	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesPlanes+NBytesAllHits+NBytesAllTracks+NBytesHistsArrays << endl;
+	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesPlanes+NBytesAllHits+NBytesAllTracks+NBytesHistsArrays+NBytesAllDimuons << endl;
 	cout << " input events: " << NBytesAllEvent  
-		<< "; raw hits: " << NBytesAllHits << "; tracks " << NBytesAllTracks
+		<< "; raw hits: " << NBytesAllHits << "; tracks " << NBytesAllTracks << "; dimuons " << NBytesAllDimuons
 		<< "; histograms arrays " << NBytesHistsArrays << "; planes info: " << NBytesPlanes << endl;  
 	
 	gEvent* host_output_eR = (gEvent*)malloc(NBytesAllEvent);
 	gEventHitCollections* host_output_gHits = (gEventHitCollections*)malloc(NBytesAllHits);
 	gEventTrackCollection* host_output_gTracks = (gEventTrackCollection*)malloc(NBytesAllTracks);
+	gEventDimuonCollection* host_output_gDimuons = (gEventDimuonCollection*)malloc(NBytesAllDimuons);
 	gHistsArrays* host_hists = (gHistsArrays*)malloc(NBytesHistsArrays);
 	
 	float varmin[NVars] = {-X0_MAX, -Y0_MAX, INVP_MIN, -TX_MAX, -TY_MAX, -VXY_MAX, -VXY_MAX, VZ_MIN, -PXY_MAX, -PXY_MAX, PZ_MIN};
@@ -704,6 +706,7 @@ int main(int argn, char * argv[]) {
 	gEvent* device_gEvent;
 	gEventHitCollections* device_gHits;
 	gEventTrackCollection* device_gTracks;
+	gEventDimuonCollection* device_gDimuons;
 	gHistsArrays* device_gHistsArrays;
 	gPlane* device_gPlane;
 	
@@ -712,6 +715,7 @@ int main(int argn, char * argv[]) {
 	gpuErrchk( cudaMalloc((void**)&device_gEvent, NBytesAllEvent));
 	gpuErrchk( cudaMalloc((void**)&device_gHits, NBytesAllHits));
 	gpuErrchk( cudaMalloc((void**)&device_gTracks, NBytesAllTracks));
+	gpuErrchk( cudaMalloc((void**)&device_gDimuons, NBytesAllDimuons));
 	gpuErrchk( cudaMalloc((void**)&device_gHistsArrays, NBytesHistsArrays));
 	//allocating the memory for the planes
 	gpuErrchk( cudaMalloc((void**)&device_gPlane, NBytesPlanes));
@@ -972,7 +976,6 @@ int main(int argn, char * argv[]) {
 	runDisplay(argn, argv, host_hists->values);
 	cudaFree(device_gHistsArrays);
 #endif		
-	//gKernel_GlobalTrack_KalmanFitting<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_output_TKL, device_gKalmanFitArrays, device_gPlane);
 
 	auto cp11 = std::chrono::system_clock::now();
 	auto gpu_dis = cp11-cp10;
@@ -986,7 +989,10 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gHits);
 
 	gpuErrchk( cudaMemcpy(host_output_gTracks, device_gTracks, NBytesAllTracks, cudaMemcpyDeviceToHost));
-	cudaFree(device_gHits);
+	cudaFree(device_gTracks);
+
+	gpuErrchk( cudaMemcpy(host_output_gDimuons, device_gDimuons, NBytesAllDimuons, cudaMemcpyDeviceToHost));
+	cudaFree(device_gDimuons);
 
 #ifndef ROOTSAVE
 	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
