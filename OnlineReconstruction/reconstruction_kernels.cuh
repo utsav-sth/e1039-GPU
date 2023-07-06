@@ -230,9 +230,9 @@ __global__ void gKernel_XZ_tracking(
 	int nhitpairs_x2[nbins_st2];
 	int nhitpairs_x3[nbins_st3];
         //pairs in station 2
-        thrust::pair<int, int> hitpairs_x2[nbins_st2*globalconsts::MaxHitsProj[0]];
+        thrust::pair<int, int> hitpairs_x2[nbins_st2*globalconsts::MaxHitsProj_X];
         //pairs in station 3
-        thrust::pair<int, int> hitpairs_x3[nbins_st3*globalconsts::MaxHitsProj[0]];
+        thrust::pair<int, int> hitpairs_x3[nbins_st3*globalconsts::MaxHitsProj_X];
 	
 	unsigned int offset_hitcoll;
 	
@@ -260,7 +260,8 @@ __global__ void gKernel_XZ_tracking(
 	const float res_st2xp = planes->resolution[detid];
 	
 	//stid = 2, projid = 0
-	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+	//make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(hits_st2x, nhits_st2x, hits_st2xp, nhits_st2xp, hitpairs_x2, nhitpairs_x2, bin0_st2, nbins_st2, hitflag1, hitflag2, stid);
 
 	stid = st3;
 	detid = globalconsts::detsuperid[stid][projid]*2;
@@ -284,8 +285,9 @@ __global__ void gKernel_XZ_tracking(
 	const float res_st3xp = planes->resolution[detid];
 	
 	//stid = 2, projid = 0
-	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
-
+	//make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid, projid);
+	make_hitpairs_in_station_bins(hits_st3x, nhits_st3x, hits_st3xp, nhits_st3xp, hitpairs_x3, nhitpairs_x3, bin0_st3, nbins_st3, hitflag1, hitflag2, stid);
+	
 #ifdef DEBUG	
 	if(blockIdx.x==debug::EvRef && st3==4){
 		printf("XZ: nhits %d %d \n", nhits_st3x, nhits_st3xp);
@@ -357,13 +359,13 @@ __global__ void gKernel_XZ_tracking(
 
 	bool bin_overflows = false;
 	for(int bin = 0; bin<nbins_st2; bin++){
-		if(nhitpairs_x2[bin]>globalconsts::MaxHitsProj[0])bin_overflows = true;
+		if(nhitpairs_x2[bin]>globalconsts::MaxHitsProj_X)bin_overflows = true;
 #ifdef DEBUG
 		if(nhitpairs_x2[bin])printf("evt %d bin %d nhits x2 = %d\n", eventID[blockIdx.x], bin, nhitpairs_x2[bin]);
 #endif
 	}
 	for(int bin = 0; bin<nbins_st3; bin++){
-		if(nhitpairs_x3[bin]>globalconsts::MaxHitsProj[0])bin_overflows = true;
+		if(nhitpairs_x3[bin]>globalconsts::MaxHitsProj_X)bin_overflows = true;
 #ifdef DEBUG
 		if(nhitpairs_x3[bin])printf("evt %d bin %d nhits x3 = %d\n", eventID[blockIdx.x], bin, nhitpairs_x3[bin]);
 #endif

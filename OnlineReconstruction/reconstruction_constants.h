@@ -117,6 +117,7 @@ namespace globalconsts{
 	__device__ constexpr int NSTEPS_TARGET = 200;
 	__device__ constexpr float STEP_TARGET = 2.5;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+#ifdef LEGACYCODE
 	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 28, 28};
 	__device__ constexpr short MaxHitsProj[3] = {20, 80, 80};
 	__device__ constexpr short WCHitsBins[4][3][2][32] = {
@@ -145,7 +146,7 @@ namespace globalconsts{
         	 {{1, 4, 8, 12, 16, 20, 24, 28, 31, 35, 39, 43, 47, 51, 55, 59, 62, 66, 70, 74, 78, 82, 86, 90, 94, 97, 101, 105, -1, -1, -1, -1}, 
 		  {27, 31, 34, 38, 42, 46, 50, 54, 58, 62, 65, 69, 73, 77, 81, 85, 89, 93, 97, 100, 104, 108, 112, 116, 120, 124, 128, 134, -1, -1, -1, -1}}} // d3pv
         	};//TODO: reduce this monster to just what is needed/used
-
+#endif
 	__device__ constexpr short N_WCHitsBins_X = 28;
 	__device__ constexpr short MaxHitsProj_X = 20;
 	__device__ constexpr short WCHitsBins_X[3][2][28] = {
@@ -155,7 +156,7 @@ namespace globalconsts{
 		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 116} }, // d3px
 		{ {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109}, 
 		  {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 116} }, // d3px
-      	};
+      		};
 	
 }
 

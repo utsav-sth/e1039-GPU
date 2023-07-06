@@ -362,7 +362,7 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 // --------------------------------------------------------------- //
 // Hit pairing functions
 // --------------------------------------------------------------- //
-
+#ifdef LEGACYCODE
 __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID, const int projID){
 	// I think we assume that by default we want to know where we are
 	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
@@ -446,6 +446,7 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 		 }
 	}
 }
+#endif
 
 //new function
 __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID){
@@ -493,7 +494,9 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 			for(bin = bin0; bin<bin0+Nbins; bin++){
 				if( globalconsts::WCHitsBins_X[stID-2][0][bin] <= hitcoll1.chan(idx1) && 
 				    hitcoll1.chan(idx1) <= globalconsts::WCHitsBins_X[stID-2][1][bin]){
-					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
+#ifdef DEBUG
+					printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, globalconsts::WCHitsBins_X[stID-2][0][bin-bin0], globalconsts::WCHitsBins_X[stID-2][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
+#endif
 					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(idx1, idx2);
 					npairs[bin-bin0]++;
 				}
@@ -507,10 +510,14 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	for(int i = 0; i<nhits1; i++){
 		if(hitflag1[i]<1){
 			for(bin = bin0; bin<bin0+Nbins; bin++){
-			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#ifdef DEBUG
+				printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins_X[stID-2][0][bin], globalconsts::WCHitsBins_X[stID-2][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#endif
 				if( globalconsts::WCHitsBins_X[stID-2][0][bin] <= hitcoll1.chan(i) && 
 				    hitcoll1.chan(i) <= globalconsts::WCHitsBins_X[stID-2][1][bin]){
-					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#ifdef DEBUG
+					printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins_X[stID-2][0][bin-bin0], globalconsts::WCHitsBins_X[stID-2][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#endif
 					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(i, -1);
 					npairs[bin-bin0]++;
 				}
@@ -520,10 +527,14 @@ __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nh
 	for(int i = 0; i<nhits2; i++){
 		if(hitflag2[i]<1){
 			for(bin = bin0; bin<bin0+Nbins; bin++){
-			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#ifdef DEBUG
+				printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins_X[stID-2][0][bin], globalconsts::WCHitsBins_X[stID-2][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#endif
 				if( globalconsts::WCHitsBins_X[stID-2][0][bin] <= hitcoll2.chan(i) && 
 				    hitcoll2.chan(i) <= globalconsts::WCHitsBins_X[stID-2][1][bin]){
-					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#ifdef DEBUG
+					printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins_X[stID-2][0][bin-bin0], globalconsts::WCHitsBins_X[stID-2][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+#endif
 					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(-1, i);
 					npairs[bin-bin0]++;
 				}
