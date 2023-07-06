@@ -1,4 +1,5 @@
 #include "reconstruction_classes.cuh"
+#include "trackanalyticalminimizer.cuh"
 
 // --------------------------------------------------------------- //
 // functions to calculate bottom and top end wire points for a hit //
@@ -1209,6 +1210,300 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 // 
 // --------------------------------------------- //
 
+
+__global__ void gKernel_TrackOutlierHitRemoval(
+	gEventTrackCollection* tklcoll,
+	const short track_stid_ref,
+	const gPlane* planes,
+	const bool* hastoomanyhits)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	//tracks
+	unsigned int Ntracks;
+	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, Ntracks);
+	
+	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int array_thread_offset = threadIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	
+	int i;
+	short ihit, nhitsi;
+	//float res_curr, res_max, res_max2;
+	//short hit_rm_idx; 
+	short hit_rm_neighbor;
+	float cut;
+	
+	float x0, errx0, y0, erry0, tx, errtx, ty, errty, x0_st1, tx_st1;
+	float y, err_y;
+	short charge;
+	float invP, errinvP;
+#ifdef TEST_MOMENTUM
+	float tx_tgt, invp_tgt;
+#endif
+	const short ndof = track_stid_ref>5? 5 : 4;
+	
+	bool isupdated;
+	//short signflip[18];
+	//for(short k = 0; k<18; k++){
+	//	signflip[k] = 0;
+	//}
+	float resid_[18];	
+	
+	short stid;
+	short detid[18];
+	short chan[18];
+	short sign[18];
+	float pos[18];
+	float drift[18];
+	
+	float X_[4];
+	float errX_[4];
+	float Z_23[4];
+	float X_st1_[3];
+	float errX_st1_[3];
+	float Z_1[3];
+	float Y_[12];
+	float errY_[12];
+	float Z_[12];
+	
+	float A_[4];
+	float Ainv_[4];
+	float B_[2]; 
+	float Par[2];
+	float ParErr[2];
+	float chi2;
+	
+	float tdc[18];
+	short nhits_st23, nhits_st1, nhits_x, nhits_uv, nhits, nhits_x_st23, nhits_x_st1;
+	
+	for(i = 0; i<Ntracks; i++){
+		if(Tracks.stationID(i)<track_stid_ref)continue;
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+#endif
+		nhitsi = Tracks.nHits(i);
+		nhits_st23 = 0;
+		nhits_st1 = 0;
+		
+		x0 = Tracks.x0(i);
+		y0 = Tracks.y0(i);
+		tx = Tracks.tx(i);
+		ty = Tracks.ty(i);
+
+		//res_max = -1.;
+		//res_max2 = -1.;
+		//hit_rm_idx = -1;
+		hit_rm_neighbor = -1;
+		
+		if(track_stid_ref>5){
+			calculate_x0_tx_st1(x0, tx, Tracks.invP(i), Tracks.charge(i), x0_st1, tx_st1);
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("st1 var calculation: x0 %1.4f tx %1.4f x0_st1 %1.4f tx_st1 %1.4f  \n", x0, tx, x0_st1, tx_st1);
+#endif
+		}
+			
+		isupdated = false;
+		//first fill in the arrays... that makes sense...
+		for(ihit = 0; ihit<nhitsi; ihit++){
+			detid[ihit] = Tracks.hits_detid(i, ihit);
+			chan[ihit] = Tracks.hits_chan(i, ihit);
+			sign[ihit] = Tracks.hits_sign(i, ihit);
+			pos[ihit] = Tracks.hits_pos(i, ihit);
+			drift[ihit] = Tracks.hits_drift(i, ihit);
+			tdc[ihit] = Tracks.hits_tdc(i, ihit);
+			resid_[ihit] = Tracks.hits_residual(i, ihit);
+
+			if(detid[ihit]>12){
+				nhits_st23++;
+			//	resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty);
+			}else{
+				nhits_st1++;
+			//	resid_[ihit] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0_st1, y0, tx_st1, ty);
+			}
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("hit %d detid %d drift %1.4f resid %1.4f sign %d \n", ihit, detid[ihit], drift[ihit], resid_[ihit], sign[ihit]);
+#endif
+		}
+		//then reloop *once* to apply the logic....
+		for(ihit = 0; ihit<nhitsi; ihit++){
+			
+			hit_rm_neighbor = detid[ihit]%2==0? ihit+1: ihit-1;
+			if( abs( detid[hit_rm_neighbor] - detid[ihit] )>1 ||  detid[hit_rm_neighbor]<0 ||  hit_rm_neighbor>=nhitsi )hit_rm_neighbor = -1;
+			
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf(" hit %d det %d neighbor %d det %d \n", ihit, detid[ihit], hit_rm_neighbor, detid[hit_rm_neighbor]);
+#endif			
+			stid = (detid[ihit]-1)/6-1;
+			if(stid<0 && detid[ihit]>=0)stid = 0;
+			
+			cut = sign[ihit]==0 ? selection::rejectwin[stid]+fabs(drift[ihit]) : selection::rejectwin[stid];
+
+			if( fabs(resid_[ihit]) > cut ){
+				//if the neighbor hit id good, is larger than current hit and has a larger residual, skip because we will do it next 
+				if(hit_rm_neighbor>ihit && fabs(resid_[hit_rm_neighbor])>fabs(resid_[ihit])){
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("Check next hit instead\n");
+#endif
+					continue;
+				}
+
+#ifdef DEBUG
+				if(blockIdx.x==debug::EvRef)printf("cut %1.4f hit %d detid %d resid %1.4f drift %1.4f sign %d \n", cut, ihit, detid[ihit], resid_[ihit], drift[ihit], sign[ihit]);
+#endif
+						
+				isupdated = true;
+				
+				if(fabs(resid_[ihit]-2*drift[ihit]*sign[ihit]) < cut){
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("hit %d det %d sign changed \n", ihit, detid[ihit]);
+#endif
+					sign[ihit] = -sign[ihit];
+					if(hit_rm_neighbor>=0)sign[hit_rm_neighbor] = 0;
+				}else{
+					detid[ihit] = -1;
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("removing hit %d detid %d resid %1.4f, %1.4f > cut %1.4f \n", ihit, detid[ihit], fabs(resid_[ihit]), fabs(resid_[ihit]-2*drift[ihit]*sign[ihit]), cut);
+#endif
+					if(hit_rm_neighbor<0){
+						// if we have two hits in the same chamber that are not good, then the track cannot be kept 
+						// we don't need to do the follow up either
+#ifdef DEBUG
+						if(blockIdx.x==debug::EvRef)
+						printf("evt %d track removed \n", blockIdx.x, threadIdx.x);
+#endif
+						tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, Tracks.stationID(i)-2);
+						isupdated = false;
+						break;
+					}
+					if(detid[ihit]>12){
+						nhits_st23--;
+					}else{
+						nhits_st1--;
+					}
+				}
+				
+				
+			}
+		}
+		if(isupdated){
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("updating: evt %d thread %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f stid %1.0f \n", blockIdx.x, threadIdx.x, x0, tx, y0, ty, Tracks.stationID(i));
+#endif			
+			nhits_x = 0;
+			nhits_uv = 0;
+			nhits_x_st23 = 0;
+			nhits_x_st1 = 0;
+			
+			resolve_single_leftright_newhits(x0, tx, y0, ty, nhits_st23, detid, pos, sign, planes);
+			resolve_single_leftright_newhits(x0_st1, tx_st1, y0, ty, nhits_st1, detid+nhits_st23, pos+nhits_st23, sign+nhits_st23, planes);
+
+			for(ihit = 0; ihit<nhitsi; ihit++){
+				if(detid[ihit]>=0 && (detid[ihit]-1)%6==2 || (detid[ihit]-1)%6==3 ){
+					if( detid[ihit]>12 ){
+						Z_23[nhits_x_st23] = planes->z[detid[ihit]];
+						X_[nhits_x_st23] = pos[ihit];
+						errX_[nhits_x_st23] = planes->resolution[detid[ihit]];
+						nhits_x_st23++;
+					}else{
+						Z_1[nhits_x_st1] = planes->z[detid[ihit]];
+						X_st1_[nhits_x_st1] = pos[ihit];
+						errX_st1_[nhits_x_st1] = planes->resolution[detid[ihit]];
+						nhits_x_st1++;
+					}
+				}
+			}
+			
+			fit_2D_track(nhits_x_st23, X_, Z_23, errX_, A_, Ainv_, B_, Par, ParErr, chi2);
+			x0 = Par[0];
+			errx0 = ParErr[0];
+			tx = Par[1];
+			errtx = ParErr[1];
+			
+			if(Tracks.stationID(i)>5){
+				Z_1[nhits_x_st1] = globalconsts::Z_KMAG_BEND;
+				X_st1_[nhits_x_st1] = x_trk(x0, tx, Z_1[nhits_x_st1]);
+				errX_st1_[nhits_x_st1] = err_x_trk(errx0, errtx, Z_1[nhits_x_st1]);
+				
+				fit_2D_track(nhits_x_st1+1, X_st1_, Z_1, errX_st1_, A_, Ainv_, B_, Par, ParErr, chi2);
+				x0_st1 = Par[0];
+				tx_st1 = Par[1];
+				
+				charge = calculate_charge(tx, x0);
+				invP = calculate_invP(tx, tx_st1, charge);
+				//invP = calculate_invP_charge(tx, tx_st1, charge);
+				errinvP = calculate_invP_error(errtx, ParErr[1]);
+				
+#ifdef TEST_MOMENTUM
+				tx_tgt = x_trk(x0_st1, tx_st1, globalconsts::Z_FMAG_BEND)/(globalconsts::Z_FMAG_BEND-globalconsts::Z_TARGET);
+				invp_tgt = calculate_invp_tgt(tx_st1, tx_tgt, charge);
+#endif
+#ifdef DEBUG
+				if(invP>0.25)printf(" evt %d thread %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f x0_st1 %1.4f tx_st1 %1.4f charge %d \n", blockIdx.x, threadIdx.x, x0, tx, y0, ty, x0_st1, tx_st1, charge);
+#endif
+			}
+			
+			for(ihit = 0; ihit<nhitsi; ihit++){
+				if(detid[ihit]>=0 && (detid[ihit]-1)%6!=2 && (detid[ihit]-1)%6!=3 ){
+					if( detid[ihit]>12 ){
+						calculate_y_uvhit(detid[ihit], chan[ihit], drift[ihit], sign[ihit], x0, tx, planes, y, err_y);
+					}else{
+						calculate_y_uvhit(detid[ihit], chan[ihit], drift[ihit], sign[ihit], x0_st1, tx_st1, planes, y, err_y);
+					}
+					Y_[nhits_uv] = y;
+					errY_[nhits_uv] = err_y;
+					Z_[nhits_uv] = planes->z[detid[ihit]];
+#ifdef DEBUG
+					if(blockIdx.x==debug::EvRef)printf("hit %d detid %d z %1.4f y %1.4f erry %1.4f\n", nhits_uv, detid[ihit], Z_[nhits_uv], Y_[nhits_uv], errY_[nhits_uv] );
+#endif
+					nhits_uv++;
+				}
+			}
+			
+			fit_2D_track(nhits_uv, Y_, Z_, errY_, A_, Ainv_, B_, Par, ParErr, chi2);
+			y0 = Par[0];
+			erry0 = ParErr[0];
+			ty = Par[1];
+			errty = ParErr[1];
+			//update the track parameters:
+			
+			tklcoll->setTx(tkl_coll_offset+array_thread_offset, i, tx);
+			tklcoll->setX0(tkl_coll_offset+array_thread_offset, i, x0);
+			tklcoll->setErrTx(tkl_coll_offset+array_thread_offset, i, errtx);
+			tklcoll->setErrX0(tkl_coll_offset+array_thread_offset, i, errx0);
+			tklcoll->setTy(tkl_coll_offset+array_thread_offset, i, ty);
+			tklcoll->setY0(tkl_coll_offset+array_thread_offset, i, y0);
+			tklcoll->setErrTy(tkl_coll_offset+array_thread_offset, i, errty);
+			tklcoll->setErrY0(tkl_coll_offset+array_thread_offset, i, erry0);
+			tklcoll->setinvP(tkl_coll_offset+array_thread_offset, i, invP);
+			tklcoll->setErrinvP(tkl_coll_offset+array_thread_offset, i, errinvP);
+#ifdef TEST_MOMENTUM
+			tklcoll->setInvPTarget(tkl_coll_offset+array_thread_offset, i, invp_tgt);
+#endif			
+			chi2 = 0;
+			nhits = 0;
+			for(ihit = 0; ihit<nhitsi; ihit++){
+				if(detid[ihit]>=0){
+					resid_[nhits] = residual(detid[ihit], chan[ihit], drift[ihit], sign[ihit], planes, x0, y0, tx, ty);
+					chi2+= resid_[nhits]*resid_[nhits]/planes->resolution[detid[ihit]]/planes->resolution[detid[ihit]];
+					tklcoll->setHitDetID(tkl_coll_offset+array_thread_offset, i, nhits, detid[ihit]);
+					tklcoll->setHitChan(tkl_coll_offset+array_thread_offset, i, nhits, chan[ihit]);
+					tklcoll->setHitPos(tkl_coll_offset+array_thread_offset, i, nhits, pos[ihit]);
+					tklcoll->setHitDrift(tkl_coll_offset+array_thread_offset, i, nhits, drift[ihit]);
+					tklcoll->setHitSign(tkl_coll_offset+array_thread_offset, i, nhits, sign[ihit]);
+					tklcoll->setHitTDC(tkl_coll_offset+array_thread_offset, i, nhits, tdc[ihit]);
+					tklcoll->setHitResidual(tkl_coll_offset+array_thread_offset, i, nhits, resid_[ihit]);
+					nhits++;
+				}
+			}
+			tklcoll->setnHits(tkl_coll_offset+array_thread_offset, i, nhits);
+			tklcoll->setChisq(tkl_coll_offset+array_thread_offset, i, chi2);
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef)printf("evt %d thread %d x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f stid %1.0f \n", blockIdx.x, threadIdx.x, x0, tx, y0, ty, Tracks.stationID(i));
+#endif
+
+		}
+	}
+}
 
 // --------------------------------------------- //
 //

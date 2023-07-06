@@ -940,6 +940,19 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: Vertexing: "<<gpu_vtx.count()/1000000000.<<endl;
 
 	
+	gKernel_DimuonBuilding<<<BLOCKS_NUM, 1>>>(
+		device_gTracks,
+		device_gDimuons,
+		device_gEvent->HasTooManyHits);
+	
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk( cudaDeviceSynchronize() );
+
+	auto cp11 = std::chrono::system_clock::now();
+	auto gpu_dim = cp11-cp10;
+	cout<<"GPU: Dimuon building: "<<gpu_dim.count()/1000000000.<<endl;
+
+	
 	gKernel_fill_display_histograms<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gHistsArrays, device_gEvent->HasTooManyHits);
 	
 #ifdef ROOTSAVE
@@ -977,8 +990,8 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gHistsArrays);
 #endif		
 
-	auto cp11 = std::chrono::system_clock::now();
-	auto gpu_dis = cp11-cp10;
+	auto cp12 = std::chrono::system_clock::now();
+	auto gpu_dis = cp12-cp11;
 	cout<<"GPU: Histograming and displaying: "<<gpu_dis.count()/1000000000.<<endl;
 
 	// data transfer from device to host
@@ -999,8 +1012,8 @@ int main(int argn, char * argv[]) {
 	cudaFree(device_gHistsArrays);
 #endif
 	
-	auto cp12 = std::chrono::system_clock::now();
-	auto cp_to_cpu = cp12-cp11;
+	auto cp13 = std::chrono::system_clock::now();
+	auto cp_to_cpu = cp13-cp12;
 	cout<<"Copy back to CPU: "<<cp_to_cpu.count()/1000000000.<<endl;
 	
 	int nGood = EstnEvtMax;
@@ -1014,7 +1027,10 @@ int main(int argn, char * argv[]) {
 	int ntkl;
 	int nTracklets;
 	int nhits_tkl;
+	unsigned int dim_coll_offset;
+	int ndim;
 	long tklctr = 0;
+	long dimctr = 0;
 	long nEvtsTotal = 0;
 	long nEvtsPass = 0;
 	//TFile* outFile = new TFile(outputFile.Data(), "RECREATE");
@@ -1131,6 +1147,49 @@ int main(int argn, char * argv[]) {
 		}
 		output->fNTracks = nTracklets;
 		tklctr+= nTracklets;
+		
+		dim_coll_offset = n*datasizes::DimuonSizeMax*datasizes::NDimuonParam;
+		ndim = host_output_gDimuons->NDimuons[n];
+		output->fNDimuons = ndim;
+		for(int k = 0; k<ndim; k++ ){
+			output->fDimMass.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam]);
+			output->fDimPT.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+1]);
+			output->fDimXF.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+2]);
+			output->fDimX1.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+3]);
+			output->fDimX2.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+4]);
+			output->fDimCostheta.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+5]);
+			output->fDimPhi.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+6]);
+			output->fDimMassSingle.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+7]);
+			output->fDimChi2Single.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+8]);
+			output->fDimVx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+9]);
+			output->fDimVy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+10]);
+			output->fDimVz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+11]);
+			output->fDimPosVx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+12]);
+			output->fDimPosVy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+13]);
+			output->fDimPosVz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+14]);
+			output->fDimNegVx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+15]);
+			output->fDimNegVy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+16]);
+			output->fDimNegVz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+17]);
+			output->fDimPosE.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+18]);
+			output->fDimPosPx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+19]);
+			output->fDimPosPy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+20]);
+			output->fDimPosPz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+21]);
+			output->fDimNegE.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+22]);
+			output->fDimNegPx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+23]);
+			output->fDimNegPy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+24]);
+			output->fDimNegPz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+25]);
+			output->fDimPosSingleE.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+26]);
+			output->fDimPosSinglePx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+27]);
+			output->fDimPosSinglePy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+28]);
+			output->fDimPosSinglePz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+29]);
+			output->fDimNegSingleE.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+30]);
+			output->fDimNegSinglePx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+31]);
+			output->fDimNegSinglePy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+32]);
+			output->fDimNegSinglePz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+33]);
+			output->fDimChi2Vtx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+34]);
+			output->fDimChi2KF.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+35]);
+		}
+		
 		output->FillTree();
 	}
 	//output->Write();
@@ -1141,8 +1200,8 @@ int main(int argn, char * argv[]) {
 
 	delete rawEvent;
 
-	auto cp13 = std::chrono::system_clock::now();
-	auto write_output = cp13-cp12;
+	auto cp14 = std::chrono::system_clock::now();
+	auto write_output = cp14-cp13;
 	cout<<"Write Output: "<<write_output.count()/1000000000.<<endl;
 
 	// printing the time required for all operations

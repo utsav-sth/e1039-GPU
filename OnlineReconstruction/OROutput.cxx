@@ -60,7 +60,7 @@ void ORoutput_tree::Init()
   fTree->Branch("track.hitresid", &(fTrackHitsResidual));
   fTree->Branch("track.invp_tgt", &(fTrackInvPTgt));
   
-  fTree->Branch("ndimuons", &(fNTracks));
+  fTree->Branch("ndimuons", &(fNDimuons));
   fTree->Branch("dimuon.mass", &(fDimMass));
   fTree->Branch("dimuon.pT", &(fDimPT)); 
   fTree->Branch("dimuon.xF", &(fDimXF));
