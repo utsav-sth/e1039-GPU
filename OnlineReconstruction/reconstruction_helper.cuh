@@ -362,91 +362,6 @@ __device__ int event_reduction(const gHits& hitcoll, short* hitflag, const int d
 // --------------------------------------------------------------- //
 // Hit pairing functions
 // --------------------------------------------------------------- //
-#ifdef LEGACYCODE
-__device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID, const int projID){
-	// I think we assume that by default we want to know where we are
-	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
-	
-	short bin;
-	const short MaxHits = globalconsts::MaxHitsProj[projID];
-
-	for(bin = bin0; bin<bin0+Nbins; bin++){
-		npairs[bin-bin0] = 0;
-	}
-	
-	//declaring arrays for the hit lists
-	for(int i = 0; i<100; i++){
-		hitflag1[i] = hitflag2[i] = 0;
-	}
-	
-	//building the lists of hits for each detector plane
-	//const int detid1 = globalconsts::detsuperid[stID][projID]*2;
-	//const int detid2 = globalconsts::detsuperid[stID][projID]*2-1;
-	const int superdetid = globalconsts::detsuperid[stID][projID];
-	
-	// pair the hits by position:
-	// if one hit on e.g. x and one hit on x' are closer than
-	// the "spacing" defined for the planes, then the hits can be paired together.
-	int idx1 = -1;
-	int idx2 = -1;
-	
-#ifdef DEBUG
-	if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
-#endif
-	for(int i = 0; i<nhits1; i++){
-		idx1++;
-		idx2 = -1;
-		for(int j = 0; j<nhits2; j++){
-			idx2++;
-#ifdef DEBUG
-			if(blockIdx.x==debug::EvRef && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
-#endif
-			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > globalconsts::spacingplane[superdetid] ){
-				continue;
-			}
-			
-			for(bin = bin0; bin<bin0+Nbins; bin++){
-				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(idx1) && 
-				    hitcoll1.chan(idx1) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
-					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(idx1, idx2);
-					npairs[bin-bin0]++;
-				}
-			}
-			hitflag1[idx1] = 1;
-			hitflag2[idx2] = 1;
-		}
-	}
-	// here the hits that cannot be paired to another hit are paired to "nothing"
-	// (but they still have to be paired to be used in the trackletteing)
-	for(int i = 0; i<nhits1; i++){
-		if(hitflag1[i]<1){
-			for(bin = bin0; bin<bin0+Nbins; bin++){
-			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(i) && 
-				    hitcoll1.chan(i) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
-					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(i, -1);
-					npairs[bin-bin0]++;
-				}
-			}
-		}
-	}
-	for(int i = 0; i<nhits2; i++){
-		if(hitflag2[i]<1){
-			for(bin = bin0; bin<bin0+Nbins; bin++){
-			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll2.chan(i) && 
-				    hitcoll2.chan(i) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
-					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
-					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(-1, i);
-					npairs[bin-bin0]++;
-				}
-			}
-		 }
-	}
-}
-#endif
 
 //new function
 __device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID){
@@ -1288,6 +1203,46 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 }
 
 
+
+
+
+
+
+
+
+
+// --------------------------------------------- //
+//
+// simple track printing function for debugging. 
+// 
+// --------------------------------------------- //
+__global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool* hastoomanyhits, const int blockID)
+{
+	if(hastoomanyhits[blockIdx.x])return;
+	
+	unsigned int nTracks;
+	
+	if(blockIdx.x==blockID){
+		const gTracks Tracks = tklcoll->tracks(blockID, threadIdx.x, nTracks);
+		
+		for(int i = 0; i<nTracks; i++){
+			printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
+		}
+	}
+	
+}
+
+
+__global__ void gkernel_checkHistos(gHistsArrays *HistsArrays, const short hist_num){
+	const int idx = blockIdx.x*blockDim.x+threadIdx.x;
+	if(blockIdx.x==hist_num || hist_num==-1){
+		if(threadIdx.x==0)printf(" hw %1.4f ", HistsArrays->pts_hw[blockIdx.x]);
+		printf(" thread %d idx %d xpts %1.4f values %1.4f\n", threadIdx.x, idx, HistsArrays->xpts[idx], HistsArrays->values[idx]);
+	}
+}
+
+
+
 #ifdef EXTRASTUFF
 
 __device__ float delta_tx(const float delta_x0)
@@ -1628,6 +1583,89 @@ __device__ void update_state(gTracklet& tkl, const gHit hit, gKalmanFitArrays& f
 
 #ifdef LEGACYCODE
 
+__device__ void make_hitpairs_in_station_bins(const gHits hitcoll1, const int nhits1, const gHits hitcoll2, const int nhits2, thrust::pair<int, int>* hitpairs, int* npairs, const short bin0, const short Nbins, short* hitflag1, short* hitflag2, const int stID, const int projID){
+	// I think we assume that by default we want to know where we are
+	//printf("stID %d projID %d bin0 %d\n", stID, projID, bin0);
+	
+	short bin;
+	const short MaxHits = globalconsts::MaxHitsProj[projID];
+
+	for(bin = bin0; bin<bin0+Nbins; bin++){
+		npairs[bin-bin0] = 0;
+	}
+	
+	//declaring arrays for the hit lists
+	for(int i = 0; i<100; i++){
+		hitflag1[i] = hitflag2[i] = 0;
+	}
+	
+	//building the lists of hits for each detector plane
+	//const int detid1 = globalconsts::detsuperid[stID][projID]*2;
+	//const int detid2 = globalconsts::detsuperid[stID][projID]*2-1;
+	const int superdetid = globalconsts::detsuperid[stID][projID];
+	
+	// pair the hits by position:
+	// if one hit on e.g. x and one hit on x' are closer than
+	// the "spacing" defined for the planes, then the hits can be paired together.
+	int idx1 = -1;
+	int idx2 = -1;
+	
+#ifdef DEBUG
+	if(blockIdx.x==debug::EvRef && threadIdx.x==0)printf("nhits %d %d \n", nhits1, nhits2);
+#endif
+	for(int i = 0; i<nhits1; i++){
+		idx1++;
+		idx2 = -1;
+		for(int j = 0; j<nhits2; j++){
+			idx2++;
+#ifdef DEBUG
+			if(blockIdx.x==debug::EvRef && threadIdx==0)printf("i %d j %d pos %1.4f %1.4f\n", i, j, );
+#endif
+			if( abs(hitcoll1.pos(idx1) - hitcoll2.pos(idx2)) > globalconsts::spacingplane[superdetid] ){
+				continue;
+			}
+			
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(idx1) && 
+				    hitcoll1.chan(idx1) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit 1 elem %d hit 2 elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, ic[index].AllHits[ idx2 ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(idx1, idx2);
+					npairs[bin-bin0]++;
+				}
+			}
+			hitflag1[idx1] = 1;
+			hitflag2[idx2] = 1;
+		}
+	}
+	// here the hits that cannot be paired to another hit are paired to "nothing"
+	// (but they still have to be paired to be used in the trackletteing)
+	for(int i = 0; i<nhits1; i++){
+		if(hitflag1[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll1.chan(i) && 
+				    hitcoll1.chan(i) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(i, -1);
+					npairs[bin-bin0]++;
+				}
+			}
+		}
+	}
+	for(int i = 0; i<nhits2; i++){
+		if(hitflag2[i]<1){
+			for(bin = bin0; bin<bin0+Nbins; bin++){
+			//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin], globalconsts::WCHitsBins[stID-1][projID][1][bin], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+				if( globalconsts::WCHitsBins[stID-1][projID][0][bin] <= hitcoll2.chan(i) && 
+				    hitcoll2.chan(i) <= globalconsts::WCHitsBins[stID-1][projID][1][bin]){
+					//printf("bin %d low %d high %d hit elem %d global bin %d \n", bin, globalconsts::WCHitsBins[stID-1][projID][0][bin-bin0], globalconsts::WCHitsBins[stID-1][projID][1][bin-bin0], ic[index].AllHits[ i ].elementID, bin+npairs[bin]*Nbins);
+					if(npairs[bin-bin0]<=MaxHits)hitpairs[bin-bin0+npairs[bin-bin0]*Nbins] = thrust::make_pair(-1, i);
+					npairs[bin-bin0]++;
+				}
+			}
+		 }
+	}
+}
 
 // Hit comparison
 struct lessthan {

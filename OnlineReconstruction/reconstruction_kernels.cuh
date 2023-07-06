@@ -3703,36 +3703,6 @@ __global__ void gKernel_GlobalTrackCleaning_crossthreads(
 
 
 
-// --------------------------------------------- //
-//
-// simple track printing function for debugging. 
-// 
-// --------------------------------------------- //
-__global__ void gKernel_check_tracks(gEventTrackCollection* tklcoll, const bool* hastoomanyhits, const int blockID)
-{
-	if(hastoomanyhits[blockIdx.x])return;
-	
-	unsigned int nTracks;
-	
-	if(blockIdx.x==blockID){
-		const gTracks Tracks = tklcoll->tracks(blockID, threadIdx.x, nTracks);
-		
-		for(int i = 0; i<nTracks; i++){
-			printf("thread %d tracklet %d thread %1.0f bin/stid %1.0f nhits %1.0f x0 %1.4f tx %1.4f y0 %1.4f ty %1.4f invP %1.4f: \n", threadIdx.x, i, Tracks.threadID(i), Tracks.stationID(i), Tracks.nHits(i), Tracks.x0(i), Tracks.tx(i), Tracks.y0(i), Tracks.ty(i), Tracks.invP(i));
-		}
-	}
-	
-}
-
-
-
-__global__ void gkernel_checkHistos(gHistsArrays *HistsArrays, const short hist_num){
-	const int idx = blockIdx.x*blockDim.x+threadIdx.x;
-	if(blockIdx.x==hist_num || hist_num==-1){
-		if(threadIdx.x==0)printf(" hw %1.4f ", HistsArrays->pts_hw[blockIdx.x]);
-		printf(" thread %d idx %d xpts %1.4f values %1.4f\n", threadIdx.x, idx, HistsArrays->xpts[idx], HistsArrays->values[idx]);
-	}
-}
 
 
 // --------------------------------------------- //
