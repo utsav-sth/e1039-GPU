@@ -60,6 +60,44 @@ public:
   std::vector<float> fTrackHitsResidual;
   std::vector<float> fTrackInvPTgt;
 
+  Int_t fNDimuons;
+  std::vector<float> fDimMass;
+  std::vector<float> fDimPT;
+  std::vector<float> fDimXF;
+  std::vector<float> fDimX1;
+  std::vector<float> fDimX2;
+  std::vector<float> fDimCostheta;
+  std::vector<float> fDimPhi;
+  std::vector<float> fDimMassSingle;
+  std::vector<float> fDimChi2Single;
+  std::vector<float> fDimVx;
+  std::vector<float> fDimVy;
+  std::vector<float> fDimVz;
+  std::vector<float> fDimPosVx;
+  std::vector<float> fDimPosVy;
+  std::vector<float> fDimPosVz;
+  std::vector<float> fDimNegVx;
+  std::vector<float> fDimNegVy;
+  std::vector<float> fDimNegVz;
+  std::vector<float> fDimPosE;
+  std::vector<float> fDimPosPx;
+  std::vector<float> fDimPosPy;
+  std::vector<float> fDimPosPz;
+  std::vector<float> fDimNegE;
+  std::vector<float> fDimNegPx;
+  std::vector<float> fDimNegPy;
+  std::vector<float> fDimNegPz;
+  std::vector<float> fDimPosSingleE;
+  std::vector<float> fDimPosSinglePx;
+  std::vector<float> fDimPosSinglePy;
+  std::vector<float> fDimPosSinglePz;
+  std::vector<float> fDimNegSingleE;
+  std::vector<float> fDimNegSinglePx;
+  std::vector<float> fDimNegSinglePy;
+  std::vector<float> fDimNegSinglePz;
+  std::vector<float> fDimChi2Vtx;
+  std::vector<float> fDimChi2KF;
+  
   ClassDef(ORoutput_tree, 1)
 }; 
 

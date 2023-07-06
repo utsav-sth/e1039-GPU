@@ -59,6 +59,44 @@ void ORoutput_tree::Init()
   fTree->Branch("track.hittdc", &(fTrackHitsTDC));
   fTree->Branch("track.hitresid", &(fTrackHitsResidual));
   fTree->Branch("track.invp_tgt", &(fTrackInvPTgt));
+  
+  fTree->Branch("ndimuons", &(fNTracks));
+  fTree->Branch("dimuon.mass", &(fDimMass));
+  fTree->Branch("dimuon.pT", &(fDimPT)); 
+  fTree->Branch("dimuon.xF", &(fDimXF));
+  fTree->Branch("dimuon.x1", &(fDimX1));
+  fTree->Branch("dimuon.x2", &(fDimX2));
+  fTree->Branch("dimuon.costheta", &(fDimCostheta));
+  fTree->Branch("dimuon.phi", &(fDimPhi));
+  fTree->Branch("dimuon.mass_single", &(fDimMassSingle));
+  fTree->Branch("dimuon.chi2_single", &(fDimChi2Single));
+  fTree->Branch("dimuon.vx", &(fDimVx));
+  fTree->Branch("dimuon.vy", &(fDimVy));
+  fTree->Branch("dimuon.vz", &(fDimVz));
+  fTree->Branch("dimuon.pos_vx", &(fDimPosVx));
+  fTree->Branch("dimuon.pos_vy", &(fDimPosVy));
+  fTree->Branch("dimuon.pos_vz", &(fDimPosVz));
+  fTree->Branch("dimuon.neg_vx", &(fDimNegVx));
+  fTree->Branch("dimuon.neg_vy", &(fDimNegVy));
+  fTree->Branch("dimuon.neg_vz", &(fDimNegVz));
+  fTree->Branch("dimuon.pos_e", &(fDimPosE));
+  fTree->Branch("dimuon.pos_px", &(fDimPosPx));
+  fTree->Branch("dimuon.pos_py", &(fDimPosPy));
+  fTree->Branch("dimuon.pos_pz", &(fDimPosPz));
+  fTree->Branch("dimuon.neg_e", &(fDimNegE));
+  fTree->Branch("dimuon.neg_px", &(fDimNegPx));
+  fTree->Branch("dimuon.neg_py", &(fDimNegPy));
+  fTree->Branch("dimuon.neg_pz", &(fDimNegPz));
+  fTree->Branch("dimuon.pos_single_e", &(fDimPosSingleE));
+  fTree->Branch("dimuon.pos_single_px", &(fDimPosSinglePx));
+  fTree->Branch("dimuon.pos_single_py", &(fDimPosSinglePy));
+  fTree->Branch("dimuon.pos_single_pz", &(fDimPosSinglePz));
+  fTree->Branch("dimuon.neg_single_e", &(fDimNegSingleE));
+  fTree->Branch("dimuon.neg_single_px", &(fDimNegSinglePx));
+  fTree->Branch("dimuon.neg_single_py", &(fDimNegSinglePy));
+  fTree->Branch("dimuon.neg_single_pz", &(fDimNegSinglePz));
+  fTree->Branch("dimuon.chi2_vtx", &(fDimChi2Vtx));
+  fTree->Branch("dimuon.chi2_kf", &(fDimChi2KF));
 }
 
 void ORoutput_tree::Clear()
@@ -69,6 +107,7 @@ void ORoutput_tree::Clear()
   fHitPos.clear();
   fHitTDC.clear();
   fHitDrift.clear();
+  
   fNTracks = 0;
   fTrackStID.clear();
   fTrackNHits.clear();
@@ -98,6 +137,44 @@ void ORoutput_tree::Clear()
   fTrackHitsTDC.clear();
   fTrackHitsResidual.clear();
   fTrackInvPTgt.clear();
+  
+  fNDimuons = 0;
+  fDimMass.clear();
+  fDimPT.clear();
+  fDimXF.clear();
+  fDimX1.clear();
+  fDimX2.clear();
+  fDimCostheta.clear();
+  fDimPhi.clear();
+  fDimMassSingle.clear();
+  fDimChi2Single.clear();
+  fDimVx.clear();
+  fDimVy.clear();
+  fDimVz.clear();
+  fDimPosVx.clear();
+  fDimPosVy.clear();
+  fDimPosVz.clear();
+  fDimNegVx.clear();
+  fDimNegVy.clear();
+  fDimNegVz.clear();
+  fDimPosE.clear();
+  fDimPosPx.clear();
+  fDimPosPy.clear();
+  fDimPosPz.clear();
+  fDimNegE.clear();
+  fDimNegPx.clear();
+  fDimNegPy.clear();
+  fDimNegPz.clear();
+  fDimPosSingleE.clear();
+  fDimPosSinglePx.clear();
+  fDimPosSinglePy.clear();
+  fDimPosSinglePz.clear();
+  fDimNegSingleE.clear();
+  fDimNegSinglePx.clear();
+  fDimNegSinglePy.clear();
+  fDimNegSinglePz.clear();
+  fDimChi2Vtx.clear();
+  fDimChi2KF.clear();
 }
 
 void ORoutput_tree::FillTree()
