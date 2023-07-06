@@ -1,5 +1,5 @@
 //#define GLDISPLAY 1
-//#define E1039 1
+#define E1039 1
 //#define DEBUG 1
 #define USE_DET_RESOL 1
 #define KMAG_ON 1
@@ -214,5 +214,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 11;
+  __host__ __device__ constexpr unsigned int EvRef = 13;
 }
