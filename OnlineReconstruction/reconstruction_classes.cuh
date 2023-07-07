@@ -916,7 +916,7 @@ struct gEventDimuonCollection{
 	__device__ void setPosSingle4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
 		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+26+i] = fourvec[i];
 	}
-	__device__ void setNegSingl4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
+	__device__ void setNegSingle4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
 		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+30+i] = fourvec[i];
 	}
 	

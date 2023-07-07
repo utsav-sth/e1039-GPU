@@ -1206,6 +1206,47 @@ __device__ float chi2_track(size_t const n_points, float* residuals,
 
 // --------------------------------------------- //
 //
+//  4-vectors operations for Dimuon kinematics calculation functions
+//
+// --------------------------------------------- //
+
+__device__ void copy4vec(float* p1, const float* p2){
+	for(short i = 0; i<4; i++)p1[i] = p2[i];	
+}
+
+__device__ float E(const float m, const float* p){
+	return sqrtf(m*m+p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
+}
+
+__device__ void sum4vec(float* psum, const float* p1, const float* p2){
+	for(short i = 0; i<4; i++)psum[i] = p1[i]+p2[i];
+}
+
+__device__ float mult4vec(const float* p1, const float* p2){
+	return p1[3]*p2[3]-(p1[0]*p2[0]+p1[1]*p2[1]+p1[2]*p2[2]);
+}
+
+__device__ float M2(const float* p){
+	return p[3]*p[3]-(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
+}
+
+__device__ float M(const float* p){
+	return sqrtf(p[3]*p[3]-(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]) );
+}
+
+__device__ float Perp(const float* p){
+	return sqrtf(p[1]*p[1]+p[2]*p[2]);
+}
+
+__device__ void Boost(float* p, const float beta2, const float gamma, const float bz){
+	p[2] = p[2] + gamma*gamma*bz*p[2] + gamma*bz*p[3];
+	p[3] = gamma*(p[3]+bz*p[2]);
+}
+
+
+
+// --------------------------------------------- //
+//
 // !!! track cleaning kernels !!!
 // 
 // --------------------------------------------- //

@@ -2810,19 +2810,48 @@ __global__ void gKernel_DimuonBuilding(
 	const bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x])return;
-	const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	//const unsigned int tkl_coll_offset = blockIdx.x*datasizes::TrackSizeMax*datasizes::NTracksParam;
+	const unsigned int dim_coll_offset = blockIdx.x*datasizes::DimuonSizeMax*datasizes::NDimuonParam;
+
+	const float p_beam[4] = {0, 0, kinematics::Pbeam, kinematics::Ebeam};
+	const float p_target[4] = {0, 0, 0, kinematics::Mp};
+	const float p_cms[4] = {0, 0, kinematics::Pbeam, kinematics::Ebeam+kinematics::Mp};
+	
+	const float s = M2(p_cms);
+	const float sqrt_s = sqrtf(s);
+	const float cms_bv_z = p_cms[2]/p_cms[3];//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
+	const float beta2 = cms_bv_z*cms_bv_z;
+	const float gamma = 1.f/sqrtf(1.f-beta2);
+		
+	float p_pos[4];
+	float p_neg[4];
+	
+	float p_pos_single[4];
+	float p_neg_single[4];
+	
+	float vz_1, vz_2;// two hypotheses for vertex
+	float dim_v[3];
+	float pos_v[3];
+	float neg_v[3];
+		
+	float p_sum[4];
+	
+	float m, x1, x2, xF, pT, costheta, phi;
+	float m_single, chi2_single, chi2_vtx, chi2_kf;
 	
 	//Loop on all track threads, then loop on all tracks in each thread
 	int i_trd, j_trd;
 	int i_trk, j_trk;
 	
 	unsigned int Ntracks_i, Ntracks_j;
-	unsigned int array_thread_offset[THREADS_PER_BLOCK];
+	//unsigned int array_thread_offset[THREADS_PER_BLOCK];
 	
-	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
-		//Tracks[i_trd] = tklcoll->tracks(blockIdx.x, i_trd, Ntracks[i_trd]);
-		array_thread_offset[i_trd] = i_trd*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
-	}		
+	//for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+	//	//Tracks[i_trd] = tklcoll->tracks(blockIdx.x, i_trd, Ntracks[i_trd]);
+	//	array_thread_offset[i_trd] = i_trd*datasizes::TrackSizeMax*datasizes::NTracksParam/THREADS_PER_BLOCK;
+	//}		
+
+	int ndim = 0;
 
 	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
 		gTracks Tracks_i = tklcoll->tracks(blockIdx.x, i_trd, Ntracks_i);
@@ -2831,18 +2860,107 @@ __global__ void gKernel_DimuonBuilding(
 			gTracks Tracks_j = tklcoll->tracks(blockIdx.x, j_trd, Ntracks_j);
 			
 			for(i_trk = 0; i_trk<Ntracks_i; i_trk++){
+				if(Tracks_i.stationID(i_trk)<7)continue;
+				
+				if(Tracks_i.charge(i_trk)>0){
+					p_pos[0] = Tracks_i.px(i_trk);
+					p_pos[1] = Tracks_i.py(i_trk);
+					p_pos[2] = Tracks_i.pz(i_trk);
+					p_pos[3] = E(kinematics::Mmu, p_pos);
+										
+					pos_v[0] = Tracks_i.vx(i_trk);
+					pos_v[1] = Tracks_i.vy(i_trk);
+					pos_v[2] = Tracks_i.vz(i_trk);
+				}else{
+					p_neg[0] = Tracks_i.px(i_trk);
+					p_neg[1] = Tracks_i.py(i_trk);
+					p_neg[2] = Tracks_i.pz(i_trk);
+					p_neg[3] = E(kinematics::Mmu, p_pos);
+					
+					neg_v[0] = Tracks_i.vx(i_trk);
+					neg_v[1] = Tracks_i.vy(i_trk);
+					neg_v[2] = Tracks_i.vz(i_trk);
+				}
 				for(j_trk = 0; j_trk<Ntracks_j; j_trk++){
+					if(Tracks_j.stationID(j_trk)<7)continue;
 					if(Tracks_j.charge(j_trk)*Tracks_i.charge(i_trk)>0)continue;
 					
+					if(Tracks_j.charge(j_trk)>0){
+						p_pos[0] = Tracks_j.px(j_trk);
+						p_pos[1] = Tracks_j.py(j_trk);
+						p_pos[2] = Tracks_j.pz(j_trk);
+						p_pos[3] = E(kinematics::Mmu, p_neg);
+						
+						pos_v[0] = Tracks_j.vx(j_trk);
+						pos_v[1] = Tracks_j.vy(j_trk);
+						pos_v[2] = Tracks_j.vz(j_trk);
+					}else{
+						p_neg[0] = Tracks_j.px(j_trk);
+						p_neg[1] = Tracks_j.py(j_trk);
+						p_neg[2] = Tracks_j.pz(j_trk);
+						p_neg[3] = E(kinematics::Mmu, p_neg);
+						
+						neg_v[0] = Tracks_j.vx(j_trk);
+						neg_v[1] = Tracks_j.vy(j_trk);
+						neg_v[2] = Tracks_j.vz(j_trk);
+					}
+
+					copy4vec(p_pos_single, p_pos);
+					copy4vec(p_neg_single, p_neg);
 					
+					vz_1 = 0.5*(pos_v[2]+neg_v[2]);
+					
+					sum4vec(p_sum, p_pos, p_neg);
+					m = M(p_sum);
+					pT = Perp(p_sum);
+					x1 = mult4vec(p_target, p_sum)/mult4vec(p_target, p_cms);
+					x2 = mult4vec(p_beam, p_sum)/mult4vec(p_beam, p_cms);
+					
+					Boost(p_sum, beta2, gamma, -cms_bv_z);
+					xF = 2*p_sum[2]/(sqrt_s* (1.f - m*m/s) );
+					
+					costheta = 2* (p_neg[3]*p_pos[2]-p_neg[2]*p_pos[3])/(m * sqrtf(m*m + pT*pT));
+					phi = atan2f( 2*sqrtf(m*m + pT*pT)*(p_neg[0]*p_pos[1]-p_neg[1]*p_pos[0]) , m*(p_pos[0]*p_pos[0] - p_neg[0]*p_neg[0] + p_pos[1]*p_pos[1] - p_neg[1]*p_neg[1] ) );
+					
+					//filter
+					if(m<0 || m>10.f)continue;
+					if(fabs(xf)>1.f)continue;
+					if(x1<0.f || x1>1.f)continue;
+					if(x2<0.f || x2>1.f)continue;
+					
+					//Fill information in array
+					if(ndim>datasizes::DimuonSizeMax){
+						printf(" block %d ndim %d \n ", blockIdx.x, ndim);
+						continue;
+					}
+					dimcoll->setMass(dim_coll_offset, ndim, m);
+					dimcoll->setpT(dim_coll_offset, ndim, pT);
+					dimcoll->setxF(dim_coll_offset, ndim, xF);
+					dimcoll->setx1(dim_coll_offset, ndim, x1);
+					dimcoll->setx2(dim_coll_offset, ndim, x2);
+					dimcoll->setcostheta(dim_coll_offset, ndim, costheta);
+					dimcoll->setphi(dim_coll_offset, ndim, phi);
+					dimcoll->setMassSingle(dim_coll_offset, ndim, m_single);
+					dimcoll->setChi2Single(dim_coll_offset, ndim, chi2_single);
+
+					dimcoll->setDimVtx(dim_coll_offset, ndim, dim_v);
+					dimcoll->setPosVtx(dim_coll_offset, ndim, pos_v);
+					dimcoll->setNegVtx(dim_coll_offset, ndim, neg_v);
+					
+					dimcoll->setPos4Vector(dim_coll_offset, ndim, p_pos);
+					dimcoll->setNeg4Vector(dim_coll_offset, ndim, p_neg);
+					dimcoll->setPosSingle4Vector(dim_coll_offset, ndim, p_pos_single);
+					dimcoll->setNegSingle4Vector(dim_coll_offset, ndim, p_neg_single);
+					
+					dimcoll->setChi2Vtx(dim_coll_offset, ndim, chi2_vtx);
+					dimcoll->setChi2Vtx(dim_coll_offset, ndim, chi2_kf);
+					ndim++;
 				}
-			
 			}
 		}
-		
 	}
 
-	
+	dimcoll->NDimuons[blockIdx.x] = ndim;
 }
 
 

@@ -202,6 +202,13 @@ namespace selection{
 #endif
 }
 
+namespace kinematics{
+	__host__ __device__ constexpr float Ebeam = 120.;
+	__host__ __device__ constexpr float Mp = 0.938272;
+	__host__ __device__ constexpr float Pbeam = 119.996331801;
+	__host__ __device__ constexpr float Mmu = 0.105658;
+}
+
 namespace histogramtools{
 	
 }
