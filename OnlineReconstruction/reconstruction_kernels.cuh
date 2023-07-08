@@ -2856,11 +2856,12 @@ __global__ void gKernel_DimuonBuilding(
 	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
 		gTracks Tracks_i = tklcoll->tracks(blockIdx.x, i_trd, Ntracks_i);
 
-		for(j_trd = 0; j_trd<THREADS_PER_BLOCK; j_trd++){
+		for(j_trd = i_trd; j_trd<THREADS_PER_BLOCK; j_trd++){
 			gTracks Tracks_j = tklcoll->tracks(blockIdx.x, j_trd, Ntracks_j);
 			
 			for(i_trk = 0; i_trk<Ntracks_i; i_trk++){
 				if(Tracks_i.stationID(i_trk)<7)continue;
+				if(Tracks_i.pz(i_trk)<0)continue;
 				
 				if(Tracks_i.charge(i_trk)>0){
 					p_pos[0] = Tracks_i.px(i_trk);
@@ -2875,7 +2876,7 @@ __global__ void gKernel_DimuonBuilding(
 					p_neg[0] = Tracks_i.px(i_trk);
 					p_neg[1] = Tracks_i.py(i_trk);
 					p_neg[2] = Tracks_i.pz(i_trk);
-					p_neg[3] = E(kinematics::Mmu, p_pos);
+					p_neg[3] = E(kinematics::Mmu, p_neg);
 					
 					neg_v[0] = Tracks_i.vx(i_trk);
 					neg_v[1] = Tracks_i.vy(i_trk);
@@ -2883,13 +2884,14 @@ __global__ void gKernel_DimuonBuilding(
 				}
 				for(j_trk = 0; j_trk<Ntracks_j; j_trk++){
 					if(Tracks_j.stationID(j_trk)<7)continue;
+					if(Tracks_j.pz(j_trk)<0)continue;
 					if(Tracks_j.charge(j_trk)*Tracks_i.charge(i_trk)>0)continue;
 					
 					if(Tracks_j.charge(j_trk)>0){
 						p_pos[0] = Tracks_j.px(j_trk);
 						p_pos[1] = Tracks_j.py(j_trk);
 						p_pos[2] = Tracks_j.pz(j_trk);
-						p_pos[3] = E(kinematics::Mmu, p_neg);
+						p_pos[3] = E(kinematics::Mmu, p_pos);
 						
 						pos_v[0] = Tracks_j.vx(j_trk);
 						pos_v[1] = Tracks_j.vy(j_trk);
@@ -2923,10 +2925,10 @@ __global__ void gKernel_DimuonBuilding(
 					phi = atan2f( 2*sqrtf(m*m + pT*pT)*(p_neg[0]*p_pos[1]-p_neg[1]*p_pos[0]) , m*(p_pos[0]*p_pos[0] - p_neg[0]*p_neg[0] + p_pos[1]*p_pos[1] - p_neg[1]*p_neg[1] ) );
 					
 					//filter
-					if(m<0 || m>10.f)continue;
-					if(fabs(xf)>1.f)continue;
-					if(x1<0.f || x1>1.f)continue;
-					if(x2<0.f || x2>1.f)continue;
+					//if(m<0 || m>10.f)continue;
+					//if(fabs(xF)>1.f)continue;
+					//if(x1<0.f || x1>1.f)continue;
+					//if(x2<0.f || x2>1.f)continue;
 					
 					//Fill information in array
 					if(ndim>datasizes::DimuonSizeMax){
