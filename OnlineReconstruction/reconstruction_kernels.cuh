@@ -2578,8 +2578,8 @@ __global__ void gKernel_Vertexing(
 	int ix, iy, iz;
 	int ix_m1, iy_m1, iz_m1;
 
-	float pos_array[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET)];
-	float mom_array[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET)];
+	float pos_array[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
+	float mom_array[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
 	
 	float dz;
 	int step, step_x, step_y;
@@ -2609,7 +2609,7 @@ __global__ void gKernel_Vertexing(
 		
 		z_0 = z_array[detid_first];
 		
-		state_0[0] = charge*invP*sqrtf(1.f+tx_st1*tx_st1+ty*ty);
+		state_0[0] = charge*invP*sqrtf(  (1.f+tx_st1*tx_st1)/(1.f+tx_st1*tx_st1+ty*ty) );
 		state_0[1] = tx_st1;
 		state_0[2] = ty;
 		state_0[3] = x_trk(x0_st1, tx_st1, z_0);
@@ -2623,11 +2623,13 @@ __global__ void gKernel_Vertexing(
 		pos_array[1] = state_0[4]+state_0[2]*(globalconsts::FMAG_LENGTH-z_0);
 		pos_array[2] = globalconsts::FMAG_LENGTH;
 		
-		pz_0 = 1.f/(state_0[0]*sqrtf(1.f+state_0[1]*state_0[1]+state_0[2]*state_0[2]));
+		pz_0 = 1.f/( fabs(state_0[0]) * sqrtf(1.f + state_0[1]*state_0[1] + state_0[2]*state_0[2]) );
 		
 		mom_array[0] = pz_0*state_0[1];
 		mom_array[1] = pz_0*state_0[2];
 		mom_array[2] = pz_0;
+		
+		if(pz_0<0)printf("%d %d state %1.4f %1.4f %1.4f mom %1.4f %1.4f %1.4f  \n", blockIdx.x, threadIdx.x, state_0[0], state_0[1], state_0[2], mom_array[0], mom_array[1], mom_array[2]);
 		
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf(" FMAG_LENGTH-z_0 %1.4f pos(0) %1.4f %1.4f %1.4f  mom(0) %1.4f %1.4f %1.4f \n", globalconsts::FMAG_LENGTH-z_0, pos_array[0], pos_array[1], pos_array[2], mom_array[0], mom_array[1], mom_array[2] );
@@ -2645,7 +2647,6 @@ __global__ void gKernel_Vertexing(
 			
 			tx_i = mom_array[ix_m1]/mom_array[iz_m1];
 			tx_f = tx_i + 2.f*charge*globalconsts::PTKICK_UNIT*globalconsts::STEP_FMAG/sqrt(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iz_m1]*mom_array[iz_m1]);
-			
 #ifdef DEBUG
 			if(blockIdx.x==debug::EvRef)printf("tx_i = %1.4f, tx_f = %1.4f, PTKICK_UNIT %1.4f, charge %1.0f, sqrt %1.4f \n", tx_i, tx_f, globalconsts::PTKICK_UNIT, charge, sqrt(mom_array[ix_m1]*mom_array[ix_m1]+mom_array[iz_m1]*mom_array[iz_m1]));
 #endif
@@ -2731,9 +2732,10 @@ __global__ void gKernel_Vertexing(
 			pos_array[iy] = pos_array[iy_m1]-traj1[1];
 			pos_array[iz] = pos_array[iz_m1]-traj1[2];
 #ifdef DEBUG
-			if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
+			if(blockIdx.x==debug::EvRef)printf("%d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", step, ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
 #endif
 		}//end loop on TARGET steps
+		if(mom_array[2]!=pz_0)printf("%d %d\n", blockIdx.x, threadIdx.x);
 		
 		//now?
 		dca2_min = 1.e18;
@@ -2784,7 +2786,10 @@ __global__ void gKernel_Vertexing(
 		vertex_mom[0] = mom_array[ix];
 		vertex_mom[1] = mom_array[iy];
 		vertex_mom[2] = mom_array[iz];
-
+		
+		if(mom_array[iz]<0)printf("%d  %d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", blockIdx.x, threadIdx.x, ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz], dca2_min, dca_xmin, dca_ymin );
+		
+		//if(vertex_mom[2])
 		tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 7);//vertexing has been done...
 
 		tklcoll->setVtxPos(tkl_coll_offset+array_thread_offset, i, vertex_pos);
@@ -2818,10 +2823,12 @@ __global__ void gKernel_DimuonBuilding(
 	const float p_cms[4] = {0, 0, kinematics::Pbeam, kinematics::Ebeam+kinematics::Mp};
 	
 	const float s = M2(p_cms);
+	if(blockIdx.x==debug::EvRef)printf("s = %1.4f, = %1.4f \n", s, 2.0f*kinematics::Mp*(kinematics::Mp + kinematics::Ebeam) );
 	const float sqrt_s = sqrtf(s);
-	const float cms_bv_z = p_cms[2]/p_cms[3];//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
-	const float beta2 = cms_bv_z*cms_bv_z;
-	const float gamma = 1.f/sqrtf(1.f-beta2);
+	//const float cms_bv_z = p_cms[2]/p_cms[3];//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
+	const float cms_bv[3] = {0.0, 0.0, p_cms[2]/p_cms[3]};//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
+	//const float beta2 = cms_bv_z*cms_bv_z;
+	//const float gamma = 1.f/sqrtf(1.f-beta2);
 		
 	float p_pos[4];
 	float p_neg[4];
@@ -2918,17 +2925,21 @@ __global__ void gKernel_DimuonBuilding(
 					x1 = mult4vec(p_target, p_sum)/mult4vec(p_target, p_cms);
 					x2 = mult4vec(p_beam, p_sum)/mult4vec(p_beam, p_cms);
 					
-					Boost(p_sum, beta2, gamma, -cms_bv_z);
-					xF = 2*p_sum[2]/(sqrt_s* (1.f - m*m/s) );
+					if(blockIdx.x==debug::EvRef)printf(" p_sum_z = %1.4f, boost_z = %1.4f \n", p_sum[2], cms_bv[2] );
+					Boost(p_sum, cms_bv, -1);
+					xF = 2.0f*p_sum[2]/(sqrt_s*(1.f - m*m/s));
+					if(blockIdx.x==debug::EvRef)printf(" p_sum_z = %1.4f, s = %1.4f sqrt s = %1.4f, m = %1.4f, dimu_pl_max %1.4f \n", p_sum[2], s, sqrt_s, m, sqrt_s*(1.f - m*m/s)*0.5f );
 					
 					costheta = 2* (p_neg[3]*p_pos[2]-p_neg[2]*p_pos[3])/(m * sqrtf(m*m + pT*pT));
 					phi = atan2f( 2*sqrtf(m*m + pT*pT)*(p_neg[0]*p_pos[1]-p_neg[1]*p_pos[0]) , m*(p_pos[0]*p_pos[0] - p_neg[0]*p_neg[0] + p_pos[1]*p_pos[1] - p_neg[1]*p_neg[1] ) );
 					
 					//filter
-					//if(m<0 || m>10.f)continue;
-					//if(fabs(xF)>1.f)continue;
-					//if(x1<0.f || x1>1.f)continue;
-					//if(x2<0.f || x2>1.f)continue;
+					if(m<0 || m>10.f)continue;
+					if(fabs(xF)>1.f)continue;
+					if(x1<0.f || x1>1.f)continue;
+					if(x2<0.f || x2>1.f)continue;
+					if(fabs(costheta)>1.f)continue;
+					
 					
 					//Fill information in array
 					if(ndim>datasizes::DimuonSizeMax){

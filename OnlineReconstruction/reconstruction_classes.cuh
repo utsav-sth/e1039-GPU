@@ -908,16 +908,16 @@ struct gEventDimuonCollection{
 	}
 	
 	__device__ void setPos4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
-		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+18+i] = fourvec[i];
+		for(short i = 0; i<4; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+18+i] = fourvec[i];
 	}
 	__device__ void setNeg4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
-		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+22+i] = fourvec[i];
+		for(short i = 0; i<4; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+22+i] = fourvec[i];
 	}
 	__device__ void setPosSingle4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
-		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+26+i] = fourvec[i];
+		for(short i = 0; i<4; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+26+i] = fourvec[i];
 	}
 	__device__ void setNegSingle4Vector(const unsigned int evt_offset, const unsigned int idim, const float* fourvec) {
-		for(short i = 0; i<3; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+30+i] = fourvec[i];
+		for(short i = 0; i<4; i++)DimuonsRawData[evt_offset+idim*datasizes::NDimuonParam+30+i] = fourvec[i];
 	}
 	
 	__device__ void setChi2Vtx(const unsigned int evt_offset, const unsigned int idim, const float chi2_vtx) {

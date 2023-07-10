@@ -1235,12 +1235,30 @@ __device__ float M(const float* p){
 }
 
 __device__ float Perp(const float* p){
-	return sqrtf(p[1]*p[1]+p[2]*p[2]);
+	return sqrtf(p[0]*p[0]+p[1]*p[1]);
 }
 
-__device__ void Boost(float* p, const float beta2, const float gamma, const float bz){
-	p[2] = p[2] + gamma*gamma*bz*p[2] + gamma*bz*p[3];
-	p[3] = gamma*(p[3]+bz*p[2]);
+//__device__ void Boost(float* p, const float beta2, const float gamma, const float bz){
+//	p[2] = p[2] + gamma*gamma*bz*p[2] + gamma*bz*p[3];
+//	p[3] = gamma*(p[3]+bz*p[2]);
+//}
+
+__device__ void Boost(float* p, const float bx, const float by, const float bz){
+	float b2 = bx*bx+by*by+bz*bz;
+	float gamma = 1.0f/sqrtf(1.0f-b2);
+	float bp = p[0]*bx+p[1]*by+p[2]*bz;
+	float gamma2 = b2>0.0f ? (gamma - 1.0f)/b2 : 0.0;
+#ifdef DEBUG	
+	if(blockIdx.x==debug::EvRef)printf(" gamma %1.4f b2 %1.4f gamma2 %1.4f bp %1.4f bx %1.4f by %1.4f bz %1.4f \n", gamma, b2, gamma2, bp, bx, by, bz);
+#endif
+	p[0] = p[0] + gamma2*bp*bx + gamma*bx*p[3];
+	p[1] = p[1] + gamma2*bp*by + gamma*by*p[3];
+	p[2] = p[2] + gamma2*bp*bz + gamma*bz*p[3];
+	p[3] = gamma*(p[3]+bp);
+}
+
+__device__ void Boost(float* p, const float* boost, const short sign){
+	Boost(p, boost[0]*sign, boost[1]*sign, boost[2]*sign);
 }
 
 

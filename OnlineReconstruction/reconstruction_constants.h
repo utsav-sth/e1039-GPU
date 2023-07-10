@@ -182,9 +182,9 @@ namespace datasizes{
 }
 
 namespace selection{
-	__host__ __device__ constexpr short MaxD0Multiplicity = 210;
-	__host__ __device__ constexpr short MaxD2Multiplicity = 120;
-	__host__ __device__ constexpr short MaxD3Multiplicity = 90;
+	__host__ __device__ constexpr short MaxD0Multiplicity = 140;//210;
+	__host__ __device__ constexpr short MaxD2Multiplicity = 80;//120;
+	__host__ __device__ constexpr short MaxD3Multiplicity = 60;//90;
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
 	__host__ __device__ constexpr float chi2dofmax = 250;
@@ -210,7 +210,8 @@ namespace kinematics{
 }
 
 namespace histogramtools{
-	
+	__host__ __device__ constexpr int nbins = 100;
+	__host__ __device__ constexpr float mass_min = 100;
 }
 
 namespace extrapolation_tools{
@@ -222,5 +223,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 13;
+  __host__ __device__ constexpr unsigned int EvRef = 12;
 }
