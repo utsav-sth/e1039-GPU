@@ -2735,7 +2735,9 @@ __global__ void gKernel_Vertexing(
 			if(blockIdx.x==debug::EvRef)printf("%d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", step, ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
 #endif
 		}//end loop on TARGET steps
+#ifdef DEBUG
 		if(mom_array[2]!=pz_0)printf("%d %d\n", blockIdx.x, threadIdx.x);
+#endif
 		
 		//now?
 		dca2_min = 1.e18;
@@ -2787,9 +2789,9 @@ __global__ void gKernel_Vertexing(
 		vertex_mom[1] = mom_array[iy];
 		vertex_mom[2] = mom_array[iz];
 		
+#ifdef DEBUG
 		if(mom_array[iz]<0)printf("%d  %d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", blockIdx.x, threadIdx.x, ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz], dca2_min, dca_xmin, dca_ymin );
-		
-		//if(vertex_mom[2])
+#endif
 		tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 7);//vertexing has been done...
 
 		tklcoll->setVtxPos(tkl_coll_offset+array_thread_offset, i, vertex_pos);
@@ -2972,7 +2974,6 @@ __global__ void gKernel_DimuonBuilding(
 			}
 		}
 	}
-
 	dimcoll->NDimuons[blockIdx.x] = ndim;
 }
 
