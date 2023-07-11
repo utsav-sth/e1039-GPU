@@ -2825,7 +2825,9 @@ __global__ void gKernel_DimuonBuilding(
 	const float p_cms[4] = {0, 0, kinematics::Pbeam, kinematics::Ebeam+kinematics::Mp};
 	
 	const float s = M2(p_cms);
+#ifdef DEBUG
 	if(blockIdx.x==debug::EvRef)printf("s = %1.4f, = %1.4f \n", s, 2.0f*kinematics::Mp*(kinematics::Mp + kinematics::Ebeam) );
+#endif
 	const float sqrt_s = sqrtf(s);
 	//const float cms_bv_z = p_cms[2]/p_cms[3];//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
 	const float cms_bv[3] = {0.0, 0.0, p_cms[2]/p_cms[3]};//p_cms[0]/p_cms[3] = p_cms[1]/p_cms[3] = 0  
@@ -2870,7 +2872,7 @@ __global__ void gKernel_DimuonBuilding(
 			
 			for(i_trk = 0; i_trk<Ntracks_i; i_trk++){
 				if(Tracks_i.stationID(i_trk)<7)continue;
-				if(Tracks_i.pz(i_trk)<0)continue;
+				if(Tracks_i.chisq(i_trk)>selection::chi2max)continue;
 				
 				if(Tracks_i.charge(i_trk)>0){
 					p_pos[0] = Tracks_i.px(i_trk);
@@ -2893,7 +2895,7 @@ __global__ void gKernel_DimuonBuilding(
 				}
 				for(j_trk = 0; j_trk<Ntracks_j; j_trk++){
 					if(Tracks_j.stationID(j_trk)<7)continue;
-					if(Tracks_j.pz(j_trk)<0)continue;
+					if(Tracks_j.chisq(j_trk)>selection::chi2max)continue;
 					if(Tracks_j.charge(j_trk)*Tracks_i.charge(i_trk)>0)continue;
 					
 					if(Tracks_j.charge(j_trk)>0){
@@ -2919,18 +2921,24 @@ __global__ void gKernel_DimuonBuilding(
 					copy4vec(p_pos_single, p_pos);
 					copy4vec(p_neg_single, p_neg);
 					
-					vz_1 = 0.5*(pos_v[2]+neg_v[2]);
+					sum3vec(dim_v, pos_v, neg_v);
+					for(short k = 0; k<3; k++)dim_v[k]*= 0.5f;
 					
 					sum4vec(p_sum, p_pos, p_neg);
+					
 					m = M(p_sum);
 					pT = Perp(p_sum);
 					x1 = mult4vec(p_target, p_sum)/mult4vec(p_target, p_cms);
 					x2 = mult4vec(p_beam, p_sum)/mult4vec(p_beam, p_cms);
 					
+#ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf(" p_sum_z = %1.4f, boost_z = %1.4f \n", p_sum[2], cms_bv[2] );
+#endif
 					Boost(p_sum, cms_bv, -1);
 					xF = 2.0f*p_sum[2]/(sqrt_s*(1.f - m*m/s));
+#ifdef DEBUG
 					if(blockIdx.x==debug::EvRef)printf(" p_sum_z = %1.4f, s = %1.4f sqrt s = %1.4f, m = %1.4f, dimu_pl_max %1.4f \n", p_sum[2], s, sqrt_s, m, sqrt_s*(1.f - m*m/s)*0.5f );
+#endif
 					
 					costheta = 2* (p_neg[3]*p_pos[2]-p_neg[2]*p_pos[3])/(m * sqrtf(m*m + pT*pT));
 					phi = atan2f( 2*sqrtf(m*m + pT*pT)*(p_neg[0]*p_pos[1]-p_neg[1]*p_pos[0]) , m*(p_pos[0]*p_pos[0] - p_neg[0]*p_neg[0] + p_pos[1]*p_pos[1] - p_neg[1]*p_neg[1] ) );
@@ -2941,7 +2949,9 @@ __global__ void gKernel_DimuonBuilding(
 					if(x1<0.f || x1>1.f)continue;
 					if(x2<0.f || x2>1.f)continue;
 					if(fabs(costheta)>1.f)continue;
-					
+					//if(p_pos[2]+p_neg[2]>120.f || p_pos[2]+p_neg[2]<30.f)continue;
+					//if(fabs(p_pos[0]+p_neg[0])>3.f && fabs(p_pos[0]+p_neg[0])>3.f )continue;
+					//if(fabs(dim_v[0])>2.f && fabs(dim_v[1])>2.f )continue;
 					
 					//Fill information in array
 					if(ndim>datasizes::DimuonSizeMax){
@@ -2985,50 +2995,95 @@ __global__ void gKernel_DimuonBuilding(
 // function to fill the "histograms"/arrays to be displayed
 // 
 // --------------------------------------------- //
-__global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, gHistsArrays *HistsArrays, const bool* hastoomanyhits)
+__global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, gEventDimuonCollection* dimcoll, gHistsArrays* HistsArrays, const int* TriggerBits, const bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x])return;
 	
-	unsigned int nTracks;
-	float vars[NVars];
+	bool trig_array[histotools::ntriggers];
+	
+	short ntrg;
+	for(ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
+		trig_array[ntrg] = true;//TriggerBits[blockIdx.x] & ntrg;
+	}
+	trig_array[histotools::ntriggers-1] = true;//all triggers
+	
+	unsigned int nTracks, nDimuons;
+	float vars[histotools::nvars_total];
 	float x_hw, x;
 	
-	int bin;
+	unsigned int bin;
 	int i, j, k;
 	
 	//__shared__ float values_[NVars*Nbins_Hists];
 	//for(j = 0; j<Nbins_Hists*NVars; j++)values_[j] = 0;
 	
-	const gTracks Tracks = tklcoll->tracks(blockIdx.x, threadIdx.x, nTracks);
+	for(int i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
+		const gTracks Tracks = tklcoll->tracks(blockIdx.x, i_trd, nTracks);
 	
-	for(i = 0; i<nTracks; i++){
-		if(Tracks.stationID(i)<7 || Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax)continue;// || Tracks.chisq(i)>100.f
-		
-		vars[0] = Tracks.x0(i);
-		vars[1] = Tracks.y0(i);
-		vars[2] = Tracks.invP(i);
-		vars[3] = Tracks.tx(i);
-		vars[4] = Tracks.ty(i);
-		
-		vars[5] = Tracks.vx(i);
-		vars[6] = Tracks.vy(i);
-		vars[7] = Tracks.vz(i);
-		vars[8] = Tracks.px(i);
-		vars[9] = Tracks.py(i);
-		vars[10] = Tracks.pz(i);
-		
-		for(j = 0; j<Nbins_Hists; j++){
-			//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
-			for(k = 0; k<NVars; k++){
-				bin = j+Nbins_Hists*k;
-				x_hw = HistsArrays->pts_hw[k];
-				x = HistsArrays->xpts[bin];
-				if(x-x_hw<=vars[k] && vars[k]<x+x_hw){
-					HistsArrays->values[bin]+=1.f;
-					//values_[bin]+=1.f;
-#ifdef DEBUG
-					if(k==2)printf(" bin %d  %1.4f < %1.4f < %1.4f : %1.4f; ", bin, x-x_hw, vars[k], x+x_hw, HistsArrays->values[bin]);
+		for(i = 0; i<nTracks; i++){
+			if(Tracks.stationID(i)<7 || Tracks.chisq(i)/(Tracks.nHits(i)-5)>selection::chi2dofmax)continue;// || Tracks.chisq(i)>100.f
+			
+			vars[0] = Tracks.px(i);
+			vars[1] = Tracks.py(i);
+			vars[2] = Tracks.pz(i);
+			vars[3] = Tracks.vx(i);
+			vars[4] = Tracks.vy(i);
+			vars[5] = Tracks.vz(i);
+			
+			for(ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
+				if(!trig_array[ntrg])continue;
+				
+				for(k = 0; k<histotools::nvars_tracks; k++){
+					for(j = 0; j<HistsArrays->nbins[ntrg*histotools::nvars_total+k]; j++){
+					//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
+						bin = ntrg*histotools::nvars_total*histotools::nbins_max+j+histotools::nbins_max*k;
+						x_hw = HistsArrays->pts_hw[ntrg*histotools::nvars_total+k];
+						x = HistsArrays->xpts[bin];
+						if(x-x_hw<=vars[ntrg*histotools::nvars_total+k] && vars[ntrg*histotools::nvars_total+k]<x+x_hw){
+							HistsArrays->values[bin]+=1.f;
+							//values_[bin]+=1.f;
+#ifdef DEBUG	
+							if(k==2)printf(" bin %d  %1.4f < %1.4f < %1.4f : %1.4f; ", bin, x-x_hw, vars[k], x+x_hw, HistsArrays->values[bin]);
 #endif
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	const gDimuons dimuons = dimcoll->Dimuons(blockIdx.x, nDimuons);	
+	for(i = 0; i<nDimuons; i++){
+		vars[6] = dimuons.mass(i);
+		vars[7] = dimuons.xF(i);
+		vars[8] = dimuons.x1(i);
+		vars[9] = dimuons.x2(i);
+		vars[10] = dimuons.pT(i);
+		vars[11] = dimuons.phi(i);
+		vars[12] = dimuons.p_pos_x(i)+dimuons.p_neg_x(i);
+		vars[13] = dimuons.p_pos_y(i)+dimuons.p_neg_y(i);
+		vars[14] = dimuons.p_pos_z(i)+dimuons.p_neg_z(i);
+		vars[15] = dimuons.dim_vx(i);
+		vars[16] = dimuons.dim_vy(i);
+		vars[17] = dimuons.dim_vz(i);
+		
+		for(ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
+			if(!trig_array[ntrg])continue;
+		
+			for(k = histotools::nvars_tracks; k<histotools::nvars_total; k++){
+				if(blockIdx.x==debug::EvRef && k==13)printf("%1.4f = %1.4f + %1.4f \n", vars[k], dimuons.p_pos_y(i), dimuons.p_neg_y(i));
+				for(j = 0; j<HistsArrays->nbins[ntrg*histotools::nvars_total+k]; j++){
+				//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
+					bin = ntrg*histotools::nvars_total*histotools::nbins_max+j+histotools::nbins_max*k;
+					x_hw = HistsArrays->pts_hw[ntrg*histotools::nvars_total+k];
+					x = HistsArrays->xpts[bin];
+					if(x-x_hw<=vars[ntrg*histotools::nvars_total+k] && vars[ntrg*histotools::nvars_total+k]<x+x_hw){
+						HistsArrays->values[bin]+=1.f;
+						//values_[bin]+=1.f;
+#ifdef DEBUG
+						if(k==2)printf(" bin %d  %1.4f < %1.4f < %1.4f : %1.4f; ", bin, x-x_hw, vars[k], x+x_hw, HistsArrays->values[bin]);
+#endif
+					}
 				}
 			}
 		}

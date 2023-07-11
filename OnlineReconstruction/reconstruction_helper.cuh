@@ -1218,6 +1218,10 @@ __device__ float E(const float m, const float* p){
 	return sqrtf(m*m+p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
 }
 
+__device__ void sum3vec(float* psum, const float* p1, const float* p2){
+	for(short i = 0; i<3; i++)psum[i] = p1[i]+p2[i];
+}
+
 __device__ void sum4vec(float* psum, const float* p1, const float* p2){
 	for(short i = 0; i<4; i++)psum[i] = p1[i]+p2[i];
 }
@@ -1231,7 +1235,7 @@ __device__ float M2(const float* p){
 }
 
 __device__ float M(const float* p){
-	return sqrtf(p[3]*p[3]-(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]) );
+	return sqrtf( p[3]*p[3] - (p[0]*p[0]+p[1]*p[1]+p[2]*p[2]) );
 }
 
 __device__ float Perp(const float* p){

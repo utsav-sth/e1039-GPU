@@ -753,86 +753,85 @@ struct gDimuons{
 			return m_dimuondata[DimuonSize*index+17 ];
 		}
 	
-	
-	__host__ __device__ inline float p_pos_E(const unsigned index) const
+	__host__ __device__ inline float p_pos_x(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+18 ];
 		}
-	__host__ __device__ inline float p_pos_x(const unsigned index) const
+	__host__ __device__ inline float p_pos_y(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+19 ];
 		}
-	__host__ __device__ inline float p_pos_y(const unsigned index) const
+	__host__ __device__ inline float p_pos_z(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+20 ];
 		}
-	__host__ __device__ inline float p_pos_z(const unsigned index) const
+	__host__ __device__ inline float p_pos_E(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+21 ];
 		}
 	
-	__host__ __device__ inline float p_neg_E(const unsigned index) const
+	__host__ __device__ inline float p_neg_x(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+22 ];
 		}
-	__host__ __device__ inline float p_neg_x(const unsigned index) const
+	__host__ __device__ inline float p_neg_y(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+23 ];
 		}
-	__host__ __device__ inline float p_neg_y(const unsigned index) const
+	__host__ __device__ inline float p_neg_z(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+24 ];
 		}
-	__host__ __device__ inline float p_neg_z(const unsigned index) const
+	__host__ __device__ inline float p_neg_E(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+25 ];
 		}
 
-	__host__ __device__ inline float p_pos_single_E(const unsigned index) const
+	__host__ __device__ inline float p_pos_single_x(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+26 ];
 		}
-	__host__ __device__ inline float p_pos_single_x(const unsigned index) const
+	__host__ __device__ inline float p_pos_single_y(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+27 ];
 		}
-	__host__ __device__ inline float p_pos_single_y(const unsigned index) const
+	__host__ __device__ inline float p_pos_single_z(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+28 ];
 		}
-	__host__ __device__ inline float p_pos_single_z(const unsigned index) const
+	__host__ __device__ inline float p_pos_single_E(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+29 ];
 		}
 	
-	__host__ __device__ inline float p_neg_single_E(const unsigned index) const
+	__host__ __device__ inline float p_neg_single_x(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+30 ];
 		}
-	__host__ __device__ inline float p_neg_single_x(const unsigned index) const
+	__host__ __device__ inline float p_neg_single_y(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+31 ];
 		}
-	__host__ __device__ inline float p_neg_single_y(const unsigned index) const
+	__host__ __device__ inline float p_neg_single_z(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+32 ];
 		}
-	__host__ __device__ inline float p_neg_single_z(const unsigned index) const
+	__host__ __device__ inline float p_neg_single_E(const unsigned index) const
 		{
 			assert(index < NDimuonsTotal);
 			return m_dimuondata[DimuonSize*index+33 ];
@@ -930,9 +929,10 @@ struct gEventDimuonCollection{
 
 struct gHistsArrays{
 	public:
-	float pts_hw[NVars];
-	float xpts[NVars*Nbins_Hists];
-	float values[NVars*Nbins_Hists];
+	short nbins[histotools::ntriggers*histotools::nvars_total];
+	float pts_hw[histotools::ntriggers*histotools::nvars_total];
+	float xpts[histotools::ntriggers*histotools::nvars_total*histotools::nbins_max];
+	float values[histotools::ntriggers*histotools::nvars_total*histotools::nbins_max];
 };
 
 //geometry carrier
