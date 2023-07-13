@@ -2135,10 +2135,10 @@ __global__ void gKernel_Global_tracking(
 			if(hitpairs_x1[i_x].second>=0){
 				detID[nhits_x] = detid_list[1];
 				i_hit = hitpairs_x1[i_x].second;
-				X[nhits_x] = hits_st1xp.pos(i_hit);
+				//X[nhits_x] = hits_st1xp.pos(i_hit);
 				pos[nhits_x] = hits_st1xp.pos(i_hit);
 				errX[nhits_x] = res_st1xp;
-				Z[nhits_x] = z_st1xp;
+				//Z[nhits_x] = z_st1xp;
 				elID[nhits_x] = (short)hits_st1xp.chan(i_hit);
 				tdc[nhits_x] = hits_st1xp.tdc(i_hit);
 				sign[nhits_x] = 0;
@@ -3003,7 +3003,7 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 	
 	short ntrg;
 	for(ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
-		trig_array[ntrg] = true;//TriggerBits[blockIdx.x] & ntrg;
+		trig_array[ntrg] = TriggerBits[blockIdx.x] & ntrg;
 	}
 	trig_array[histotools::ntriggers-1] = true;//all triggers
 	
@@ -3035,11 +3035,10 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 				
 				for(k = 0; k<histotools::nvars_tracks; k++){
 					for(j = 0; j<HistsArrays->nbins[ntrg*histotools::nvars_total+k]; j++){
-					//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
 						bin = ntrg*histotools::nvars_total*histotools::nbins_max+j+histotools::nbins_max*k;
 						x_hw = HistsArrays->pts_hw[ntrg*histotools::nvars_total+k];
 						x = HistsArrays->xpts[bin];
-						if(x-x_hw<=vars[ntrg*histotools::nvars_total+k] && vars[ntrg*histotools::nvars_total+k]<x+x_hw){
+						if(x-x_hw<=vars[k] && vars[k]<x+x_hw){
 							HistsArrays->values[bin]+=1.f;
 							//values_[bin]+=1.f;
 #ifdef DEBUG	
@@ -3071,13 +3070,11 @@ __global__ void gKernel_fill_display_histograms(gEventTrackCollection* tklcoll, 
 			if(!trig_array[ntrg])continue;
 		
 			for(k = histotools::nvars_tracks; k<histotools::nvars_total; k++){
-				if(blockIdx.x==debug::EvRef && k==13)printf("%1.4f = %1.4f + %1.4f \n", vars[k], dimuons.p_pos_y(i), dimuons.p_neg_y(i));
+				x_hw = HistsArrays->pts_hw[ntrg*histotools::nvars_total+k];
 				for(j = 0; j<HistsArrays->nbins[ntrg*histotools::nvars_total+k]; j++){
-				//if(blockIdx.x==debug::EvRef && threadIdx)printf("%d %d %1.4f %1.4f \n", j, threadIdx.x, HistsArrays->xpts[j], HistsArrays->pts_hw[k]);
 					bin = ntrg*histotools::nvars_total*histotools::nbins_max+j+histotools::nbins_max*k;
-					x_hw = HistsArrays->pts_hw[ntrg*histotools::nvars_total+k];
 					x = HistsArrays->xpts[bin];
-					if(x-x_hw<=vars[ntrg*histotools::nvars_total+k] && vars[ntrg*histotools::nvars_total+k]<x+x_hw){
+					if(x-x_hw<=vars[k] && vars[k]<x+x_hw){
 						HistsArrays->values[bin]+=1.f;
 						//values_[bin]+=1.f;
 #ifdef DEBUG
