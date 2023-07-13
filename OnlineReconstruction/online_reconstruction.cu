@@ -25,8 +25,6 @@
 
 // #include <cublasLt.h>
 
-#define ROOTSAVE 1
-
 #include <TObject.h>
 #include <TROOT.h>
 #include <TFile.h>
