@@ -497,7 +497,7 @@ struct gTracks {
 #endif
 	
 
-	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index) const
+	__host__ __device__ inline unsigned int get_lasthitdetid(const unsigned index, const float* z_array) const
 		{
 			assert(index < NTracksTotal);
 			const int nhits = (int)nHits(index);
@@ -505,12 +505,13 @@ struct gTracks {
 			int detid_max = -1;
 			for(int i = 0; i<nhits; i++){
 				detid = (int)hits_detid(index, i);
-				if(detid>detid_max)detid_max = detid;
+				if(detid>0 && z_array[detid]>z_array[detid_max])detid_max = detid;
+				//if(detid>detid_max)detid_max = detid;
 			}
 			return detid_max;		 
 		}
 
-	__host__ __device__ inline unsigned int get_firsthitdetid(const unsigned index) const
+	__host__ __device__ inline unsigned int get_firsthitdetid(const unsigned index, const float* z_array) const
 		{
 			assert(index < NTracksTotal);
 			const int nhits = (int)nHits(index);
@@ -518,7 +519,8 @@ struct gTracks {
 			int detid_min = 100;
 			for(int i = 0; i<nhits; i++){
 				detid = (int)hits_detid(index, i);
-				if(detid>0 && detid<detid_min)detid_min = detid;
+				if(detid>0 && z_array[detid]<z_array[detid_min])detid_min = detid;
+				//if(detid>0 && detid<detid_min)detid_min = detid;
 			}
 			return detid_min;
 		}

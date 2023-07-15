@@ -2063,7 +2063,7 @@ __global__ void gKernel_Global_tracking(
 		erry0 = Tracks.err_y0(i);
 		errty = Tracks.err_ty(i);
 		
-		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.get_lasthitdetid(i), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
+		SagittaRatioInStation1(x0, tx, y0, ty, Tracks.get_lasthitdetid(i, planes->z), pos_exp, window, planes->z, planes->costheta, planes->sintheta);
 		
 		projid = 0;
 		nx1 = make_hitpairs_in_station(hits_st1x, nhits_st1x, hits_st1xp, nhits_st1xp, hitpairs_x1, hitidx1, hitidx2, hitflag1, hitflag2, stid, projid, planes, pos_exp[projid]-window[projid]*1.0f, pos_exp[projid]+window[projid]*1.0f);
@@ -2076,7 +2076,7 @@ __global__ void gKernel_Global_tracking(
 
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef){
-			printf("GT: thread %d i_trk %d x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", threadIdx.x, i, x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i), nx1, nu1, nv1);
+			printf("GT: thread %d i_trk %d x0 %1.4f y0 %1.4f tx %1.4f ty %1.4f nhits %1.0f detid %d, nx1 %d nu1 %d nv1 %d \n", threadIdx.x, i, x0, y0, tx, ty, Tracks.nHits(i), Tracks.get_lasthitdetid(i, planes->z), nx1, nu1, nv1);
 			for(int ll=0; ll<3; ll++)printf(" thread %d ll %d pos %1.4f window %1.4f  =>  %1.4f < %1.4f \n ", threadIdx.x, ll, pos_exp[ll], window[ll], pos_exp[ll]-window[ll], pos_exp[ll]+window[ll]);
 		}
 #endif
@@ -2603,7 +2603,7 @@ __global__ void gKernel_Vertexing(
 		ty = Tracks.ty(i);
 		invP = Tracks.invP(i); 
 		charge = Tracks.charge(i); 
-		detid_first = Tracks.get_firsthitdetid(i);
+		detid_first = Tracks.get_firsthitdetid(i, z_array);
 		
 		calculate_x0_tx_st1(x0, tx, invP, charge, x0_st1, tx_st1);
 		
@@ -2814,6 +2814,10 @@ __global__ void gKernel_Vertexing(
 __global__ void gKernel_DimuonBuilding(
 	gEventTrackCollection* tklcoll,
 	gEventDimuonCollection* dimcoll,
+	const float* z_array,
+#ifdef DEBUG
+	int* eventID,
+#endif
 	const bool* hastoomanyhits)
 {
 	if(hastoomanyhits[blockIdx.x])return;
@@ -2840,7 +2844,9 @@ __global__ void gKernel_DimuonBuilding(
 	float p_pos_single[4];
 	float p_neg_single[4];
 	
-	float vz_1, vz_2;// two hypotheses for vertex
+	// two hypotheses for vertex: first is average of two vertices, second is distance of closest approach between both tracks
+	float vz_1, vz_2;
+	float v_1[3], v_2[3];
 	float dim_v[3];
 	float pos_v[3];
 	float neg_v[3];
@@ -2856,6 +2862,16 @@ __global__ void gKernel_DimuonBuilding(
 	
 	unsigned int Ntracks_i, Ntracks_j;
 	//unsigned int array_thread_offset[THREADS_PER_BLOCK];
+
+	short detid_first;
+	float z_0, pz_0, x0, tx, x0_st1, tx_st1, y0, ty_1, ty_2, invP, charge_1, charge_2;
+	float state_0[5];
+
+	float pos_array_1[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
+	float mom_array_1[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
+	float pos_array_2[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
+	float mom_array_2[3*(globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET+1)];
+
 	
 	//for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
 	//	//Tracks[i_trd] = tklcoll->tracks(blockIdx.x, i_trd, Ntracks[i_trd]);
@@ -2866,13 +2882,13 @@ __global__ void gKernel_DimuonBuilding(
 
 	for(i_trd = 0; i_trd<THREADS_PER_BLOCK; i_trd++){
 		gTracks Tracks_i = tklcoll->tracks(blockIdx.x, i_trd, Ntracks_i);
-
+		
 		for(j_trd = i_trd; j_trd<THREADS_PER_BLOCK; j_trd++){
 			gTracks Tracks_j = tklcoll->tracks(blockIdx.x, j_trd, Ntracks_j);
 			
 			for(i_trk = 0; i_trk<Ntracks_i; i_trk++){
 				if(Tracks_i.stationID(i_trk)<7)continue;
-				if(Tracks_i.chisq(i_trk)>selection::chi2max)continue;
+				//if(Tracks_i.chisq(i_trk)>selection::chi2max)continue;
 				
 				if(Tracks_i.charge(i_trk)>0){
 					p_pos[0] = Tracks_i.px(i_trk);
@@ -2895,9 +2911,11 @@ __global__ void gKernel_DimuonBuilding(
 				}
 				for(j_trk = 0; j_trk<Ntracks_j; j_trk++){
 					if(Tracks_j.stationID(j_trk)<7)continue;
-					if(Tracks_j.chisq(j_trk)>selection::chi2max)continue;
+					//if(Tracks_j.chisq(j_trk)>selection::chi2max)continue;
 					if(Tracks_j.charge(j_trk)*Tracks_i.charge(i_trk)>0)continue;
-					
+
+					if(fabs(Tracks_j.vz(j_trk)-Tracks_i.vz(i_trk))>250.)continue;
+
 					if(Tracks_j.charge(j_trk)>0){
 						p_pos[0] = Tracks_j.px(j_trk);
 						p_pos[1] = Tracks_j.py(j_trk);
@@ -2917,15 +2935,88 @@ __global__ void gKernel_DimuonBuilding(
 						neg_v[1] = Tracks_j.vy(j_trk);
 						neg_v[2] = Tracks_j.vz(j_trk);
 					}
-
 					copy4vec(p_pos_single, p_pos);
 					copy4vec(p_neg_single, p_neg);
 					
-					sum3vec(dim_v, pos_v, neg_v);
-					for(short k = 0; k<3; k++)dim_v[k]*= 0.5f;
+					sum3vec(v_1, pos_v, neg_v);
+					for(short k = 0; k<3; k++)v_1[k]*= 0.5f;
+					vz_1 = v_1[2];
 					
-					sum4vec(p_sum, p_pos, p_neg);
+					//get second vertex:
+					x0 = Tracks_i.x0(i_trk);
+					y0 = Tracks_i.y0(i_trk);
+					tx = Tracks_i.tx(i_trk);
+					ty_1 = Tracks_i.ty(i_trk);
+					invP = Tracks_i.invP(i_trk); 
+					charge_1 = Tracks_i.charge(i_trk); 
+					detid_first = Tracks_i.get_firsthitdetid(i_trk, z_array);
 					
+					calculate_x0_tx_st1(x0, tx, invP, charge_1, x0_st1, tx_st1);
+					
+					z_0 = z_array[detid_first];
+							
+					state_0[0] = charge_1*invP*sqrtf(  (1.f+tx_st1*tx_st1)/(1.f+tx_st1*tx_st1+ty_1*ty_1) );
+					state_0[1] = tx_st1;
+					state_0[2] = ty_1;
+					state_0[3] = x_trk(x0_st1, tx_st1, z_0);
+					state_0[4] = y_trk(y0, ty_1, z_0);
+
+					pos_array_1[0] = state_0[3]+state_0[1]*(globalconsts::FMAG_LENGTH-z_0);
+					pos_array_1[1] = state_0[4]+state_0[2]*(globalconsts::FMAG_LENGTH-z_0);
+					pos_array_1[2] = globalconsts::FMAG_LENGTH;
+					
+					pz_0 = 1.f/( fabs(state_0[0]) * sqrtf(1.f + state_0[1]*state_0[1] + state_0[2]*state_0[2]) );
+					
+					mom_array_1[0] = pz_0*state_0[1];
+					mom_array_1[1] = pz_0*state_0[2];
+					mom_array_1[2] = pz_0;
+					
+					x0 = Tracks_j.x0(j_trk);
+					y0 = Tracks_j.y0(j_trk);
+					tx = Tracks_j.tx(j_trk);
+					ty_2 = Tracks_j.ty(j_trk);
+					invP = Tracks_j.invP(j_trk); 
+					charge_2 = Tracks_j.charge(j_trk); 
+					detid_first = Tracks_j.get_firsthitdetid(j_trk, z_array);
+					
+					calculate_x0_tx_st1(x0, tx, invP, charge_2, x0_st1, tx_st1);
+					
+					z_0 = z_array[detid_first];
+
+					state_0[0] = charge_2*invP*sqrtf(  (1.f+tx_st1*tx_st1)/(1.f+tx_st1*tx_st1+ty_2*ty_2) );
+					state_0[1] = tx_st1;
+					state_0[2] = ty_2;
+					state_0[3] = x_trk(x0_st1, tx_st1, z_0);
+					state_0[4] = y_trk(y0, ty_2, z_0);
+							
+					pos_array_2[0] = state_0[3]+state_0[1]*(globalconsts::FMAG_LENGTH-z_0);
+					pos_array_2[1] = state_0[4]+state_0[2]*(globalconsts::FMAG_LENGTH-z_0);
+					pos_array_2[2] = globalconsts::FMAG_LENGTH;
+					
+					pz_0 = 1.f/( fabs(state_0[0]) * sqrtf(1.f + state_0[1]*state_0[1] + state_0[2]*state_0[2]) );
+					
+					mom_array_2[0] = pz_0*state_0[1];
+					mom_array_2[1] = pz_0*state_0[2];
+					mom_array_2[2] = pz_0;
+					
+					vz_2 = FindDimuonClosestApproach(v_2, p_pos, p_neg, charge_1, charge_2, ty_1, ty_2, pos_array_1, mom_array_1, pos_array_2, mom_array_2);
+					p_pos[3] = E(kinematics::Mmu, p_pos);
+					p_neg[3] = E(kinematics::Mmu, p_neg);
+					
+					if(fabs(vz_2-v_2[2])<globalconsts::STEP_FMAG){
+						sum4vec(p_sum, p_pos, p_neg);
+						dim_v[0] = v_2[0];
+						dim_v[1] = v_2[1];
+						dim_v[2] = v_2[2];
+					}else{
+						sum4vec(p_sum, p_pos_single, p_neg_single);
+						dim_v[0] = v_1[0];
+						dim_v[1] = v_1[1];
+						dim_v[2] = v_1[2];
+					}
+					
+					
+					// get the variables
 					m = M(p_sum);
 					pT = Perp(p_sum);
 					x1 = mult4vec(p_target, p_sum)/mult4vec(p_target, p_cms);
@@ -2949,10 +3040,11 @@ __global__ void gKernel_DimuonBuilding(
 					if(x1<0.f || x1>1.f)continue;
 					if(x2<0.f || x2>1.f)continue;
 					if(fabs(costheta)>1.f)continue;
-					//if(p_pos[2]+p_neg[2]>120.f || p_pos[2]+p_neg[2]<30.f)continue;
-					//if(fabs(p_pos[0]+p_neg[0])>3.f && fabs(p_pos[0]+p_neg[0])>3.f )continue;
-					//if(fabs(dim_v[0])>2.f && fabs(dim_v[1])>2.f )continue;
-					
+					if(p_pos[2]+p_neg[2]>120.f || p_pos[2]+p_neg[2]<30.f)continue;
+					if(fabs(p_pos[0]+p_neg[0])>3.f && fabs(p_pos[0]+p_neg[0])>3.f )continue;
+					if(fabs(dim_v[0])>2.f && fabs(dim_v[1])>2.f )continue;
+					if(dim_v[2]>200. || dim_v[2]<-300.)continue;
+										
 					//Fill information in array
 					if(ndim>datasizes::DimuonSizeMax){
 						printf(" block %d ndim %d \n ", blockIdx.x, ndim);

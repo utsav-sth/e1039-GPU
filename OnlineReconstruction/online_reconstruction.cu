@@ -971,6 +971,10 @@ int main(int argn, char * argv[]) {
 	gKernel_DimuonBuilding<<<BLOCKS_NUM, 1>>>(
 		device_gTracks,
 		device_gDimuons,
+		device_gPlane->z,
+#ifdef DEBUG
+		device_gEvent->EventID,
+#endif
 		device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );

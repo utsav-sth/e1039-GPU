@@ -1,4 +1,3 @@
-# from https://discord.com/channels/736279277242417272/1085585441757077514/1085585441757077514
 import dearpygui.dearpygui as dpg
 dpg.create_context()
 

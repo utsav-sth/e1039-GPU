@@ -1266,6 +1266,218 @@ __device__ void Boost(float* p, const float* boost, const short sign){
 }
 
 
+__device__ float FindDimuonClosestApproach(float* v, float* p_pos, float* p_neg, const float charge_1, const float charge_2, const float ty_1, const float ty_2, float* pos_array_1, float* mom_array_1, float* pos_array_2, float* mom_array_2){
+	float tx_i, tx_f;
+	float ptot_i, ptot_b, ptot_f;
+	float pz_f;
+	float traj1[3];
+	float traj2[3];
+	float pos_b[3];
+	int ix, iy, iz;
+	int ix_m1, iy_m1, iz_m1;
+	float dz;
+	int step, step_x, step_y;
+	
+	float dca2_min;
+	float dca2;
+	
+	step = 1;
+	for(; step <= globalconsts::NSTEPS_FMAG; ++step){
+		ix = step*3;
+		iy = step*3+1;
+		iz = step*3+2;
+		ix_m1 = (step-1)*3;
+		iy_m1 = (step-1)*3+1;
+		iz_m1 = (step-1)*3+2;
+		
+		tx_i = mom_array_1[ix_m1]/mom_array_1[iz_m1];
+		tx_f = tx_i + 2.f*charge_1*globalconsts::PTKICK_UNIT*globalconsts::STEP_FMAG/sqrt(mom_array_1[ix_m1]*mom_array_1[ix_m1]+mom_array_1[iz_m1]*mom_array_1[iz_m1]);
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("tx_i = %1.4f, tx_f = %1.4f, PTKICK_UNIT %1.4f, charge %1.0f, sqrt %1.4f \n", tx_i, tx_f, globalconsts::PTKICK_UNIT, charge, sqrt(mom_array_1[ix_m1]*mom_array_1[ix_m1]+mom_array_1[iz_m1]*mom_array_1[iz_m1]));
+#endif
+		
+		traj1[0] = tx_i*globalconsts::STEP_FMAG;
+		traj1[1] = ty_1*globalconsts::STEP_FMAG;
+		traj1[2] = globalconsts::STEP_FMAG;
+		
+		pos_b[0] = pos_array_1[ix_m1]-traj1[0];
+		pos_b[1] = pos_array_1[iy_m1]-traj1[1];
+		pos_b[2] = pos_array_1[iz_m1]-traj1[2];
+		
+		ptot_i = sqrtf(mom_array_1[ix_m1]*mom_array_1[ix_m1]+mom_array_1[iy_m1]*mom_array_1[iy_m1]+mom_array_1[iz_m1]*mom_array_1[iz_m1]);
+		ptot_b = ptot_i;
+		if(pos_b[2] > globalconsts::FMAG_HOLE_LENGTH || pos_b[0]*pos_b[0]+pos_b[1]*pos_b[1]>globalconsts::FMAG_HOLE_RADIUS){
+			ptot_b+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_1*ptot_i + globalconsts::DEDX_UNIT_2*ptot_i*ptot_i + globalconsts::DEDX_UNIT_3*ptot_i*ptot_i*ptot_i + globalconsts::DEDX_UNIT_4*ptot_i*ptot_i*ptot_i*ptot_i)*sqrtf( traj1[0]*traj1[0] + traj1[1]*traj1[1] + traj1[2]*traj1[2]);
+		}
+		
+		traj2[0] = tx_f*globalconsts::STEP_FMAG;
+		traj2[1] = ty_1*globalconsts::STEP_FMAG;
+		traj2[2] = globalconsts::STEP_FMAG;
+		
+		pos_array_1[ix] = pos_b[0]-traj2[0];
+		pos_array_1[iy] = pos_b[1]-traj2[1];
+		pos_array_1[iz] = pos_b[2]-traj2[2];
+		
+		ptot_f = ptot_b;
+		if(pos_array_1[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_b[ix]*pos_b[ix]+pos_b[iy]*pos_b[iy]>globalconsts::FMAG_HOLE_RADIUS){
+			ptot_f+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_1*ptot_b + globalconsts::DEDX_UNIT_2*ptot_b*ptot_b + globalconsts::DEDX_UNIT_3*ptot_b*ptot_b*ptot_b + globalconsts::DEDX_UNIT_4*ptot_b*ptot_b*ptot_b*ptot_b)*sqrtf( traj2[0]*traj2[0] + traj2[1]*traj2[1] + traj2[2]*traj2[2]);
+		}
+		
+		pz_f = ptot_f/sqrtf(1.f+tx_f*tx_f+ty_1*ty_1);
+		
+		mom_array_1[ix] = pz_f*tx_f;
+		mom_array_1[iy] = pz_f*ty_1;
+		mom_array_1[iz] = pz_f;
+			
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
+#endif
+
+
+		tx_i = mom_array_2[ix_m1]/mom_array_2[iz_m1];
+		tx_f = tx_i + 2.f*charge_2*globalconsts::PTKICK_UNIT*globalconsts::STEP_FMAG/sqrt(mom_array_2[ix_m1]*mom_array_2[ix_m1]+mom_array_2[iz_m1]*mom_array_2[iz_m1]);
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("tx_i = %1.4f, tx_f = %1.4f, PTKICK_UNIT %1.4f, charge %1.0f, sqrt %1.4f \n", tx_i, tx_f, globalconsts::PTKICK_UNIT, charge, sqrt(mom_array_2[ix_m1]*mom_array_2[ix_m1]+mom_array_2[iz_m1]*mom_array_2[iz_m1]));
+#endif
+		
+		traj1[0] = tx_i*globalconsts::STEP_FMAG;
+		traj1[1] = ty_2*globalconsts::STEP_FMAG;
+		traj1[2] = globalconsts::STEP_FMAG;
+		
+		pos_b[0] = pos_array_2[ix_m1]-traj1[0];
+		pos_b[1] = pos_array_2[iy_m1]-traj1[1];
+		pos_b[2] = pos_array_2[iz_m1]-traj1[2];
+		
+		ptot_i = sqrtf(mom_array_2[ix_m1]*mom_array_2[ix_m1]+mom_array_2[iy_m1]*mom_array_2[iy_m1]+mom_array_2[iz_m1]*mom_array_2[iz_m1]);
+		ptot_b = ptot_i;
+		if(pos_b[2] > globalconsts::FMAG_HOLE_LENGTH || pos_b[0]*pos_b[0]+pos_b[1]*pos_b[1]>globalconsts::FMAG_HOLE_RADIUS){
+			ptot_b+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_2*ptot_i + globalconsts::DEDX_UNIT_2*ptot_i*ptot_i + globalconsts::DEDX_UNIT_3*ptot_i*ptot_i*ptot_i + globalconsts::DEDX_UNIT_4*ptot_i*ptot_i*ptot_i*ptot_i)*sqrtf( traj1[0]*traj1[0] + traj1[1]*traj1[1] + traj1[2]*traj1[2]);
+		}
+		
+		traj2[0] = tx_f*globalconsts::STEP_FMAG;
+		traj2[1] = ty_2*globalconsts::STEP_FMAG;
+		traj2[2] = globalconsts::STEP_FMAG;
+		
+		pos_array_2[ix] = pos_b[0]-traj2[0];
+		pos_array_2[iy] = pos_b[1]-traj2[1];
+		pos_array_2[iz] = pos_b[2]-traj2[2];
+		
+		ptot_f = ptot_b;
+		if(pos_array_2[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_b[ix]*pos_b[ix]+pos_b[iy]*pos_b[iy]>globalconsts::FMAG_HOLE_RADIUS){
+			ptot_f+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_1*ptot_b + globalconsts::DEDX_UNIT_2*ptot_b*ptot_b + globalconsts::DEDX_UNIT_3*ptot_b*ptot_b*ptot_b + globalconsts::DEDX_UNIT_4*ptot_b*ptot_b*ptot_b*ptot_b)*sqrtf( traj2[0]*traj2[0] + traj2[1]*traj2[1] + traj2[2]*traj2[2]);
+		}
+		
+		pz_f = ptot_f/sqrtf(1.f+tx_f*tx_f+ty_2*ty_2);
+		
+		mom_array_2[ix] = pz_f*tx_f;
+		mom_array_2[iy] = pz_f*ty_2;
+		mom_array_2[iz] = pz_f;
+			
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
+#endif
+		
+	}//end loop on FMAG steps
+	
+	for(; step<=globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET; ++step){
+		ix = step*3;
+		iy = step*3+1;
+		iz = step*3+2;
+		ix_m1 = (step-1)*3;
+		iy_m1 = (step-1)*3+1;
+		iz_m1 = (step-1)*3+2;
+
+		tx_i = mom_array_1[ix_m1]/mom_array_1[iz_m1];
+		traj1[0] = tx_i*globalconsts::STEP_TARGET;
+		traj1[1] = ty_1*globalconsts::STEP_TARGET;
+		traj1[2] = globalconsts::STEP_TARGET;
+		
+		mom_array_1[ix] = mom_array_1[ix_m1];
+		mom_array_1[iy] = mom_array_1[iy_m1];
+		mom_array_1[iz] = mom_array_1[iz_m1];
+		
+		pos_array_1[ix] = pos_array_1[ix_m1]-traj1[0];
+		pos_array_1[iy] = pos_array_1[iy_m1]-traj1[1];
+		pos_array_1[iz] = pos_array_1[iz_m1]-traj1[2];
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("%d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", step, ix, iy, iz, pos_array_1[ix], pos_array_1[iy], pos_array_1[iz], mom_array_1[ix], mom_array_1[iy], mom_array_1[iz] );
+#endif
+
+		tx_i = mom_array_2[ix_m1]/mom_array_2[iz_m1];
+		traj1[0] = tx_i*globalconsts::STEP_TARGET;
+		traj1[1] = ty_2*globalconsts::STEP_TARGET;
+		traj1[2] = globalconsts::STEP_TARGET;
+		
+		mom_array_2[ix] = mom_array_2[ix_m1];
+		mom_array_2[iy] = mom_array_2[iy_m1];
+		mom_array_2[iz] = mom_array_2[iz_m1];
+		
+		pos_array_2[ix] = pos_array_2[ix_m1]-traj1[0];
+		pos_array_2[iy] = pos_array_2[iy_m1]-traj1[1];
+		pos_array_2[iz] = pos_array_2[iz_m1]-traj1[2];
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("%d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", step, ix, iy, iz, pos_array_2[ix], pos_array_2[iy], pos_array_2[iz], mom_array_2[ix], mom_array_2[iy], mom_array_2[iz] );
+#endif
+
+	}//end loop on TARGET steps
+	
+	
+	//now?
+	dca2_min = 1.e18;
+		
+	step = -1;
+		
+	for(int j = 0; j<=globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET; j++){
+		ix = j*3;
+		iy = j*3+1;
+		iz = j*3+2;
+		if(globalconsts::FMAGSTR*charge_1*mom_array_1[ix] < 0. && globalconsts::FMAGSTR*charge_2*mom_array_2[ix] < 0.) continue;
+		
+		dca2 = (pos_array_1[ix]-pos_array_2[ix])*(pos_array_1[ix]-pos_array_2[ix]) + (pos_array_1[iy]-pos_array_2[iy])*(pos_array_1[iy]-pos_array_2[iy]);
+			if(dca2<dca2_min){
+			dca2_min  =  dca2;
+			step = j;
+		}
+#ifdef DEBUG
+		if(blockIdx.x==debug::EvRef)printf("%d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz], dca2, dca_x, dca_y );
+#endif
+	}
+	
+	if(step==-1){
+		v[0] =  (pos_array_1[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET]+pos_array_2[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET])*0.5;
+		v[1] =  (pos_array_1[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET]+pos_array_2[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET])*0.5;
+		v[2] =  (pos_array_1[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET]+pos_array_2[globalconsts::NSTEPS_FMAG+globalconsts::NSTEPS_TARGET])*0.5;
+		return globalconsts::Z_DUMP;
+	}
+	ix = step*3;
+	iy = step*3+1;
+	iz = step*3+2;
+	
+	if(charge_1>0){
+		p_pos[0] = mom_array_1[ix];
+		p_pos[1] = mom_array_1[iy];
+		p_pos[2] = mom_array_1[iz];
+		
+		p_neg[0] = mom_array_2[ix];
+		p_neg[1] = mom_array_2[iy];
+		p_neg[2] = mom_array_2[iz];
+	}else{
+		p_pos[0] = mom_array_2[ix];
+		p_pos[1] = mom_array_2[iy];
+		p_pos[2] = mom_array_2[iz];
+		
+		p_neg[0] = mom_array_1[ix];
+		p_neg[1] = mom_array_1[iy];
+		p_neg[2] = mom_array_1[iz];
+	}
+	v[0] =  (pos_array_1[ix]+pos_array_2[ix])*0.5;
+	v[1] =  (pos_array_1[iy]+pos_array_2[iy])*0.5;
+	v[2] =  (pos_array_1[iz]+pos_array_2[iz])*0.5;
+	return pos_array_1[iz];
+}
+
+
+
 
 // --------------------------------------------- //
 //
