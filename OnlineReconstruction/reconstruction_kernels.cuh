@@ -2914,7 +2914,7 @@ __global__ void gKernel_DimuonBuilding(
 					//if(Tracks_j.chisq(j_trk)>selection::chi2max)continue;
 					if(Tracks_j.charge(j_trk)*Tracks_i.charge(i_trk)>0)continue;
 
-					if(fabs(Tracks_j.vz(j_trk)-Tracks_i.vz(i_trk))>250.)continue;
+					//if(fabs(Tracks_j.vz(j_trk)-Tracks_i.vz(i_trk))>250.)continue;
 
 					if(Tracks_j.charge(j_trk)>0){
 						p_pos[0] = Tracks_j.px(j_trk);
@@ -3035,16 +3035,19 @@ __global__ void gKernel_DimuonBuilding(
 					phi = atan2f( 2*sqrtf(m*m + pT*pT)*(p_neg[0]*p_pos[1]-p_neg[1]*p_pos[0]) , m*(p_pos[0]*p_pos[0] - p_neg[0]*p_neg[0] + p_pos[1]*p_pos[1] - p_neg[1]*p_neg[1] ) );
 					
 					//filter
+					if(globalconsts::FMAGSTR*(p_pos[0] - p_neg[0]) < 0.)continue;
 					if(m<0 || m>10.f)continue;
 					if(fabs(xF)>1.f)continue;
 					if(x1<0.f || x1>1.f)continue;
 					if(x2<0.f || x2>1.f)continue;
 					if(fabs(costheta)>1.f)continue;
 					if(p_pos[2]+p_neg[2]>120.f || p_pos[2]+p_neg[2]<30.f)continue;
-					if(fabs(p_pos[0]+p_neg[0])>3.f && fabs(p_pos[0]+p_neg[0])>3.f )continue;
-					if(fabs(dim_v[0])>2.f && fabs(dim_v[1])>2.f )continue;
-					if(dim_v[2]>200. || dim_v[2]<-300.)continue;
-										
+					if(fabs(p_pos[0]+p_neg[0])>3.f || fabs(p_pos[0]+p_neg[0])>3.f )continue;
+					if(fabs(dim_v[0])>15.f || fabs(dim_v[1])>15.f )continue;
+					//if(dim_v[2]>200. || dim_v[2]<-300.)continue;
+
+					//printf(" evt %d dim v %1.4f %1.4f %1.4f pos v %1.4f %1.4f %1.4f neg v %1.4f %1.4f %1.4f \n", blockIdx.x, dim_v[0], dim_v[1], dim_v[2], pos_v[0], pos_v[1], pos_v[2], neg_v[0], neg_v[1], neg_v[2] );
+					
 					//Fill information in array
 					if(ndim>datasizes::DimuonSizeMax){
 						printf(" block %d ndim %d \n ", blockIdx.x, ndim);
