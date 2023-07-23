@@ -10,7 +10,6 @@
 #include <chrono>
 
 // CUDA runtime
-// #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
 #include <thrust/host_vector.h>
@@ -23,32 +22,21 @@
 #include <thrust/functional.h>
 #include <thrust/sort.h>
 
-// #include <cublasLt.h>
-
 #include <TObject.h>
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <TSpline.h>
+//#define ROOTSAVE
 #ifdef ROOTSAVE
-#include <TRandom.h>
-#include <TMatrixD.h>
-#include <TLorentzVector.h>
-#include <TClonesArray.h>
-#include <TStopwatch.h>
-#include <TTimeStamp.h>
-#include <TString.h>
-#include <TCanvas.h>
 #include <TH1D.h>
 #endif
-//#include "LoadInput.h"
 #include "OROutput.h"
 #include "reconstruction_kernels.cuh"
 
 #ifdef GLDISPLAY
 #include "display_utils.cuh"
 #endif
-//#else
 
 #ifdef E1039
 #include "SQEvent_v1.h"
@@ -705,6 +693,9 @@ int main(int argn, char * argv[]) {
 	};
 		
 #ifdef ROOTSAVE
+	TFile* f_histos = new TFile("histos_run_spill.root", "UPDATE");
+	//add the histos to the file
+	
 	string wintitle[histotools::nvars_total] = {
 		";p_{x} (GeV/c)", ";p_{y} (GeV/c)", ";p_{z} (GeV/c)", ";v_{x} (cm)", ";v_{y} (cm)", ";v_{z} (cm)", 
 		";m_{mu^{+}mu^{-}} (GeV/c)", ";x_{F}", ";x_{1}", ";x_{2}", ";p_{T} (GeV/c)", ";#phi (rad)", 
@@ -715,7 +706,10 @@ int main(int argn, char * argv[]) {
 	for(int ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
 		for(int k = 0; k<histotools::nvars_total; k++){	
 #ifdef ROOTSAVE
-			h1[ntrg][k] = new TH1D(Form("h_%d_%d", ntrg, k), wintitle[k].c_str(), nbins[k], varmin[k], varmax[k]);
+			h1[ntrg][k] = (TH1D*)f_histos->Get(Form("h_%d_%d", ntrg, k));
+			if(!h1[ntrg][k]){
+				h1[ntrg][k] = new TH1D(Form("h_%d_%d", ntrg, k), wintitle[k].c_str(), nbins[k], varmin[k], varmax[k]);
+			}
 #endif
 			host_hists->nbins[ntrg*histotools::nvars_total+k] = nbins[k];
 			host_hists->pts_hw[ntrg*histotools::nvars_total+k] = (varmax[k]-varmin[k])*0.5f/nbins[k];
@@ -994,39 +988,14 @@ int main(int argn, char * argv[]) {
 	for(int ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
 		for(int k = 0; k<histotools::nvars_total; k++){
 			for(int l = 0; l<host_hists->nbins[ntrg*histotools::nvars_total+k]; l++){
-				h1[ntrg][k]->SetBinContent(l+1, host_hists->values[ntrg*histotools::nvars_total*histotools::nbins_max+k*histotools::nbins_max+l]);
+				h1[ntrg][k]->SetBinContent(l+1, h1[ntrg][k]->GetBinContent(l+1)+host_hists->values[ntrg*histotools::nvars_total*histotools::nbins_max+k*histotools::nbins_max+l]);
 			}
 		}
 	}
 	
-	TCanvas* C1 = new TCanvas("C1", "display test", 1350, 800);
-	C1->Divide(3, 2);
-	for(int ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
-		for(int k = 0; k<6; k++){
-			C1->cd(k+1);
-			h1[ntrg][k]->Draw("hist");
-		}
-		if(ntrg==0){
-			C1->SaveAs("Display_test.pdf(");
-		}else{
-			C1->SaveAs("Display_test.pdf");
-		}
-		for(int k = 6; k<12; k++){
-			C1->cd(k-6+1);
-			h1[ntrg][k]->Draw("hist");
-		}
-		C1->SaveAs("Display_test.pdf");
-		for(int k = 12; k<18; k++){
-			C1->cd(k-12+1);
-			h1[ntrg][k]->Draw("hist");
-		}
-		if(ntrg==histotools::ntriggers-1){
-			C1->SaveAs("Display_test.pdf)");
-		}else{
-			C1->SaveAs("Display_test.pdf");
-		}
-
-	}
+	//add the histos to the file
+	f_histos->Write();
+	f_histos->Save();
 #endif		
 	//The display should come after the vertexing - but before the copy of the output back to the CPU.
 #ifdef GLDISPLAY
