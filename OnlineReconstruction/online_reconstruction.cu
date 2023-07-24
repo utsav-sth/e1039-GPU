@@ -10,7 +10,6 @@
 #include <chrono>
 
 // CUDA runtime
-// #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
 #include <thrust/host_vector.h>
@@ -23,32 +22,21 @@
 #include <thrust/functional.h>
 #include <thrust/sort.h>
 
-// #include <cublasLt.h>
-
 #include <TObject.h>
 #include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <TSpline.h>
+//#define ROOTSAVE
 #ifdef ROOTSAVE
-#include <TRandom.h>
-#include <TMatrixD.h>
-#include <TLorentzVector.h>
-#include <TClonesArray.h>
-#include <TStopwatch.h>
-#include <TTimeStamp.h>
-#include <TString.h>
-#include <TCanvas.h>
 #include <TH1D.h>
 #endif
-//#include "LoadInput.h"
 #include "OROutput.h"
 #include "reconstruction_kernels.cuh"
 
 #ifdef GLDISPLAY
 #include "display_utils.cuh"
 #endif
-//#else
 
 #ifdef E1039
 #include "SQEvent_v1.h"
@@ -664,7 +652,7 @@ int main(int argn, char * argv[]) {
 	size_t NBytesAllHits = sizeof(gEventHitCollections);
 	size_t NBytesAllTracks = sizeof(gEventTrackCollection);
 	size_t NBytesAllDimuons = sizeof(gEventDimuonCollection);
-	size_t NBytesHistsArrays = sizeof(gHistsArrays);
+	size_t NBytesHistsArrays =  sizeof(gHistsArrays);
 	size_t NBytesPlanes = sizeof(gPlane);
 	
 	cout << "Total size allocated on GPUs " << NBytesAllEvent+NBytesPlanes+NBytesAllHits+NBytesAllTracks+NBytesHistsArrays+NBytesAllDimuons << endl;
@@ -678,27 +666,61 @@ int main(int argn, char * argv[]) {
 	gEventDimuonCollection* host_output_gDimuons = (gEventDimuonCollection*)malloc(NBytesAllDimuons);
 	gHistsArrays* host_hists = (gHistsArrays*)malloc(NBytesHistsArrays);
 	
-	float varmin[NVars] = {-X0_MAX, -Y0_MAX, INVP_MIN, -TX_MAX, -TY_MAX, -VXY_MAX, -VXY_MAX, VZ_MIN, -PXY_MAX, -PXY_MAX, PZ_MIN};
-	float varmax[NVars] = {+X0_MAX, +Y0_MAX, INVP_MAX, +TX_MAX, +TY_MAX, +VXY_MAX, +VXY_MAX, VZ_MAX, +PXY_MAX, +PXY_MAX, PZ_MAX};
+	const short nbins[histotools::nvars_total] = {
+		histotools::nbins_px, histotools::nbins_py, histotools::nbins_pz, 
+		histotools::nbins_vx, histotools::nbins_vy, histotools::nbins_vz,
+		histotools::nbins_mdim, histotools::nbins_xf, histotools::nbins_x1, 
+		histotools::nbins_x2, histotools::nbins_pt, histotools::nbins_phi, 
+		histotools::nbins_px, histotools::nbins_py, histotools::nbins_pz, 
+		histotools::nbins_vx, histotools::nbins_vy, histotools::nbins_vz
+	};	
 	
+	const float varmin[histotools::nvars_total] = {
+		histotools::px_min, histotools::py_min, histotools::pz_min, 
+		histotools::vx_min, histotools::vy_min, histotools::vz_min,
+		histotools::mdim_min, histotools::xf_min, histotools::x1_min, 
+		histotools::x2_min, histotools::pt_min, histotools::phi_min, 
+		histotools::px_min, histotools::py_min, histotools::pz_min, 
+		histotools::vx_min, histotools::vy_min, histotools::vz_min
+	};
+	const float varmax[histotools::nvars_total] = {
+		histotools::px_max, histotools::py_max, histotools::pz_max, 
+		histotools::vx_max, histotools::vy_max, histotools::vz_max, 
+		histotools::mdim_max, histotools::xf_max, histotools::x1_max, 
+		histotools::x2_max, histotools::pt_max, histotools::phi_max, 
+		histotools::px_max, histotools::py_max, histotools::pz_max, 
+		histotools::vx_max, histotools::vy_max, histotools::vz_max
+	};
+		
 #ifdef ROOTSAVE
-	string wintitle[NVars] = {"x0", "y0", "invp", "tx", "ty", "vx", "vy", "vz", "px", "py", "pz"};
-	TH1D* h1[NVars];
+	TFile* f_histos = new TFile("histos_run_spill.root", "UPDATE");
+	//add the histos to the file
+	
+	string wintitle[histotools::nvars_total] = {
+		";p_{x} (GeV/c)", ";p_{y} (GeV/c)", ";p_{z} (GeV/c)", ";v_{x} (cm)", ";v_{y} (cm)", ";v_{z} (cm)", 
+		";m_{mu^{+}mu^{-}} (GeV/c)", ";x_{F}", ";x_{1}", ";x_{2}", ";p_{T} (GeV/c)", ";#phi (rad)", 
+		";p_{x} (GeV/c)", ";p_{y} (GeV/c)", ";p_{z} (GeV/c)", ";v_{x} (cm)", ";v_{y} (cm)", ";v_{z} (cm)" 
+	};
+	TH1D* h1[histotools::ntriggers][histotools::nvars_total];
 #endif	
-	for(int k = 0; k<NVars; k++){	
+	for(int ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
+		for(int k = 0; k<histotools::nvars_total; k++){	
 #ifdef ROOTSAVE
-		h1[k] = new TH1D(Form("h%d", k), wintitle[k].c_str(), Nbins_Hists, varmin[k], varmax[k]);
-#endif
-		host_hists->pts_hw[k] = (varmax[k]-varmin[k])*0.5f/Nbins_Hists;
-		for(int l = 0; l<Nbins_Hists; l++){
-			host_hists->xpts[k*Nbins_Hists+l] = varmin[k]+host_hists->pts_hw[k]*(2.f*l+1.f);
-			if(k==2){
-#ifdef DEBUG
-				if(l==0)cout << host_hists->pts_hw[k] << " ";
-				cout << k << " " << l << " " << k*Nbins_Hists+l << " " << host_hists->xpts[k*Nbins_Hists+l] << endl;
-#endif
+			h1[ntrg][k] = (TH1D*)f_histos->Get(Form("h_%d_%d", ntrg, k));
+			if(!h1[ntrg][k]){
+				h1[ntrg][k] = new TH1D(Form("h_%d_%d", ntrg, k), wintitle[k].c_str(), nbins[k], varmin[k], varmax[k]);
 			}
-			host_hists->values[k*Nbins_Hists+l] = 0;
+#endif
+			host_hists->nbins[ntrg*histotools::nvars_total+k] = nbins[k];
+			host_hists->pts_hw[ntrg*histotools::nvars_total+k] = (varmax[k]-varmin[k])*0.5f/nbins[k];
+			for(int l = 0; l<host_hists->nbins[ntrg*histotools::nvars_total+k]; l++){
+				host_hists->xpts[ntrg*histotools::nvars_total*histotools::nbins_max+k*histotools::nbins_max+l] = varmin[k]+host_hists->pts_hw[k]*(2.f*l+1.f);
+#ifdef DEBUG
+				cout << host_hists->pts_hw[ntrg*histotools::nvars_total+k] << " ";
+				cout << k << " " << l << " " << k*histotools::nbins+l << " " << host_hists->xpts[ntrg*histotools::nvars_total*histotools::nbins+k*histotools::nbins+l] << endl;
+#endif
+				host_hists->values[ntrg*histotools::nvars_total*histotools::nbins_max+k*histotools::nbins_max+l] = 0;
+			}
 		}
 	}
 	
@@ -943,6 +965,10 @@ int main(int argn, char * argv[]) {
 	gKernel_DimuonBuilding<<<BLOCKS_NUM, 1>>>(
 		device_gTracks,
 		device_gDimuons,
+		device_gPlane->z,
+#ifdef DEBUG
+		device_gEvent->EventID,
+#endif
 		device_gEvent->HasTooManyHits);
 	
 	gpuErrchk( cudaPeekAtLastError() );
@@ -953,25 +979,23 @@ int main(int argn, char * argv[]) {
 	cout<<"GPU: Dimuon building: "<<gpu_dim.count()/1000000000.<<endl;
 
 	
-	gKernel_fill_display_histograms<<<BLOCKS_NUM,THREADS_PER_BLOCK>>>(device_gTracks, device_gHistsArrays, device_gEvent->HasTooManyHits);
+	gKernel_fill_display_histograms<<<BLOCKS_NUM,1>>>(device_gTracks, device_gDimuons, device_gHistsArrays, device_gEvent->TriggerBits, device_gEvent->HasTooManyHits);
 	
 #ifdef ROOTSAVE
 	gpuErrchk( cudaMemcpy(host_hists, device_gHistsArrays, NBytesHistsArrays, cudaMemcpyDeviceToHost));
 	cudaFree(device_gHistsArrays);
 	
-	for(int k = 0; k<NVars; k++){
-		for(int l = 0; l<Nbins_Hists; l++){
-			h1[k]->SetBinContent(l+1, host_hists->values[k*Nbins_Hists+l]);
+	for(int ntrg = 0; ntrg<histotools::ntriggers; ntrg++){
+		for(int k = 0; k<histotools::nvars_total; k++){
+			for(int l = 0; l<host_hists->nbins[ntrg*histotools::nvars_total+k]; l++){
+				h1[ntrg][k]->SetBinContent(l+1, h1[ntrg][k]->GetBinContent(l+1)+host_hists->values[ntrg*histotools::nvars_total*histotools::nbins_max+k*histotools::nbins_max+l]);
+			}
 		}
 	}
 	
-	TCanvas* C1 = new TCanvas("C1", "display OR", 1350, 800);
-	C1->Divide(3, 2);
-	for(int k = 0; k<5; k++){
-		C1->cd(k+1);
-		h1[k]->Draw("hist");
-	}
-	C1->SaveAs("DISPLAY.pdf");
+	//add the histos to the file
+	f_histos->Write();
+	f_histos->Save();
 #endif		
 	//The display should come after the vertexing - but before the copy of the output back to the CPU.
 #ifdef GLDISPLAY

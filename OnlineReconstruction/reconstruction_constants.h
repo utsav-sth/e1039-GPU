@@ -26,20 +26,23 @@ const int EstnAHMax = 4096;
 const int EstnTHMax = 256;
 const int ClusterSizeMax = 192;
 
-const int NVars = 11;
-const int Nbins_Hists = 128;
 const float TX_MAX = 0.15;
 const float TY_MAX = 0.1;
 const float X0_MAX = 150;//cm
 const float Y0_MAX = 50;//cm
 const float INVP_MAX = 0.2;//GeV-1
 const float INVP_MIN = 0.01;//GeV-1
+
+/*
+const int NVars = 11;
+const int Nbins_Hists = 128;
 const float VXY_MAX = 20.0;//cm
 const float VZ_MIN = -500.0;//cm
 const float VZ_MAX = +300.0;//cm
 const float PXY_MAX = 20.0;//GeV
 const float PZ_MIN = 0.0;//GeV
 const float PZ_MAX = 150.0;//GeV
+*/
 
 const float InvSqrt12 = 0.288675135;
 
@@ -187,6 +190,7 @@ namespace selection{
 	__host__ __device__ constexpr short MaxD3Multiplicity = 60;//90;
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
+	__host__ __device__ constexpr float chi2max = 250;
 	__host__ __device__ constexpr float chi2dofmax = 250;
 	__host__ __device__ constexpr short NpropXYhitsMin = 2;
 	__host__ __device__ constexpr float merge_thres = 0.015;
@@ -209,9 +213,55 @@ namespace kinematics{
 	__host__ __device__ constexpr float Mmu = 0.105658;
 }
 
-namespace histogramtools{
-	__host__ __device__ constexpr int nbins = 100;
-	__host__ __device__ constexpr float mass_min = 100;
+namespace histotools{
+	__host__ __device__ constexpr short ntriggers = 11;//10 triggers + all
+	__host__ __device__ constexpr int nbins_max = 256;
+	
+	__host__ __device__ constexpr short nvars_tracks = 6;
+	__host__ __device__ constexpr short nvars_dimuons = 12;
+
+	__host__ __device__ constexpr short nvars_total = nvars_tracks+nvars_dimuons;
+	
+	__host__ __device__ constexpr int nbins_px = 100;
+	__host__ __device__ constexpr float px_min = -20.0;
+	__host__ __device__ constexpr float px_max = 20.0;
+	__host__ __device__ constexpr int nbins_py = 100;
+	__host__ __device__ constexpr float py_min = -20.0;
+	__host__ __device__ constexpr float py_max = 20.0;
+	__host__ __device__ constexpr int nbins_pz = 100;
+	__host__ __device__ constexpr float pz_min =  0.0;
+	__host__ __device__ constexpr float pz_max = 120.0;
+
+	__host__ __device__ constexpr int nbins_vx = 100;
+	__host__ __device__ constexpr float vx_min = -20.0;
+	__host__ __device__ constexpr float vx_max = 20.0;
+	__host__ __device__ constexpr int nbins_vy = 100;
+	__host__ __device__ constexpr float vy_min = -20.0;
+	__host__ __device__ constexpr float vy_max = 20.0;
+	__host__ __device__ constexpr int nbins_vz = 200;
+	__host__ __device__ constexpr float vz_min = -500.0;
+	__host__ __device__ constexpr float vz_max = 500.0;
+	
+	__host__ __device__ constexpr int nbins_dimvars = 100;
+	__host__ __device__ constexpr int nbins_mdim = 50;
+	__host__ __device__ constexpr float mdim_min = 0.0;
+	__host__ __device__ constexpr float mdim_max = 10.0;
+	__host__ __device__ constexpr int nbins_xf = 50;
+	__host__ __device__ constexpr float xf_min = 0.0;
+	__host__ __device__ constexpr float xf_max = 1.0;
+	__host__ __device__ constexpr int nbins_x1 = 50;
+	__host__ __device__ constexpr float x1_min = 0.0;
+	__host__ __device__ constexpr float x1_max = 1.0;
+	__host__ __device__ constexpr int nbins_x2 = 50;
+	__host__ __device__ constexpr float x2_min = 0.0;
+	__host__ __device__ constexpr float x2_max = 0.5;
+	__host__ __device__ constexpr int nbins_pt = 50;
+	__host__ __device__ constexpr float pt_min = 0.0;
+	__host__ __device__ constexpr float pt_max = 5.0;
+	__host__ __device__ constexpr int nbins_phi = 50;
+	__host__ __device__ constexpr float phi_min = -3.141592654;
+	__host__ __device__ constexpr float phi_max = 3.141592654;
+	
 }
 
 namespace extrapolation_tools{
