@@ -102,7 +102,7 @@ namespace globalconsts{
 	__device__ constexpr float KMAGSTR = 0.0;
 #endif
 	__device__ constexpr float FMAGSTR = -1.044;
-	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
+	__device__ constexpr float PTKICK_UNIT = -0.006038726;//PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
 	__device__ constexpr float Z_KMAG_BEND = 1041.8;
 	__device__ constexpr float Z_FMAG_BEND = 251.4;
 	__device__ constexpr float Z_TARGET = -129.54;
@@ -185,9 +185,9 @@ namespace datasizes{
 }
 
 namespace selection{
-	__host__ __device__ constexpr short MaxD0Multiplicity = 140;//210;
-	__host__ __device__ constexpr short MaxD2Multiplicity = 80;//120;
-	__host__ __device__ constexpr short MaxD3Multiplicity = 60;//90;
+	__host__ __device__ constexpr short MaxD0Multiplicity = 210;//140;//
+	__host__ __device__ constexpr short MaxD2Multiplicity = 120;//80;//
+	__host__ __device__ constexpr short MaxD3Multiplicity = 90;//60;//
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
 	__host__ __device__ constexpr float chi2max = 250;
