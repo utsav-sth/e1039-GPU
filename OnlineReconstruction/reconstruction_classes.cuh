@@ -501,12 +501,15 @@ struct gTracks {
 		{
 			assert(index < NTracksTotal);
 			const int nhits = (int)nHits(index);
-			int detid;
-			int detid_max = -1;
-			for(int i = 0; i<nhits; i++){
-				detid = (int)hits_detid(index, i);
-				if(detid>0 && z_array[detid]>z_array[detid_max])detid_max = detid;
-				//if(detid>detid_max)detid_max = detid;
+			short detid;
+			short detid_max = 1;
+			float z_max = -10000.f;
+			for(short i = 0; i<nhits; i++){
+				detid = (short)hits_detid(index, i);
+				if(detid>0 && z_array[detid]>z_max){
+					detid_max = detid;
+					z_max = z_array[detid];
+				}
 			}
 			return detid_max;		 
 		}
@@ -515,12 +518,15 @@ struct gTracks {
 		{
 			assert(index < NTracksTotal);
 			const int nhits = (int)nHits(index);
-			int detid;
-			int detid_min = 100;
-			for(int i = 0; i<nhits; i++){
-				detid = (int)hits_detid(index, i);
-				if(detid>0 && z_array[detid]<z_array[detid_min])detid_min = detid;
-				//if(detid>0 && detid<detid_min)detid_min = detid;
+			short detid;
+			short detid_min = 30;
+			float z_min = +10000.f;
+			for(short i = 0; i<nhits; i++){
+				detid = (short)hits_detid(index, i);
+				if(detid>0 && z_array[detid]<z_min){
+					detid_min = detid;
+					z_min = z_array[detid];
+				}
 			}
 			return detid_min;
 		}
