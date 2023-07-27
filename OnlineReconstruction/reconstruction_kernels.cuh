@@ -2615,23 +2615,12 @@ __global__ void gKernel_Vertexing(
 		state_0[3] = x_trk(x0_st1, tx_st1, z_0);
 		state_0[4] = y_trk(y0, ty, z_0);
 		
-		if(blockIdx.x==debug::EvRef){
-			state_0[0] = -0.02335330932;
-			state_0[1] = -0.06126539913;
-			state_0[2] = 0.009333716023;
-			state_0[3] = -17.97794751;
-			state_0[4] = 5.896909868;
-			z_0 = 594.6986124;
-			ty = 0.009333716023;
-		}
-		
-		
-//#ifdef DEBUG
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef){
 			printf("invP %1.8f num %1.8f den %1.8f sqrt %1.8f ", invP, (1.f+tx_st1*tx_st1), (1.f+tx_st1*tx_st1+ty*ty), sqrtf(  (1.f+tx_st1*tx_st1)/(1.f+tx_st1*tx_st1+ty*ty) ) );
 			printf("front state %1.8f %1.8f %1.8f %1.8f %1.8f, %d z_0 =  %1.8f \n", state_0[0], state_0[1], state_0[2], state_0[3], state_0[4], detid_first, z_0);
 		}
-//#endif
+#endif
 		
 		pos_array[0] = state_0[3]+state_0[1]*(globalconsts::FMAG_LENGTH-z_0);
 		pos_array[1] = state_0[4]+state_0[2]*(globalconsts::FMAG_LENGTH-z_0);
@@ -2643,11 +2632,11 @@ __global__ void gKernel_Vertexing(
 		mom_array[1] = pz_0*state_0[2];
 		mom_array[2] = pz_0;
 		
-		//if(pz_0<0)if(blockIdx.x==debug::EvRef)printf("%d %d mom %1.6f %1.6f %1.6f pos %1.6f %1.6f %1.6f \n", blockIdx.x, threadIdx.x, mom_array[0], mom_array[1], mom_array[2], pos_array[0], pos_array[1], pos_array[2]);
+		if(pz_0<0)if(blockIdx.x==debug::EvRef)printf("%d %d mom %1.6f %1.6f %1.6f pos %1.6f %1.6f %1.6f \n", blockIdx.x, threadIdx.x, mom_array[0], mom_array[1], mom_array[2], pos_array[0], pos_array[1], pos_array[2]);
 		
 #ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf(" FMAG_LENGTH-z_0 %1.4f pos(0) %1.4f %1.4f %1.4f  mom(0) %1.4f %1.4f %1.4f \n", globalconsts::FMAG_LENGTH-z_0, pos_array[0], pos_array[1], pos_array[2], mom_array[0], mom_array[1], mom_array[2] );
-		//if(blockIdx.x==debug::EvRef)printf("charge %1.0f\n", charge);
+		if(blockIdx.x==debug::EvRef)printf("charge %1.0f\n", charge);
 #endif
 
 		step = 1;
@@ -2698,12 +2687,12 @@ __global__ void gKernel_Vertexing(
 			mom_array[iy] = pz_f*ty;
 			mom_array[iz] = pz_f;
 			
-//#ifdef DEBUG
+#ifdef DEBUG
 			if(blockIdx.x==debug::EvRef){
 				//printf(" ptoti %1.4f ptotb %1.4f ptotf %1.4f traj1 %1.4f %1.4f %1.4f traj2 %1.4f %1.4f %1.4f \n", ptot_i, ptot_b, ptot_f, traj1[0], traj1[1], traj1[2], traj2[0], traj2[1], traj2[2]);
 				printf("%d %d %d %d %1.4f %1.4f %1.4f %1.4f %1.4f %1.4f \n", step, ix, iy, iz, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz] );
 			}
-//#endif
+#endif
 
 			dz = pos_b[2] - globalconsts::Z_DUMP;
 			if(fabs(dz)<globalconsts::STEP_FMAG){
@@ -2806,9 +2795,9 @@ __global__ void gKernel_Vertexing(
 		vertex_mom[1] = mom_array[iy];
 		vertex_mom[2] = mom_array[iz];
 		
-//#ifdef DEBUG
+#ifdef DEBUG
 		if(blockIdx.x==debug::EvRef)printf("%d %d  %d  %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f %1.6f \n", blockIdx.x, threadIdx.x, step, pos_array[ix], pos_array[iy], pos_array[iz], mom_array[ix], mom_array[iy], mom_array[iz], dca2_min);
-//#endif
+#endif
 		tklcoll->setStationID(tkl_coll_offset+array_thread_offset, i, 7);//vertexing has been done...
 
 		tklcoll->setVtxPos(tkl_coll_offset+array_thread_offset, i, vertex_pos);
