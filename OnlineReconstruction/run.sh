@@ -1,3 +1,2 @@
-make && ./online_reconstruction DST.root basic_geometry_MC2022.txt calibration_e1039_mc.txt output_mc.root 0
-
+./online_reconstruction digit_012525_R007.root basic_geometry_e906.txt calibration_e906.txt output.root 1
 

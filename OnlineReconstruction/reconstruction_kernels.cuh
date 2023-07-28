@@ -3049,7 +3049,8 @@ __global__ void gKernel_DimuonBuilding(
 					if(fabs(costheta)>1.f)continue;
 					if(p_pos[2]+p_neg[2]>120.f || p_pos[2]+p_neg[2]<30.f)continue;
 					if(fabs(p_pos[0]+p_neg[0])>3.f || fabs(p_pos[0]+p_neg[0])>3.f )continue;
-					if(fabs(dim_v[0])>15.f || fabs(dim_v[1])>15.f )continue;
+					//if(fabs(dim_v[0])>15.f || fabs(dim_v[1])>15.f )continue;
+					if(dim_v[0]*dim_v[0]+dim_v[1]*dim_v[1]>225.f )continue;
 					//if(dim_v[2]>200. || dim_v[2]<-300.)continue;
 
 					//printf(" evt %d dim v %1.4f %1.4f %1.4f pos v %1.4f %1.4f %1.4f neg v %1.4f %1.4f %1.4f \n", blockIdx.x, dim_v[0], dim_v[1], dim_v[2], pos_v[0], pos_v[1], pos_v[2], neg_v[0], neg_v[1], neg_v[2] );

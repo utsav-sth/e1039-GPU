@@ -27,7 +27,8 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TSpline.h>
-//#define ROOTSAVE
+
+#define ROOTSAVE 1
 #ifdef ROOTSAVE
 #include <TH1D.h>
 #endif
