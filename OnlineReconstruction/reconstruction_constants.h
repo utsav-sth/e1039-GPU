@@ -90,7 +90,7 @@ namespace globalconsts{
 #endif
 	__device__ constexpr float FMAGSTR = -1.054;
 	//__device__ constexpr float PT_KICK_FMAG = -3.066086;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054 = -3.066086
-	__device__ constexpr float PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
+	__device__ constexpr double PTKICK_UNIT = -0.006096568;// PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.054/502.92 = -0.006096568
 	__device__ constexpr float Z_KMAG_BEND = 1064.26;
 	__device__ constexpr float Z_FMAG_BEND = 251.4;
 	__device__ constexpr float Z_TARGET = -300.;
@@ -102,23 +102,23 @@ namespace globalconsts{
 	__device__ constexpr float KMAGSTR = 0.0;
 #endif
 	__device__ constexpr float FMAGSTR = -1.044;
-	__device__ constexpr float PTKICK_UNIT = -0.006038726;//-0.PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
+	__device__ constexpr double PTKICK_UNIT = -0.006038726;//PT_KICK_FMAG*FMAGSTR/FMAG_LENGTH = 2.909*-1.044/502.92 = -0.006038726
 	__device__ constexpr float Z_KMAG_BEND = 1041.8;
 	__device__ constexpr float Z_FMAG_BEND = 251.4;
 	__device__ constexpr float Z_TARGET = -129.54;
 #endif
-	__device__ constexpr float FMAG_LENGTH = 502.92;
-	__device__ constexpr float FMAG_HOLE_LENGTH = 27.94;
-	__device__ constexpr float FMAG_HOLE_RADIUS = 1.27;
+	__device__ constexpr double FMAG_LENGTH = 502.92;
+	__device__ constexpr double FMAG_HOLE_LENGTH = 27.94;
+	__device__ constexpr double FMAG_HOLE_RADIUS = 1.27;
 	__device__ constexpr int NSTEPS_FMAG = 100;
-	__device__ constexpr float STEP_FMAG = 2.5146;// FMAG_LENGTH/NSTEPS_FMAG/2 = 502.92/100/2 = 2.5146 
-	__device__ constexpr float DEDX_UNIT_0 = 0.014282073;// 7.18274/502.92;
-	__device__ constexpr float DEDX_UNIT_1 = 7.1869681e-05;// 0.0361447/502.92;
-	__device__ constexpr float DEDX_UNIT_2 =-1.4279150e-06;//-0.000718127/502.92;
-	__device__ constexpr float DEDX_UNIT_3 = 1.5853655e-08;// 7.97312e-06/502.92;
-	__device__ constexpr float DEDX_UNIT_4 =-6.0741470e-11;//-3.05481e-08/502.92;
-	__device__ constexpr int NSTEPS_TARGET = 200;
-	__device__ constexpr float STEP_TARGET = 2.5;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
+	__device__ constexpr double STEP_FMAG = 2.514600;// FMAG_LENGTH/NSTEPS_FMAG/2 = 502.92/100/2 = 2.5146 
+	__device__ constexpr double DEDX_UNIT_0 = 0.014282073;// 7.18274/502.92;
+	__device__ constexpr double DEDX_UNIT_1 = 7.1869681e-05;// 0.0361447/502.92;
+	__device__ constexpr double DEDX_UNIT_2 =-1.4279150e-06;//-0.000718127/502.92;
+	__device__ constexpr double DEDX_UNIT_3 = 1.5853655e-08;// 7.97312e-06/502.92;
+	__device__ constexpr double DEDX_UNIT_4 =-6.0741470e-11;//-3.05481e-08/502.92;
+	__device__ constexpr int NSTEPS_TARGET = 100;
+	__device__ constexpr double STEP_TARGET = 5.0;// |Z_UPSTREAM|/NSTEPS_TARGET = 500/100 = 5. 
 	__device__ constexpr short lrpossibility[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 #ifdef LEGACYCODE
 	__device__ constexpr short N_WCHitsBins[4] = {32, 28, 28, 28};
@@ -185,9 +185,9 @@ namespace datasizes{
 }
 
 namespace selection{
-	__host__ __device__ constexpr short MaxD0Multiplicity = 140;//210;
-	__host__ __device__ constexpr short MaxD2Multiplicity = 80;//120;
-	__host__ __device__ constexpr short MaxD3Multiplicity = 60;//90;
+	__host__ __device__ constexpr short MaxD0Multiplicity = 210;//140;//
+	__host__ __device__ constexpr short MaxD2Multiplicity = 120;//80;//
+	__host__ __device__ constexpr short MaxD3Multiplicity = 90;//60;//
 	__host__ __device__ constexpr short MaxPropMultiplicity = 1250;
 	
 	__host__ __device__ constexpr float chi2max = 250;
@@ -273,5 +273,5 @@ namespace extrapolation_tools{
 }
 
 namespace debug{
-  __host__ __device__ constexpr unsigned int EvRef = 12;
+  __host__ __device__ constexpr unsigned int EvRef = 21;
 }

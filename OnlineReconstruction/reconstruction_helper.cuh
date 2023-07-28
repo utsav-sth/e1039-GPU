@@ -1319,7 +1319,7 @@ __device__ float FindDimuonClosestApproach(float* v, float* p_pos, float* p_neg,
 		pos_array_1[iz] = pos_b[2]-traj2[2];
 		
 		ptot_f = ptot_b;
-		if(pos_array_1[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_b[ix]*pos_b[ix]+pos_b[iy]*pos_b[iy]>globalconsts::FMAG_HOLE_RADIUS){
+		if(pos_array_1[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_array_1[ix]*pos_array_1[ix]+pos_array_1[iy]*pos_array_1[iy]>globalconsts::FMAG_HOLE_RADIUS){
 			ptot_f+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_1*ptot_b + globalconsts::DEDX_UNIT_2*ptot_b*ptot_b + globalconsts::DEDX_UNIT_3*ptot_b*ptot_b*ptot_b + globalconsts::DEDX_UNIT_4*ptot_b*ptot_b*ptot_b*ptot_b)*sqrtf( traj2[0]*traj2[0] + traj2[1]*traj2[1] + traj2[2]*traj2[2]);
 		}
 		
@@ -1363,7 +1363,7 @@ __device__ float FindDimuonClosestApproach(float* v, float* p_pos, float* p_neg,
 		pos_array_2[iz] = pos_b[2]-traj2[2];
 		
 		ptot_f = ptot_b;
-		if(pos_array_2[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_b[ix]*pos_b[ix]+pos_b[iy]*pos_b[iy]>globalconsts::FMAG_HOLE_RADIUS){
+		if(pos_array_2[iz] > globalconsts::FMAG_HOLE_LENGTH || pos_array_2[ix]*pos_array_2[ix]+pos_array_2[iy]*pos_array_2[iy]>globalconsts::FMAG_HOLE_RADIUS){
 			ptot_f+= (globalconsts::DEDX_UNIT_0 + globalconsts::DEDX_UNIT_1*ptot_b + globalconsts::DEDX_UNIT_2*ptot_b*ptot_b + globalconsts::DEDX_UNIT_3*ptot_b*ptot_b*ptot_b + globalconsts::DEDX_UNIT_4*ptot_b*ptot_b*ptot_b*ptot_b)*sqrtf( traj2[0]*traj2[0] + traj2[1]*traj2[1] + traj2[2]*traj2[2]);
 		}
 		
