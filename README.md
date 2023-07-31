@@ -9,6 +9,7 @@ System requirements:
 - ROOT 6
 - CMake 3.11 or later
 - cuBLASLt API (https://docs.nvidia.com/cuda/cublas/index.html)
+- The official SPinQuest analysis software, e1039-core (https://github.com/E1039-Collaboration/e1039-core) (Note: branch e906-only does not require e1039-core, and should be used when e1039-core is not avalaible)
 - Python for building the Python bindings (Python version 2.x or 3.x)
 
 Input files:
