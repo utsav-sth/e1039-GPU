@@ -73,6 +73,9 @@ public:
   std::vector<float> fDimVx;
   std::vector<float> fDimVy;
   std::vector<float> fDimVz;
+  std::vector<float> fDimPx;
+  std::vector<float> fDimPy;
+  std::vector<float> fDimPz;
   std::vector<float> fDimPosVx;
   std::vector<float> fDimPosVy;
   std::vector<float> fDimPosVz;

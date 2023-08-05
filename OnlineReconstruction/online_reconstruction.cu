@@ -1189,6 +1189,9 @@ int main(int argn, char * argv[]) {
 			output->fDimVx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+9]);
 			output->fDimVy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+10]);
 			output->fDimVz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+11]);
+			output->fDimPx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+18]+host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+22]);
+			output->fDimPy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+19]+host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+23]);
+			output->fDimPz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+20]+host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+24]);
 			output->fDimPosVx.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+12]);
 			output->fDimPosVy.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+13]);
 			output->fDimPosVz.push_back(host_output_gDimuons->DimuonsRawData[dim_coll_offset+k*datasizes::NDimuonParam+14]);

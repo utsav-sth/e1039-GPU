@@ -73,6 +73,9 @@ void ORoutput_tree::Init()
   fTree->Branch("dimuon.vx", &(fDimVx));
   fTree->Branch("dimuon.vy", &(fDimVy));
   fTree->Branch("dimuon.vz", &(fDimVz));
+  fTree->Branch("dimuon.px", &(fDimPx));
+  fTree->Branch("dimuon.py", &(fDimPy));
+  fTree->Branch("dimuon.pz", &(fDimPz));
   fTree->Branch("dimuon.pos_vx", &(fDimPosVx));
   fTree->Branch("dimuon.pos_vy", &(fDimPosVy));
   fTree->Branch("dimuon.pos_vz", &(fDimPosVz));
@@ -151,6 +154,9 @@ void ORoutput_tree::Clear()
   fDimVx.clear();
   fDimVy.clear();
   fDimVz.clear();
+  fDimPx.clear();
+  fDimPy.clear();
+  fDimPz.clear();
   fDimPosVx.clear();
   fDimPosVy.clear();
   fDimPosVz.clear();
