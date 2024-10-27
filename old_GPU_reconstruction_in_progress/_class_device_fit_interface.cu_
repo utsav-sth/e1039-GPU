@@ -1,0 +1,70 @@
+#include "device_fit_interface.cuh"
+#include "cuda_kernels.cu"
+
+__device__ device_fit_interface::device_fit_interface(
+	std::size_t n_fits,
+        ModelID model_id,
+        int max_n_iterations,
+    	REAL* constraints,
+    	int* constraint_types,
+        int estimator_id,
+        REAL tolerance
+): nfits_(n_fits), model_id_(model_id), max_n_iterations_(max_n_iterations), constraints_(constraints), constraint_types_(constraint_types), estimator_id_(estimator_id), tolerance_(tolerance)
+{
+	_gpu_configure_model(model_id);
+}
+
+
+__device__ void device_fit_interface::_gpu_configure_model(ModelID const model_id)
+{
+    switch (model_id)
+    {
+    case GAUSS_1D:              n_parameters_ = 4; n_dimensions_ = 1; break;
+    case GAUSS_2D:              n_parameters_ = 5; n_dimensions_ = 2; break;
+    case GAUSS_2D_ELLIPTIC:     n_parameters_ = 6; n_dimensions_ = 2; break;
+    case GAUSS_2D_ROTATED:      n_parameters_ = 7; n_dimensions_ = 2; break;
+    case CAUCHY_2D_ELLIPTIC:    n_parameters_ = 6; n_dimensions_ = 2; break;
+    case LINEAR_1D:             n_parameters_ = 2; n_dimensions_ = 1; break;
+    case LINEAR_3D:             n_parameters_ = 4; n_dimensions_ = 2; break;
+    case FLETCHER_POWELL_HELIX: n_parameters_ = 3; n_dimensions_ = 1; break;
+    case BROWN_DENNIS:          n_parameters_ = 4; n_dimensions_ = 1; break;
+    case SPLINE_1D:             n_parameters_ = 3; n_dimensions_ = 1; break;
+    case SPLINE_2D:             n_parameters_ = 4; n_dimensions_ = 2; break;
+    case SPLINE_3D:             n_parameters_ = 5; n_dimensions_ = 3; break;
+    case SPLINE_3D_MULTICHANNEL:         n_parameters_ = 5; n_dimensions_ = 4; break;
+    case SPLINE_3D_PHASE_MULTICHANNEL:   n_parameters_ = 6; n_dimensions_ = 4; break;
+    default: printf("unknown model ID"); n_parameters_ = 0; n_dimensions_ = 0; break;
+    }
+}
+
+
+__device__ int device_fit_interface::_gpu_run_fit(
+	int const n_points,
+	REAL const* data,
+       	REAL const* weights,
+       	REAL const* initial_parameters,
+       	int const* parameters_to_fit,
+       	char* const user_info,
+       	REAL* output_parameters,
+       	int* output_states,
+       	REAL* output_chi_squares,
+       	int* output_n_iterations
+)
+{
+	for(int i = 0; i<n_parameters_; i++){
+		output_parameters[i] = initial_parameters[i];
+	}
+		
+	if(constraints_!=NULL){
+		for(int i = 0; i<n_parameters_; i++){
+			REAL lower_bound = constraints_[i*2+LOWER_BOUND];
+			REAL upper_bound = constraints_[i*2+UPPER_BOUND];
+			project_parameter_to_box(output_parameters[i], lower_bound, upper_bound, constraint_types_[i]);
+		}
+	}
+	
+	//_calc_curve_values();
+	
+		
+	return 1;
+}

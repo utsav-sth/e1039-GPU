@@ -1,0 +1,2 @@
+rm -f *.o *~ online_reconstruction
+nvcc -g --cudart=static -ccbin g++ -rdc=true -std=c++14 -m64 -DUSE_CUBLAS -I/data2/e1039/share/root/include -I/home/programs/Gpufit/Gpufit -I/home/programs/e1039-GPU/OnlineReconstruction -I/home/programs/e1039-core/interface_main -c online_reconstruction.cu -o online_reconstruction.o

@@ -1,0 +1,81 @@
+#ifndef DEVICE_FIT_INTERFACE_CUH_INCLUDED
+#define DEVICE_FIT_INTERFACE_CUH_INCLUDED
+
+#include "constants.h"
+
+/************************************************/
+// The purpose of this class is to provide an 
+// interface to the core GPUfit functions that  
+// can be called from a global or a device function
+/************************************************/
+
+class device_fit_interface{
+public:
+// constructor
+__device__ device_fit_interface(
+	std::size_t n_fits,
+	ModelID model_id,
+	int max_n_iterations,
+	float* constraints,
+	int* constraint_types,
+	int estimator_id,
+	float tolerance
+);
+	//float* fit_parameters,
+	//int* output_states,
+	//float* output_chi_squares,
+	//int* output_n_iterations
+	//std::size_t n_points,
+	//int* parameters_to_fit,
+	//float* data,
+	//float* weights,
+	//std::size_t user_info_size,
+	//char* user_info,
+
+//default destructor
+__device__ ~device_fit_interface(){}
+
+// fit function configuration
+__device__ void _gpu_configure_model(ModelID const model_id);
+
+// active function
+__device__ int _gpu_run_fit(
+	int const n_points,
+	float const* data,
+	float const* weights,
+	float const* initial_parameters,
+	int const* parameters_to_fit,
+	char* const user_info,
+	float* output_parameters,
+	int* output_states,
+	float* output_chi_squares,
+	int* output_n_iterations
+);
+	//float const* constraints_,
+	//int const* constraint_types_,
+
+private:
+	// fit steps
+	int nfits_;
+	
+	int max_n_iterations_;
+	float tolerance_;
+	
+	// fit parameters
+	ModelID model_id_;
+	
+	int n_parameters_;
+	int n_dimensions_;
+	
+	int estimator_id_; 
+	
+	// fit parameters constraints
+	float* constraints_;
+	int* constraint_types_;
+	
+	// fit intermediate data containers
+	float* derivatives_;
+	
+};
+
+#endif

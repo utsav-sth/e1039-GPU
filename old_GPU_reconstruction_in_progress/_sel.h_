@@ -1,0 +1,414 @@
+//////////////////////////////////////////////////////////
+// This class has been automatically generated on
+// Tue Oct 11 05:14:37 2022 by ROOT version 6.16/00
+// from TTree T/titled by PHOOL
+// found on file: DST.root
+//////////////////////////////////////////////////////////
+
+#ifndef sel_h
+#define sel_h
+
+#include <TROOT.h>
+#include <TChain.h>
+#include <TFile.h>
+#include <TSelector.h>
+#include <TTreeReader.h>
+#include <TTreeReaderValue.h>
+#include <TTreeReaderArray.h>
+
+// Headers needed by this particular selector
+
+
+class sel : public TSelector {
+public :
+   TTreeReader     fReader;  //!the tree reader
+   TTree          *fChain = 0;   //!pointer to the analyzed TTree or TChain
+
+   // Readers to access the data (delete the ones you do not need).
+   TTreeReaderValue<unsigned int> DST_PHHepMCGenEventMap = {fReader, "DST.PHHepMCGenEventMap"};
+   TTreeReaderValue<unsigned int> DST_PHHepMCGenEventMap__map = {fReader, "DST.PHHepMCGenEventMap._map"};
+   TTreeReaderValue<unsigned int> DST_PHG4INEVENT = {fReader, "DST.PHG4INEVENT"};
+   TTreeReaderValue<unsigned int> DST_PHG4INEVENT_vtxlist = {fReader, "DST.PHG4INEVENT.vtxlist"};
+   TTreeReaderArray<Int_t> DST_PHG4INEVENT_particlelist = {fReader, "DST.PHG4INEVENT.particlelist"};
+   TTreeReaderArray<unsigned int> DST_PHG4INEVENT_embedded_particlelist = {fReader, "DST.PHG4INEVENT.embedded_particlelist"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0U = {fReader, "DST.G4HIT_D0U"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0U_id = {fReader, "DST.G4HIT_D0U.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0U_hitmap = {fReader, "DST.G4HIT_D0U.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0U_layers = {fReader, "DST.G4HIT_D0U.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0U_layerMaxID = {fReader, "DST.G4HIT_D0U.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Up = {fReader, "DST.G4HIT_D0Up"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Up_id = {fReader, "DST.G4HIT_D0Up.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0Up_hitmap = {fReader, "DST.G4HIT_D0Up.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Up_layers = {fReader, "DST.G4HIT_D0Up.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Up_layerMaxID = {fReader, "DST.G4HIT_D0Up.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0X = {fReader, "DST.G4HIT_D0X"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0X_id = {fReader, "DST.G4HIT_D0X.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0X_hitmap = {fReader, "DST.G4HIT_D0X.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0X_layers = {fReader, "DST.G4HIT_D0X.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0X_layerMaxID = {fReader, "DST.G4HIT_D0X.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Xp = {fReader, "DST.G4HIT_D0Xp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Xp_id = {fReader, "DST.G4HIT_D0Xp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0Xp_hitmap = {fReader, "DST.G4HIT_D0Xp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Xp_layers = {fReader, "DST.G4HIT_D0Xp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Xp_layerMaxID = {fReader, "DST.G4HIT_D0Xp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0V = {fReader, "DST.G4HIT_D0V"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0V_id = {fReader, "DST.G4HIT_D0V.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0V_hitmap = {fReader, "DST.G4HIT_D0V.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0V_layers = {fReader, "DST.G4HIT_D0V.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0V_layerMaxID = {fReader, "DST.G4HIT_D0V.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Vp = {fReader, "DST.G4HIT_D0Vp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D0Vp_id = {fReader, "DST.G4HIT_D0Vp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D0Vp_hitmap = {fReader, "DST.G4HIT_D0Vp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Vp_layers = {fReader, "DST.G4HIT_D0Vp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D0Vp_layerMaxID = {fReader, "DST.G4HIT_D0Vp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2V = {fReader, "DST.G4HIT_D2V"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2V_id = {fReader, "DST.G4HIT_D2V.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2V_hitmap = {fReader, "DST.G4HIT_D2V.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2V_layers = {fReader, "DST.G4HIT_D2V.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2V_layerMaxID = {fReader, "DST.G4HIT_D2V.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Vp = {fReader, "DST.G4HIT_D2Vp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Vp_id = {fReader, "DST.G4HIT_D2Vp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2Vp_hitmap = {fReader, "DST.G4HIT_D2Vp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Vp_layers = {fReader, "DST.G4HIT_D2Vp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Vp_layerMaxID = {fReader, "DST.G4HIT_D2Vp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Xp = {fReader, "DST.G4HIT_D2Xp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Xp_id = {fReader, "DST.G4HIT_D2Xp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2Xp_hitmap = {fReader, "DST.G4HIT_D2Xp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Xp_layers = {fReader, "DST.G4HIT_D2Xp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Xp_layerMaxID = {fReader, "DST.G4HIT_D2Xp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2X = {fReader, "DST.G4HIT_D2X"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2X_id = {fReader, "DST.G4HIT_D2X.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2X_hitmap = {fReader, "DST.G4HIT_D2X.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2X_layers = {fReader, "DST.G4HIT_D2X.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2X_layerMaxID = {fReader, "DST.G4HIT_D2X.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2U = {fReader, "DST.G4HIT_D2U"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2U_id = {fReader, "DST.G4HIT_D2U.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2U_hitmap = {fReader, "DST.G4HIT_D2U.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2U_layers = {fReader, "DST.G4HIT_D2U.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2U_layerMaxID = {fReader, "DST.G4HIT_D2U.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Up = {fReader, "DST.G4HIT_D2Up"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D2Up_id = {fReader, "DST.G4HIT_D2Up.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D2Up_hitmap = {fReader, "DST.G4HIT_D2Up.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Up_layers = {fReader, "DST.G4HIT_D2Up.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D2Up_layerMaxID = {fReader, "DST.G4HIT_D2Up.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pVp = {fReader, "DST.G4HIT_D3pVp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pVp_id = {fReader, "DST.G4HIT_D3pVp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pVp_hitmap = {fReader, "DST.G4HIT_D3pVp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pVp_layers = {fReader, "DST.G4HIT_D3pVp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pVp_layerMaxID = {fReader, "DST.G4HIT_D3pVp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pV = {fReader, "DST.G4HIT_D3pV"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pV_id = {fReader, "DST.G4HIT_D3pV.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pV_hitmap = {fReader, "DST.G4HIT_D3pV.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pV_layers = {fReader, "DST.G4HIT_D3pV.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pV_layerMaxID = {fReader, "DST.G4HIT_D3pV.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pXp = {fReader, "DST.G4HIT_D3pXp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pXp_id = {fReader, "DST.G4HIT_D3pXp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pXp_hitmap = {fReader, "DST.G4HIT_D3pXp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pXp_layers = {fReader, "DST.G4HIT_D3pXp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pXp_layerMaxID = {fReader, "DST.G4HIT_D3pXp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pX = {fReader, "DST.G4HIT_D3pX"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pX_id = {fReader, "DST.G4HIT_D3pX.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pX_hitmap = {fReader, "DST.G4HIT_D3pX.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pX_layers = {fReader, "DST.G4HIT_D3pX.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pX_layerMaxID = {fReader, "DST.G4HIT_D3pX.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pUp = {fReader, "DST.G4HIT_D3pUp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pUp_id = {fReader, "DST.G4HIT_D3pUp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pUp_hitmap = {fReader, "DST.G4HIT_D3pUp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pUp_layers = {fReader, "DST.G4HIT_D3pUp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pUp_layerMaxID = {fReader, "DST.G4HIT_D3pUp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pU = {fReader, "DST.G4HIT_D3pU"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3pU_id = {fReader, "DST.G4HIT_D3pU.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3pU_hitmap = {fReader, "DST.G4HIT_D3pU.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pU_layers = {fReader, "DST.G4HIT_D3pU.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3pU_layerMaxID = {fReader, "DST.G4HIT_D3pU.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mVp = {fReader, "DST.G4HIT_D3mVp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mVp_id = {fReader, "DST.G4HIT_D3mVp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mVp_hitmap = {fReader, "DST.G4HIT_D3mVp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mVp_layers = {fReader, "DST.G4HIT_D3mVp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mVp_layerMaxID = {fReader, "DST.G4HIT_D3mVp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mV = {fReader, "DST.G4HIT_D3mV"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mV_id = {fReader, "DST.G4HIT_D3mV.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mV_hitmap = {fReader, "DST.G4HIT_D3mV.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mV_layers = {fReader, "DST.G4HIT_D3mV.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mV_layerMaxID = {fReader, "DST.G4HIT_D3mV.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mXp = {fReader, "DST.G4HIT_D3mXp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mXp_id = {fReader, "DST.G4HIT_D3mXp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mXp_hitmap = {fReader, "DST.G4HIT_D3mXp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mXp_layers = {fReader, "DST.G4HIT_D3mXp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mXp_layerMaxID = {fReader, "DST.G4HIT_D3mXp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mX = {fReader, "DST.G4HIT_D3mX"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mX_id = {fReader, "DST.G4HIT_D3mX.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mX_hitmap = {fReader, "DST.G4HIT_D3mX.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mX_layers = {fReader, "DST.G4HIT_D3mX.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mX_layerMaxID = {fReader, "DST.G4HIT_D3mX.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mUp = {fReader, "DST.G4HIT_D3mUp"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mUp_id = {fReader, "DST.G4HIT_D3mUp.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mUp_hitmap = {fReader, "DST.G4HIT_D3mUp.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mUp_layers = {fReader, "DST.G4HIT_D3mUp.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mUp_layerMaxID = {fReader, "DST.G4HIT_D3mUp.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mU = {fReader, "DST.G4HIT_D3mU"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_D3mU_id = {fReader, "DST.G4HIT_D3mU.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_D3mU_hitmap = {fReader, "DST.G4HIT_D3mU.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mU_layers = {fReader, "DST.G4HIT_D3mU.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_D3mU_layerMaxID = {fReader, "DST.G4HIT_D3mU.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1B = {fReader, "DST.G4HIT_H1B"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1B_id = {fReader, "DST.G4HIT_H1B.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H1B_hitmap = {fReader, "DST.G4HIT_H1B.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1B_layers = {fReader, "DST.G4HIT_H1B.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1B_layerMaxID = {fReader, "DST.G4HIT_H1B.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1T = {fReader, "DST.G4HIT_H1T"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1T_id = {fReader, "DST.G4HIT_H1T.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H1T_hitmap = {fReader, "DST.G4HIT_H1T.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1T_layers = {fReader, "DST.G4HIT_H1T.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1T_layerMaxID = {fReader, "DST.G4HIT_H1T.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1L = {fReader, "DST.G4HIT_H1L"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1L_id = {fReader, "DST.G4HIT_H1L.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H1L_hitmap = {fReader, "DST.G4HIT_H1L.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1L_layers = {fReader, "DST.G4HIT_H1L.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1L_layerMaxID = {fReader, "DST.G4HIT_H1L.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1R = {fReader, "DST.G4HIT_H1R"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H1R_id = {fReader, "DST.G4HIT_H1R.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H1R_hitmap = {fReader, "DST.G4HIT_H1R.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1R_layers = {fReader, "DST.G4HIT_H1R.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H1R_layerMaxID = {fReader, "DST.G4HIT_H1R.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2L = {fReader, "DST.G4HIT_H2L"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2L_id = {fReader, "DST.G4HIT_H2L.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H2L_hitmap = {fReader, "DST.G4HIT_H2L.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2L_layers = {fReader, "DST.G4HIT_H2L.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2L_layerMaxID = {fReader, "DST.G4HIT_H2L.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2R = {fReader, "DST.G4HIT_H2R"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2R_id = {fReader, "DST.G4HIT_H2R.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H2R_hitmap = {fReader, "DST.G4HIT_H2R.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2R_layers = {fReader, "DST.G4HIT_H2R.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2R_layerMaxID = {fReader, "DST.G4HIT_H2R.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2B = {fReader, "DST.G4HIT_H2B"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2B_id = {fReader, "DST.G4HIT_H2B.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H2B_hitmap = {fReader, "DST.G4HIT_H2B.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2B_layers = {fReader, "DST.G4HIT_H2B.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2B_layerMaxID = {fReader, "DST.G4HIT_H2B.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2T = {fReader, "DST.G4HIT_H2T"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H2T_id = {fReader, "DST.G4HIT_H2T.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H2T_hitmap = {fReader, "DST.G4HIT_H2T.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2T_layers = {fReader, "DST.G4HIT_H2T.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H2T_layerMaxID = {fReader, "DST.G4HIT_H2T.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H3B = {fReader, "DST.G4HIT_H3B"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H3B_id = {fReader, "DST.G4HIT_H3B.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H3B_hitmap = {fReader, "DST.G4HIT_H3B.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H3B_layers = {fReader, "DST.G4HIT_H3B.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H3B_layerMaxID = {fReader, "DST.G4HIT_H3B.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H3T = {fReader, "DST.G4HIT_H3T"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H3T_id = {fReader, "DST.G4HIT_H3T.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H3T_hitmap = {fReader, "DST.G4HIT_H3T.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H3T_layers = {fReader, "DST.G4HIT_H3T.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H3T_layerMaxID = {fReader, "DST.G4HIT_H3T.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y1L = {fReader, "DST.G4HIT_H4Y1L"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y1L_id = {fReader, "DST.G4HIT_H4Y1L.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4Y1L_hitmap = {fReader, "DST.G4HIT_H4Y1L.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y1L_layers = {fReader, "DST.G4HIT_H4Y1L.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y1L_layerMaxID = {fReader, "DST.G4HIT_H4Y1L.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y1R = {fReader, "DST.G4HIT_H4Y1R"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y1R_id = {fReader, "DST.G4HIT_H4Y1R.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4Y1R_hitmap = {fReader, "DST.G4HIT_H4Y1R.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y1R_layers = {fReader, "DST.G4HIT_H4Y1R.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y1R_layerMaxID = {fReader, "DST.G4HIT_H4Y1R.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y2L = {fReader, "DST.G4HIT_H4Y2L"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y2L_id = {fReader, "DST.G4HIT_H4Y2L.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4Y2L_hitmap = {fReader, "DST.G4HIT_H4Y2L.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y2L_layers = {fReader, "DST.G4HIT_H4Y2L.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y2L_layerMaxID = {fReader, "DST.G4HIT_H4Y2L.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y2R = {fReader, "DST.G4HIT_H4Y2R"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4Y2R_id = {fReader, "DST.G4HIT_H4Y2R.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4Y2R_hitmap = {fReader, "DST.G4HIT_H4Y2R.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y2R_layers = {fReader, "DST.G4HIT_H4Y2R.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4Y2R_layerMaxID = {fReader, "DST.G4HIT_H4Y2R.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4B = {fReader, "DST.G4HIT_H4B"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4B_id = {fReader, "DST.G4HIT_H4B.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4B_hitmap = {fReader, "DST.G4HIT_H4B.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4B_layers = {fReader, "DST.G4HIT_H4B.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4B_layerMaxID = {fReader, "DST.G4HIT_H4B.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4T = {fReader, "DST.G4HIT_H4T"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_H4T_id = {fReader, "DST.G4HIT_H4T.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_H4T_hitmap = {fReader, "DST.G4HIT_H4T.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4T_layers = {fReader, "DST.G4HIT_H4T.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_H4T_layerMaxID = {fReader, "DST.G4HIT_H4T.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1Y1 = {fReader, "DST.G4HIT_P1Y1"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1Y1_id = {fReader, "DST.G4HIT_P1Y1.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P1Y1_hitmap = {fReader, "DST.G4HIT_P1Y1.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1Y1_layers = {fReader, "DST.G4HIT_P1Y1.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1Y1_layerMaxID = {fReader, "DST.G4HIT_P1Y1.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1Y2 = {fReader, "DST.G4HIT_P1Y2"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1Y2_id = {fReader, "DST.G4HIT_P1Y2.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P1Y2_hitmap = {fReader, "DST.G4HIT_P1Y2.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1Y2_layers = {fReader, "DST.G4HIT_P1Y2.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1Y2_layerMaxID = {fReader, "DST.G4HIT_P1Y2.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1X1 = {fReader, "DST.G4HIT_P1X1"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1X1_id = {fReader, "DST.G4HIT_P1X1.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P1X1_hitmap = {fReader, "DST.G4HIT_P1X1.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1X1_layers = {fReader, "DST.G4HIT_P1X1.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1X1_layerMaxID = {fReader, "DST.G4HIT_P1X1.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1X2 = {fReader, "DST.G4HIT_P1X2"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P1X2_id = {fReader, "DST.G4HIT_P1X2.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P1X2_hitmap = {fReader, "DST.G4HIT_P1X2.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1X2_layers = {fReader, "DST.G4HIT_P1X2.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P1X2_layerMaxID = {fReader, "DST.G4HIT_P1X2.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2X1 = {fReader, "DST.G4HIT_P2X1"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2X1_id = {fReader, "DST.G4HIT_P2X1.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P2X1_hitmap = {fReader, "DST.G4HIT_P2X1.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2X1_layers = {fReader, "DST.G4HIT_P2X1.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2X1_layerMaxID = {fReader, "DST.G4HIT_P2X1.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2X2 = {fReader, "DST.G4HIT_P2X2"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2X2_id = {fReader, "DST.G4HIT_P2X2.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P2X2_hitmap = {fReader, "DST.G4HIT_P2X2.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2X2_layers = {fReader, "DST.G4HIT_P2X2.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2X2_layerMaxID = {fReader, "DST.G4HIT_P2X2.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2Y1 = {fReader, "DST.G4HIT_P2Y1"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2Y1_id = {fReader, "DST.G4HIT_P2Y1.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P2Y1_hitmap = {fReader, "DST.G4HIT_P2Y1.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2Y1_layers = {fReader, "DST.G4HIT_P2Y1.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2Y1_layerMaxID = {fReader, "DST.G4HIT_P2Y1.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2Y2 = {fReader, "DST.G4HIT_P2Y2"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_P2Y2_id = {fReader, "DST.G4HIT_P2Y2.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_P2Y2_hitmap = {fReader, "DST.G4HIT_P2Y2.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2Y2_layers = {fReader, "DST.G4HIT_P2Y2.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_P2Y2_layerMaxID = {fReader, "DST.G4HIT_P2Y2.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1TL = {fReader, "DST.G4HIT_DP1TL"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1TL_id = {fReader, "DST.G4HIT_DP1TL.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP1TL_hitmap = {fReader, "DST.G4HIT_DP1TL.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1TL_layers = {fReader, "DST.G4HIT_DP1TL.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1TL_layerMaxID = {fReader, "DST.G4HIT_DP1TL.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1TR = {fReader, "DST.G4HIT_DP1TR"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1TR_id = {fReader, "DST.G4HIT_DP1TR.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP1TR_hitmap = {fReader, "DST.G4HIT_DP1TR.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1TR_layers = {fReader, "DST.G4HIT_DP1TR.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1TR_layerMaxID = {fReader, "DST.G4HIT_DP1TR.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1BL = {fReader, "DST.G4HIT_DP1BL"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1BL_id = {fReader, "DST.G4HIT_DP1BL.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP1BL_hitmap = {fReader, "DST.G4HIT_DP1BL.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1BL_layers = {fReader, "DST.G4HIT_DP1BL.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1BL_layerMaxID = {fReader, "DST.G4HIT_DP1BL.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1BR = {fReader, "DST.G4HIT_DP1BR"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP1BR_id = {fReader, "DST.G4HIT_DP1BR.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP1BR_hitmap = {fReader, "DST.G4HIT_DP1BR.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1BR_layers = {fReader, "DST.G4HIT_DP1BR.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP1BR_layerMaxID = {fReader, "DST.G4HIT_DP1BR.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2TL = {fReader, "DST.G4HIT_DP2TL"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2TL_id = {fReader, "DST.G4HIT_DP2TL.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP2TL_hitmap = {fReader, "DST.G4HIT_DP2TL.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2TL_layers = {fReader, "DST.G4HIT_DP2TL.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2TL_layerMaxID = {fReader, "DST.G4HIT_DP2TL.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2TR = {fReader, "DST.G4HIT_DP2TR"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2TR_id = {fReader, "DST.G4HIT_DP2TR.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP2TR_hitmap = {fReader, "DST.G4HIT_DP2TR.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2TR_layers = {fReader, "DST.G4HIT_DP2TR.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2TR_layerMaxID = {fReader, "DST.G4HIT_DP2TR.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2BL = {fReader, "DST.G4HIT_DP2BL"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2BL_id = {fReader, "DST.G4HIT_DP2BL.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP2BL_hitmap = {fReader, "DST.G4HIT_DP2BL.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2BL_layers = {fReader, "DST.G4HIT_DP2BL.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2BL_layerMaxID = {fReader, "DST.G4HIT_DP2BL.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2BR = {fReader, "DST.G4HIT_DP2BR"};
+   TTreeReaderValue<unsigned int> DST_G4HIT_DP2BR_id = {fReader, "DST.G4HIT_DP2BR.id"};
+   TTreeReaderValue<Int_t> DST_G4HIT_DP2BR_hitmap = {fReader, "DST.G4HIT_DP2BR.hitmap"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2BR_layers = {fReader, "DST.G4HIT_DP2BR.layers"};
+   TTreeReaderArray<unsigned int> DST_G4HIT_DP2BR_layerMaxID = {fReader, "DST.G4HIT_DP2BR.layerMaxID"};
+   TTreeReaderValue<unsigned int> DST_G4TruthInfo = {fReader, "DST.G4TruthInfo"};
+   TTreeReaderValue<unsigned int> DST_G4TruthInfo_particlemap = {fReader, "DST.G4TruthInfo.particlemap"};
+   TTreeReaderArray<Int_t> DST_G4TruthInfo_vtxmap = {fReader, "DST.G4TruthInfo.vtxmap"};
+   TTreeReaderArray<unsigned int> DST_G4TruthInfo_showermap = {fReader, "DST.G4TruthInfo.showermap"};
+   TTreeReaderArray<unsigned int> DST_G4TruthInfo_particle_embed_flags = {fReader, "DST.G4TruthInfo.particle_embed_flags"};
+   TTreeReaderArray<Int_t> DST_G4TruthInfo_vertex_embed_flags = {fReader, "DST.G4TruthInfo.vertex_embed_flags"};
+   TTreeReaderValue<unsigned int> DST_SQHitVector = {fReader, "DST.SQHitVector"};
+   TTreeReaderValue<unsigned int> DST_SQHitVector__vector = {fReader, "DST.SQHitVector._vector"};
+   TTreeReaderValue<unsigned int> DST_SQEvent = {fReader, "DST.SQEvent"};
+   TTreeReaderValue<unsigned int> DST_SQEvent__run_id = {fReader, "DST.SQEvent._run_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__spill_id = {fReader, "DST.SQEvent._spill_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__event_id = {fReader, "DST.SQEvent._event_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__coda_event_id = {fReader, "DST.SQEvent._coda_event_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__trigger = {fReader, "DST.SQEvent._trigger"};
+   TTreeReaderValue<unsigned short> DST_SQEvent__raw_matrix = {fReader, "DST.SQEvent._raw_matrix[5]"};
+   TTreeReaderArray<Int_t> DST_SQEvent__after_inh_matrix = {fReader, "DST.SQEvent._after_inh_matrix[5]"};
+   TTreeReaderArray<Int_t> DST_SQEvent__data_quality = {fReader, "DST.SQEvent._data_quality"};
+   TTreeReaderValue<Int_t> DST_SQEvent__vme_time = {fReader, "DST.SQEvent._vme_time"};
+   TTreeReaderValue<Int_t> DST_SQEvent__qie_presums = {fReader, "DST.SQEvent._qie_presums[4]"};
+   TTreeReaderArray<Int_t> DST_SQEvent__qie_trig_cnt = {fReader, "DST.SQEvent._qie_trig_cnt"};
+   TTreeReaderValue<Int_t> DST_SQEvent__qie_turn_id = {fReader, "DST.SQEvent._qie_turn_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__qie_rf_id = {fReader, "DST.SQEvent._qie_rf_id"};
+   TTreeReaderValue<Int_t> DST_SQEvent__qie_rf_inte = {fReader, "DST.SQEvent._qie_rf_inte[33]"};
+   TTreeReaderArray<Int_t> DST_SQEvent__flag_v1495 = {fReader, "DST.SQEvent._flag_v1495"};
+   TTreeReaderValue<Short_t> DST_SQEvent__n_board_qie = {fReader, "DST.SQEvent._n_board_qie"};
+   TTreeReaderValue<Short_t> DST_SQEvent__n_board_v1495 = {fReader, "DST.SQEvent._n_board_v1495"};
+   TTreeReaderValue<Short_t> DST_SQEvent__n_board_taiwan = {fReader, "DST.SQEvent._n_board_taiwan"};
+   TTreeReaderValue<Short_t> DST_SQEvent__n_board_trig_b = {fReader, "DST.SQEvent._n_board_trig_b"};
+   TTreeReaderValue<Short_t> DST_SQEvent__n_board_trig_c = {fReader, "DST.SQEvent._n_board_trig_c"};
+   TTreeReaderValue<unsigned int> DST_SQMCEvent = {fReader, "DST.SQMCEvent"};
+   TTreeReaderValue<unsigned int> DST_SQMCEvent__proc_id = {fReader, "DST.SQMCEvent._proc_id"};
+   TTreeReaderValue<Int_t> DST_SQMCEvent__xsec = {fReader, "DST.SQMCEvent._xsec"};
+   TTreeReaderValue<Double_t> DST_SQMCEvent__weight = {fReader, "DST.SQMCEvent._weight"};
+   TTreeReaderValue<Double_t> DST_SQMCEvent__par_id = {fReader, "DST.SQMCEvent._par_id[4]"};
+   TTreeReaderArray<Int_t> DST_SQMCEvent__par_mom = {fReader, "DST.SQMCEvent._par_mom[4]"};
+   TTreeReaderValue<unsigned int> DST_SQTruthTrackVector = {fReader, "DST.SQTruthTrackVector"};
+   TTreeReaderValue<unsigned int> DST_SQTruthTrackVector__vector = {fReader, "DST.SQTruthTrackVector._vector"};
+   TTreeReaderValue<unsigned int> DST_SQTruthDimuonVector = {fReader, "DST.SQTruthDimuonVector"};
+   TTreeReaderValue<unsigned int> DST_SQTruthDimuonVector__vector = {fReader, "DST.SQTruthDimuonVector._vector"};
+   TTreeReaderValue<unsigned int> DST_SRecEvent = {fReader, "DST.SRecEvent"};
+   TTreeReaderValue<unsigned int> DST_SRecEvent_fRecStatus = {fReader, "DST.SRecEvent.fRecStatus"};
+   TTreeReaderValue<Short_t> DST_SRecEvent_fRunID = {fReader, "DST.SRecEvent.fRunID"};
+   TTreeReaderValue<Int_t> DST_SRecEvent_fSpillID = {fReader, "DST.SRecEvent.fSpillID"};
+   TTreeReaderValue<Int_t> DST_SRecEvent_fEventID = {fReader, "DST.SRecEvent.fEventID"};
+   TTreeReaderValue<Int_t> DST_SRecEvent_fTargetPos = {fReader, "DST.SRecEvent.fTargetPos"};
+   TTreeReaderValue<Int_t> DST_SRecEvent_fTriggerBits = {fReader, "DST.SRecEvent.fTriggerBits"};
+   TTreeReaderValue<Int_t> DST_SRecEvent_fAllTracks = {fReader, "DST.SRecEvent.fAllTracks"};
+   TTreeReaderArray<unsigned int> DST_SRecEvent_fDimuons = {fReader, "DST.SRecEvent.fDimuons"};
+   TTreeReaderArray<unsigned int> DST_SRecEvent_fLocalID = {fReader, "DST.SRecEvent.fLocalID"};
+   TTreeReaderArray<Double_t> DST_SRecEvent_fSource1 = {fReader, "DST.SRecEvent.fSource1"};
+   TTreeReaderArray<unsigned int> DST_SRecEvent_fSource2 = {fReader, "DST.SRecEvent.fSource2"};
+
+
+   sel(TTree * /*tree*/ =0) { }
+   virtual ~sel() { }
+   virtual Int_t   Version() const { return 2; }
+   virtual void    Begin(TTree *tree);
+   virtual void    SlaveBegin(TTree *tree);
+   virtual void    Init(TTree *tree);
+   virtual Bool_t  Notify();
+   virtual Bool_t  Process(Long64_t entry);
+   virtual Int_t   GetEntry(Long64_t entry, Int_t getall = 0) { return fChain ? fChain->GetTree()->GetEntry(entry, getall) : 0; }
+   virtual void    SetOption(const char *option) { fOption = option; }
+   virtual void    SetObject(TObject *obj) { fObject = obj; }
+   virtual void    SetInputList(TList *input) { fInput = input; }
+   virtual TList  *GetOutputList() const { return fOutput; }
+   virtual void    SlaveTerminate();
+   virtual void    Terminate();
+
+   ClassDef(sel,0);
+
+};
+
+#endif
+
+#ifdef sel_cxx
+void sel::Init(TTree *tree)
+{
+   // The Init() function is called when the selector needs to initialize
+   // a new tree or chain. Typically here the reader is initialized.
+   // It is normally not necessary to make changes to the generated
+   // code, but the routine can be extended by the user if needed.
+   // Init() will be called many times when running on PROOF
+   // (once per file to be processed).
+
+   fReader.SetTree(tree);
+}
+
+Bool_t sel::Notify()
+{
+   // The Notify() function is called when a new file is opened. This
+   // can be either for a new TTree in a TChain or when when a new TTree
+   // is started when using PROOF. It is normally not necessary to make changes
+   // to the generated code, but the routine can be extended by the
+   // user if needed. The return value is currently not used.
+
+   return kTRUE;
+}
+
+
+#endif // #ifdef sel_cxx
